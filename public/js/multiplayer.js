@@ -94,24 +94,44 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle initial game state
   socket.on("gameState", (data) => {
     console.log("Received initial game state:", data);
-
+  
     // Set local player ID
     gameState.playerId = data.playerId;
-
+  
     // Clear any existing other players first
     for (const id in otherPlayers) {
       removeOtherPlayer(id);
     }
-
+  
     // Initialize other players (already filtered by planet on the server)
     for (const id in data.players) {
       if (id !== gameState.playerId) {
         addOtherPlayer(id, data.players[id]);
+        
+        // Check if player has active jetpack and set it correctly
+        if (data.players[id].jetpackActive) {
+          const playerElement = otherPlayers[id].element;
+          
+          // Add jetpack flame element if it doesn't exist
+          let jetpackFlame = playerElement.querySelector(".jetpack-flame");
+          if (!jetpackFlame) {
+            jetpackFlame = document.createElement("div");
+            jetpackFlame.className = "jetpack-flame";
+            playerElement.appendChild(jetpackFlame);
+          }
+          
+          // Display the jetpack flame
+          jetpackFlame.style.display = "block";
+          
+          // Update jetpack state in our local representation
+          otherPlayers[id].jetpackActive = true;
+        }
       }
     }
-
+  
     // Update player count
     updatePlayerCount(Object.keys(data.players).length);
+  
 
     // If we're not the host, we should use the received world data
     // and override our local world generation
@@ -604,6 +624,41 @@ export function uploadWorldToServer() {
       }
     }
 
+    socket.on("playerJetpackActivated", (data) => {
+      if (otherPlayers[data.id]) {
+        const playerElement = otherPlayers[data.id].element;
+
+        // Add jetpack flame if it doesn't exist
+        let jetpackFlame = playerElement.querySelector(".jetpack-flame");
+        if (!jetpackFlame) {
+          jetpackFlame = document.createElement("div");
+          jetpackFlame.className = "jetpack-flame";
+          playerElement.appendChild(jetpackFlame);
+        }
+
+        // Show the flame
+        jetpackFlame.style.display = "block";
+
+        // Store jetpack state
+        otherPlayers[data.id].jetpackActive = true;
+      }
+    });
+
+    socket.on("playerJetpackDeactivated", (data) => {
+      if (otherPlayers[data.id]) {
+        const playerElement = otherPlayers[data.id].element;
+
+        // Hide the flame
+        const jetpackFlame = playerElement.querySelector(".jetpack-flame");
+        if (jetpackFlame) {
+          jetpackFlame.style.display = "none";
+        }
+
+        // Update jetpack state
+        otherPlayers[data.id].jetpackActive = false;
+      }
+    });
+
     // Send the world data to the server
     socket.emit("uploadWorldData", {
       worldBlocks: worldData,
@@ -623,6 +678,26 @@ function addMultiplayerStyles() {
     styleElement.id = "multiplayer-player-styles";
     styleElement.textContent = `
       /* Existing styles... */
+      /* Jetpack flame for other players */
+      .other-player .jetpack-flame {
+        position: absolute;
+        width: 10px;
+        height: 15px;
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(to bottom, #ff9900, #ff0000);
+        border-radius: 50% 50% 20% 20%;
+        opacity: 0.8;
+        animation: flame-flicker 0.1s infinite alternate;
+        z-index: 15;
+        display: none;
+      }
+      
+      @keyframes flame-flicker {
+        0% { height: 15px; opacity: 0.7; }
+        100% { height: 20px; opacity: 0.9; }
+      }
       
       /* Mining animation styles */
       .mining-animation {
@@ -954,6 +1029,26 @@ function addOtherPlayer(id, playerData) {
   nameTag.className = "player-name";
   nameTag.textContent = `Player ${id.substring(0, 3)}`;
   newPlayerElement.appendChild(nameTag);
+
+  // Add jetpack flame element
+  const jetpackFlame = document.createElement("div");
+  jetpackFlame.className = "jetpack-flame";
+  jetpackFlame.style.display = "none"; // Hidden by default
+  newPlayerElement.appendChild(jetpackFlame);
+
+  // Store reference with additional properties
+  otherPlayers[id] = {
+    element: newPlayerElement,
+    data: playerData,
+    mining: {
+      active: false,
+    },
+    laser: {
+      active: false,
+      angle: 0,
+    },
+    jetpackActive: false, // Add jetpack state
+  };
 
   // Add tool container with proper structure
   const toolContainer = document.createElement("div");
@@ -1311,23 +1406,37 @@ function triggerRocketLaunchAnimation(targetPlanet) {
 export function requestPlayersOnCurrentPlanet() {
   if (isConnected && socket) {
     console.log(`Requesting players on planet: ${gameState.currentPlanet}`);
-    
+
     // Send request immediately - no need for timeout
     socket.emit("getPlayersOnPlanet", {
-      planet: gameState.currentPlanet
+      planet: gameState.currentPlanet,
     });
-    
+
     // Add a safeguard retry in case the first request fails
     setTimeout(() => {
       // Only retry if we're still connected
       if (isConnected && socket) {
-        console.log(`Retry: requesting players on planet: ${gameState.currentPlanet}`);
+        console.log(
+          `Retry: requesting players on planet: ${gameState.currentPlanet}`
+        );
         socket.emit("getPlayersOnPlanet", {
-          planet: gameState.currentPlanet
+          planet: gameState.currentPlanet,
         });
       }
     }, 2000);
   } else {
     console.warn("Cannot request players - socket not connected");
+  }
+}
+
+export function sendJetpackActivated() {
+  if (isConnected && socket) {
+    socket.emit("jetpackActivated", {});
+  }
+}
+
+export function sendJetpackDeactivated() {
+  if (isConnected && socket) {
+    socket.emit("jetpackDeactivated", {});
   }
 }

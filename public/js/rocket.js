@@ -316,21 +316,12 @@ function launchRocket() {
   // Create launch animation effect
   createLaunchAnimation();
 
-  // Track the destination we're headed to
-  const targetDestination = selectedDestination;
-  console.log(`Initiating launch sequence to ${targetDestination}`);
-
-  // First send the rocketLaunched event (if available)
-  if (typeof sendRocketLaunched === "function") {
-    console.log(`Sending rocket launched event to ${targetDestination}`);
-    sendRocketLaunched(targetDestination);
-  } 
-  // IMPORTANT: Don't use sendPlanetChanged here - we'll let the server handle that
+  // Notify other players about planet change
+  sendPlanetChanged(selectedDestination);
 
   // Transition to new planet after delay
   setTimeout(() => {
-    console.log(`Now transitioning to ${targetDestination}`);
-    transitionToPlanet(targetDestination);
+    transitionToPlanet(selectedDestination);
 
     // Make sure player is visible again after transition
     if (playerElement) {
@@ -338,6 +329,7 @@ function launchRocket() {
     }
   }, 3000);
 }
+
 
 // Create visual effect for rocket launch
 function createLaunchAnimation() {

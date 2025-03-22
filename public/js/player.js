@@ -38,7 +38,9 @@ import {
   sendMiningStop,
   sendLaserActivated,
   sendLaserDeactivated,
-  sendLaserUpdate
+  sendLaserUpdate,
+  sendJetpackActivated, // Add this new import
+  sendJetpackDeactivated, // Add this new import
 } from "./multiplayer.js";
 
 // Get DOM elements
@@ -157,10 +159,14 @@ export function updatePlayer() {
     // Update the jetpack gauge UI right after fuel decrement
     updateJetpackGauge();
 
-    // Play jetpack sound
+    // Play jetpack sound#
     if (jetpackSound.paused) {
       playSFX(jetpackSound, ORIGINAL_VOLUMES.jetpackSound, true);
+
+      // NEW: Send jetpack activated event to server for multiplayer sync
+      sendJetpackActivated();
     }
+
     // Show jetpack visual effect (flame)
     const jetpackFlame = playerElement.querySelector(".jetpack-flame");
     if (jetpackFlame) {
@@ -179,6 +185,9 @@ export function updatePlayer() {
     if (!jetpackSound.paused) {
       jetpackSound.pause();
       jetpackSound.currentTime = 0;
+
+      // NEW: Send jetpack deactivated event to server for multiplayer sync
+      sendJetpackDeactivated();
     }
   }
 
@@ -251,7 +260,7 @@ export function updatePlayer() {
         target = gameState.miningTarget;
       }
 
-      // Send mining animation to multiplayer 
+      // Send mining animation to multiplayer
       syncMiningActivity();
 
       if (target) {
@@ -1379,7 +1388,7 @@ export function updatePlayerTool(toolType) {
 
   // Get the currently equipped tool ID to send to other players
   const currentToolId = gameState.crafting.equippedTools[toolType];
-  
+
   // Send tool change to server for multiplayer sync
   sendToolChanged(currentToolId);
 
@@ -1402,7 +1411,6 @@ export function updatePlayerTool(toolType) {
     }
   }
 }
-
 
 export function updateToolRotation() {
   const currentTool = getCurrentTool();
@@ -1433,7 +1441,7 @@ export function updateToolRotation() {
         // and ignore the player's direction flipping.
         degrees += 180;
         scale = 2.5;
-        
+
         // Send laser angle updates for multiplayer
         if (_isLaserActive) {
           sendLaserUpdate(degrees);
@@ -1544,7 +1552,7 @@ export function stopAllMiningAnimations() {
       drillSound.pause();
       drillSound.currentTime = 0;
     }
-    
+
     // Send mining stop event for multiplayer sync
     sendMiningStop();
   }
@@ -1554,8 +1562,8 @@ export function syncMiningActivity() {
   // If we're mining and have a target, send a start event
   if (gameState.pickaxeMiningActive && gameState.miningTarget) {
     sendMiningStart(
-      gameState.miningTarget.x, 
-      gameState.miningTarget.y, 
+      gameState.miningTarget.x,
+      gameState.miningTarget.y,
       gameState.crafting.currentToolType
     );
   }

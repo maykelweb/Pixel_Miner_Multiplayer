@@ -66,6 +66,7 @@ io.on("connection", (socket) => {
         currentTool: "pickaxe-basic",
         depth: 0,
         currentPlanet: "earth", // Added planet property
+        jetpackActive: false, // Add the jetpack state property
       };
 
       games[gameCode].currentPlayers = 1;
@@ -154,6 +155,7 @@ io.on("connection", (socket) => {
       currentTool: "pickaxe-basic",
       depth: 0,
       currentPlanet: "earth", // Default to earth
+      jetpackActive: false, // Add the jetpack state property
     };
     games[gameCode].currentPlayers++;
 
@@ -320,7 +322,7 @@ io.on("connection", (socket) => {
 
   socket.on("rocketLaunched", (data) => {
     const gameCode = playerGameMap[socket.id];
-  
+
     if (
       gameCode &&
       games[gameCode] &&
@@ -329,31 +331,35 @@ io.on("connection", (socket) => {
     ) {
       const oldPlanet = games[gameCode].players[socket.id].currentPlanet;
       const newPlanet = data.targetPlanet;
-  
+
       // Don't update if the player is already on that planet
       if (oldPlanet === newPlanet) {
-        console.log(`Player ${socket.id} already on planet ${newPlanet}, no update needed`);
+        console.log(
+          `Player ${socket.id} already on planet ${newPlanet}, no update needed`
+        );
         return;
       }
-  
+
       // Update THIS PLAYER'S current planet
       games[gameCode].players[socket.id].currentPlanet = newPlanet;
-  
+
       // Broadcast rocket launch to all players in the game
       io.to(gameCode).emit("rocketLaunched", {
         playerId: socket.id,
         targetPlanet: newPlanet,
       });
-  
+
       console.log(
         `Player ${socket.id} launched rocket from ${oldPlanet} to ${newPlanet}`
       );
     } else {
-      console.error(`Invalid game data for player ${socket.id} in rocketLaunched event`);
+      console.error(
+        `Invalid game data for player ${socket.id} in rocketLaunched event`
+      );
       // Send error to client
       socket.emit("serverError", {
         event: "rocketLaunched",
-        message: "Invalid game data" 
+        message: "Invalid game data",
       });
     }
   });
@@ -361,7 +367,7 @@ io.on("connection", (socket) => {
   // Handle planet change
   socket.on("planetChanged", (data) => {
     const gameCode = playerGameMap[socket.id];
-  
+
     if (
       gameCode &&
       games[gameCode] &&
@@ -370,31 +376,35 @@ io.on("connection", (socket) => {
     ) {
       const oldPlanet = games[gameCode].players[socket.id].currentPlanet;
       const newPlanet = data.planet;
-      
+
       // Don't update if the player is already on that planet
       if (oldPlanet === newPlanet) {
-        console.log(`Player ${socket.id} already on planet ${newPlanet}, no update needed`);
+        console.log(
+          `Player ${socket.id} already on planet ${newPlanet}, no update needed`
+        );
         return;
       }
-  
+
       // Update THIS PLAYER'S current planet
       games[gameCode].players[socket.id].currentPlanet = newPlanet;
-  
+
       console.log(
         `Player ${socket.id} changed planet from ${oldPlanet} to ${newPlanet}`
       );
-  
+
       // Broadcast planet change to all players in the game
       io.to(gameCode).emit("planetChanged", {
         playerId: socket.id,
         planet: newPlanet,
       });
     } else {
-      console.error(`Invalid game data for player ${socket.id} in planetChanged event`);
+      console.error(
+        `Invalid game data for player ${socket.id} in planetChanged event`
+      );
       // Send error to client
       socket.emit("serverError", {
         event: "planetChanged",
-        message: "Invalid game data" 
+        message: "Invalid game data",
       });
     }
   });
@@ -402,11 +412,13 @@ io.on("connection", (socket) => {
   // Handle getting players on a specific planet (REMOVE DUPLICATE)
   socket.on("getPlayersOnPlanet", (data) => {
     const gameCode = playerGameMap[socket.id];
-  
+
     if (gameCode && games[gameCode] && games[gameCode].players) {
       const requestedPlanet = data.planet || "earth";
-      console.log(`Player ${socket.id} requesting players on ${requestedPlanet}`);
-  
+      console.log(
+        `Player ${socket.id} requesting players on ${requestedPlanet}`
+      );
+
       // Filter players on the requested planet
       const playersOnPlanet = {};
       for (const playerId in games[gameCode].players) {
@@ -416,22 +428,78 @@ io.on("connection", (socket) => {
           playersOnPlanet[playerId] = games[gameCode].players[playerId];
         }
       }
-  
+
       // Log the response for debugging
-      console.log(`Sending ${Object.keys(playersOnPlanet).length} players on ${requestedPlanet} to ${socket.id}`);
-  
+      console.log(
+        `Sending ${
+          Object.keys(playersOnPlanet).length
+        } players on ${requestedPlanet} to ${socket.id}`
+      );
+
       // Send filtered player list to the client
       socket.emit("playersOnPlanet", {
         players: playersOnPlanet,
-        planet: requestedPlanet
+        planet: requestedPlanet,
       });
     } else {
-      console.error(`Invalid game data for player ${socket.id} in getPlayersOnPlanet event`);
+      console.error(
+        `Invalid game data for player ${socket.id} in getPlayersOnPlanet event`
+      );
       // Send empty response to avoid client-side errors
       socket.emit("playersOnPlanet", {
         players: {},
         planet: data.planet || "earth",
-        error: "Invalid game data"
+        error: "Invalid game data",
+      });
+    }
+  });
+
+  // Handle jetpack activation
+  socket.on("jetpackActivated", () => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
+      // Store the jetpack state
+      games[gameCode].players[socket.id].jetpackActive = true;
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerJetpackActivated", {
+            id: socket.id,
+          });
+        }
+      });
+    }
+  });
+
+  // Handle jetpack deactivation
+  socket.on("jetpackDeactivated", () => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
+      // Update jetpack state
+      games[gameCode].players[socket.id].jetpackActive = false;
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerJetpackDeactivated", {
+            id: socket.id,
+          });
+        }
       });
     }
   });
