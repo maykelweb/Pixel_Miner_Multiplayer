@@ -56,16 +56,21 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle hosting response
   socket.on('gameHosted', (data) => {
     currentGameCode = data.gameCode;
-    console.log(currentGameCode)
+    console.log(currentGameCode);
     showMessage("Game created! Code: " + currentGameCode, 5000);
     // Display the game code for the host
     showGameCode(currentGameCode);
+    // Update game code in pause menu
+    updatePauseMenuGameCode(currentGameCode);
   });
   
   // Handle join response
   socket.on('joinResponse', (data) => {
     if (data.success) {
+      currentGameCode = data.gameCode;
       showMessage("Successfully joined game: " + data.gameCode, 3000);
+      // Update game code in pause menu
+      updatePauseMenuGameCode(currentGameCode);
     } else {
       showMessage("Failed to join game: " + data.message, 3000);
     }
@@ -208,8 +213,101 @@ function addMultiplayerStyles() {
         left: -15px;
         transform: scaleX(-1);
       }
+      
+      .game-code-display {
+        background-color: #333;
+        color: #4caf50;
+        font-family: monospace;
+        font-size: 18px;
+        padding: 8px 12px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        user-select: all;
+        border: 1px dashed #666;
+        letter-spacing: 2px;
+        text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .game-code-label {
+        color: #ccc;
+        font-size: 14px;
+        margin-right: 10px;
+      }
+      
+      .copy-code-btn {
+        background-color: #2a2a2a;
+        border: 1px solid #555;
+        color: #ccc;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .copy-code-btn:hover {
+        background-color: #3a3a3a;
+        color: #fff;
+      }
     `;
     document.head.appendChild(styleElement);
+  }
+}
+
+/**
+ * Updates the game code display in the pause menu
+ * @param {string} gameCode - The game code to display
+ */
+function updatePauseMenuGameCode(gameCode) {
+  // Check if the game code display element exists
+  let gameCodeDisplay = document.getElementById('pause-menu-game-code');
+  
+  // If it doesn't exist yet, create it
+  if (!gameCodeDisplay) {
+    const menuContent = document.querySelector('.menu-content');
+    
+    // Create the game code display element
+    gameCodeDisplay = document.createElement('div');
+    gameCodeDisplay.id = 'pause-menu-game-code';
+    gameCodeDisplay.className = 'game-code-display';
+    
+    // Add content to the game code display
+    gameCodeDisplay.innerHTML = `
+      <span class="game-code-label">Game Code:</span>
+      <span id="pause-menu-code-value">${gameCode}</span>
+      <button id="copy-pause-menu-code" class="copy-code-btn">Copy</button>
+    `;
+    
+    // Insert at the top of the menu content
+    if (menuContent.firstChild) {
+      menuContent.insertBefore(gameCodeDisplay, menuContent.firstChild);
+    } else {
+      menuContent.appendChild(gameCodeDisplay);
+    }
+    
+    // Add event listener to copy button
+    document.getElementById("copy-pause-menu-code").addEventListener("click", () => {
+      // Copy the game code to clipboard
+      navigator.clipboard.writeText(gameCode).then(() => {
+        // Change button text temporarily
+        const copyBtn = document.getElementById("copy-pause-menu-code");
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = "Copied!";
+        
+        // Reset button text after 2 seconds
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+      });
+    });
+  } else {
+    // If it exists, just update the code value
+    document.getElementById('pause-menu-code-value').textContent = gameCode;
   }
 }
 
@@ -218,26 +316,134 @@ function addMultiplayerStyles() {
  * @param {string} gameCode - The game code to display
  */
 export function showGameCode(gameCode) {
+  // First, remove any existing game code modal
+  const existingModal = document.getElementById("game-code-modal");
+  if (existingModal) {
+    document.body.removeChild(existingModal);
+  }
+
   // Create a modal with the game code
   const modal = document.createElement("div");
-  modal.className = "modal";
+  modal.className = "game-code-modal";
   modal.id = "game-code-modal";
 
   modal.innerHTML = `
-    <div class="modal-content">
+    <div class="game-code-modal-content">
       <h2>Your Game Code</h2>
       <p>Share this code with friends to let them join your game:</p>
       <div class="game-code">${gameCode}</div>
-      <button id="close-code-modal" class="modal-button">Got It</button>
+      <div class="button-container">
+        <button id="copy-code-button" class="modal-button copy-button">Copy Code</button>
+        <button id="close-code-modal" class="modal-button">Got It</button>
+      </div>
+      <div id="copy-success" class="copy-success">Code copied to clipboard!</div>
     </div>
   `;
 
   document.body.appendChild(modal);
 
+  // Add the modal styles if they don't exist yet
+  if (!document.getElementById('game-code-modal-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'game-code-modal-styles';
+    styleElement.textContent = `
+      .game-code-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      
+      .game-code-modal-content {
+        background-color: #1a1a1a;
+        border: 2px solid #444;
+        border-radius: 8px;
+        padding: 20px;
+        width: 350px;
+        text-align: center;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      }
+      
+      .game-code-modal h2 {
+        color: #fff;
+        margin-top: 0;
+        font-size: 24px;
+      }
+      
+      .game-code-modal p {
+        color: #ccc;
+        margin-bottom: 20px;
+      }
+      
+      .game-code {
+        background-color: #333;
+        color: #4caf50;
+        font-family: monospace;
+        font-size: 28px;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+        user-select: all;
+        border: 1px dashed #666;
+        letter-spacing: 2px;
+      }
+      
+      .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+      }
+      
+      .copy-success {
+        color: #4caf50;
+        font-size: 14px;
+        margin-top: 10px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      
+      .copy-success.visible {
+        opacity: 1;
+      }
+    `;
+    document.head.appendChild(styleElement);
+  }
+
   // Add event listener to close button
   document.getElementById("close-code-modal").addEventListener("click", () => {
     document.body.removeChild(modal);
   });
+
+  // Add event listener to copy button
+  document.getElementById("copy-code-button").addEventListener("click", () => {
+    // Copy the game code to clipboard
+    navigator.clipboard.writeText(gameCode).then(() => {
+      // Show success message
+      const successMessage = document.getElementById("copy-success");
+      successMessage.classList.add("visible");
+      
+      // Hide the success message after 3 seconds
+      setTimeout(() => {
+        successMessage.classList.remove("visible");
+      }, 3000);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  });
+}
+
+/**
+ * Get the current game code
+ * @returns {string} The current game code
+ */
+export function getCurrentGameCode() {
+  return currentGameCode;
 }
 
 /**
