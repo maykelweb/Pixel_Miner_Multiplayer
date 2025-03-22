@@ -20,41 +20,42 @@ export function initMultiplayer(isHost = false, options = {}) {
   socket = io(); // Assumes Socket.IO is loaded in the HTML
 
   // Handle successful connection
-  socket.on('connect', () => {
+  socket.on("connect", () => {
     isConnected = true;
     console.log("Connected to server with ID:", socket.id);
-    
+
     // If hosting, send host information to server
     if (isHost) {
-      socket.emit('hostGame', {
+      socket.emit("hostGame", {
         gameName: options.gameName || "Pixel Miner Game",
-        maxPlayers: options.maxPlayers || 4
+        maxPlayers: options.maxPlayers || 4,
       });
       showMessage("Hosting a new game!", 3000);
     } else {
       // If joining, send the game code to join
       const gameCode = options.gameCode;
       if (gameCode) {
-        socket.emit('joinGame', {
-          gameCode: gameCode
+        socket.emit("joinGame", {
+          gameCode: gameCode,
         });
         showMessage("Joining game: " + gameCode, 3000);
       } else {
         showMessage("Joining random game...", 3000);
       }
     }
-    
+
     // Add player info display
     const infoPanel = document.getElementById("info-panel");
     const playerCountDisplay = document.createElement("div");
     playerCountDisplay.id = "player-count";
     playerCountDisplay.className = "status-item";
-    playerCountDisplay.innerHTML = '<span class="player-icon">👥</span><span id="player-count-value">1</span>';
+    playerCountDisplay.innerHTML =
+      '<span class="player-icon">👥</span><span id="player-count-value">1</span>';
     infoPanel.appendChild(playerCountDisplay);
   });
-  
+
   // Handle hosting response
-  socket.on('gameHosted', (data) => {
+  socket.on("gameHosted", (data) => {
     currentGameCode = data.gameCode;
     console.log("Game created with code:", currentGameCode);
     showMessage("Game created! Code: " + currentGameCode, 5000);
@@ -63,9 +64,9 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Update game code in pause menu
     updatePauseMenuGameCode(currentGameCode);
   });
-  
+
   // Handle join response
-  socket.on('joinResponse', (data) => {
+  socket.on("joinResponse", (data) => {
     if (data.success) {
       currentGameCode = data.gameCode;
       showMessage("Successfully joined game: " + data.gameCode, 3000);
@@ -75,30 +76,30 @@ export function initMultiplayer(isHost = false, options = {}) {
       showMessage("Failed to join game: " + data.message, 3000);
     }
   });
-  
+
   // Handle disconnection
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     isConnected = false;
     showMessage("Disconnected from server. Attempting to reconnect...", 3000);
   });
-  
+
   // Handle initial game state
-  socket.on('gameState', (data) => {
+  socket.on("gameState", (data) => {
     console.log("Received initial game state:", data);
-    
+
     // Set local player ID
     gameState.playerId = data.playerId;
-    
+
     // Initialize other players
     for (const id in data.players) {
       if (id !== gameState.playerId) {
         addOtherPlayer(id, data.players[id]);
       }
     }
-    
+
     // Update player count
     updatePlayerCount(Object.keys(data.players).length);
-    
+
     // Handle world block sync - only for new blocks different from local state
     for (const y in data.worldBlocks) {
       for (const x in data.worldBlocks[y]) {
@@ -106,7 +107,7 @@ export function initMultiplayer(isHost = false, options = {}) {
         if (!gameState.blockMap[y]) {
           gameState.blockMap[y] = {};
         }
-        
+
         // Update the block if it's different from local state
         if (gameState.blockMap[y][x] !== data.worldBlocks[y][x]) {
           gameState.blockMap[y][x] = data.worldBlocks[y][x];
@@ -115,61 +116,196 @@ export function initMultiplayer(isHost = false, options = {}) {
     }
     updateVisibleBlocks();
   });
-  
+
   // Handle new player joining
-  socket.on('newPlayer', (playerData) => {
+  socket.on("newPlayer", (playerData) => {
     console.log("New player joined:", playerData);
     addOtherPlayer(playerData.id, playerData);
-    
+
     // Update player count
     updatePlayerCount(Object.keys(otherPlayers).length + 1);
-    
+
     showMessage("New player joined!", 2000);
   });
-  
+
   // Handle players moving
-  socket.on('playerMoved', (data) => {
+  socket.on("playerMoved", (data) => {
     updateOtherPlayerPosition(data.id, data);
   });
-  
+
   // Handle player tool changes
-  socket.on('playerToolChanged', (data) => {
+  socket.on("playerToolChanged", (data) => {
     updateOtherPlayerTool(data.id, data.tool);
   });
-  
+
   // Handle world updates (blocks mined by others)
-  socket.on('worldUpdated', (data) => {
+  socket.on("worldUpdated", (data) => {
     // Ensure we have a data structure to work with
     if (!gameState.blockMap[data.y]) {
       gameState.blockMap[data.y] = {};
     }
-    
+
     if (gameState.blockMap[data.y][data.x] !== null) {
       // Show breaking animation if we have block data
-      if (gameState.blockMap[data.y][data.x] && gameState.blockMap[data.y][data.x].color) {
+      if (
+        gameState.blockMap[data.y][data.x] &&
+        gameState.blockMap[data.y][data.x].color
+      ) {
         createBreakingAnimation(
           data.x,
           data.y,
           gameState.blockMap[data.y][data.x].color
         );
       }
-      
+
       // Update local block map
       gameState.blockMap[data.y][data.x] = null;
-      
+
       // Update visible blocks
       updateVisibleBlocks();
     }
   });
-  
+
   // Handle player disconnections
-  socket.on('playerDisconnected', (playerId) => {
+  socket.on("playerDisconnected", (playerId) => {
     removeOtherPlayer(playerId);
-    
+
     // Update player count
     updatePlayerCount(Object.keys(otherPlayers).length + 1);
-    
+
     showMessage("A player has left the game", 2000);
+  });
+
+  // Handle mining starts from other players
+  socket.on("playerMiningStart", (data) => {
+    if (otherPlayers[data.id]) {
+      const playerElement = otherPlayers[data.id].element;
+
+      // Store mining data
+      otherPlayers[data.id].mining = {
+        active: true,
+        x: data.x,
+        y: data.y,
+        tool: data.tool,
+      };
+
+      // Add mining animation based on tool type
+      if (data.tool === "drill") {
+        // Add drilling animation
+        const toolContainer = playerElement.querySelector(
+          ".player-tool-container"
+        );
+        if (toolContainer) {
+          toolContainer.classList.add("drilling-animation");
+        }
+      } else if (data.tool === "pickaxe") {
+        // Add pickaxe mining animation
+        const toolContainer = playerElement.querySelector(
+          ".player-tool-container"
+        );
+        if (toolContainer) {
+          toolContainer.classList.add("mining-animation");
+        }
+      }
+
+      // Add the mining visual effects at the target block location
+      addMiningEffectAtBlock(data.x, data.y);
+    }
+  });
+
+  // Handle mining stops from other players
+  socket.on("playerMiningStop", (data) => {
+    if (otherPlayers[data.id]) {
+      const playerElement = otherPlayers[data.id].element;
+
+      // Remove mining animation
+      const toolContainer = playerElement.querySelector(
+        ".player-tool-container"
+      );
+      if (toolContainer) {
+        toolContainer.classList.remove("drilling-animation");
+        toolContainer.classList.remove("mining-animation");
+      }
+
+      // Clear mining data
+      if (otherPlayers[data.id].mining) {
+        // Remove any mining effects at the target block
+        removeMiningEffectAtBlock(
+          otherPlayers[data.id].mining.x,
+          otherPlayers[data.id].mining.y
+        );
+
+        otherPlayers[data.id].mining = {
+          active: false,
+        };
+      }
+    }
+  });
+
+  // Handle laser activation from other players
+  socket.on("playerLaserActivated", (data) => {
+    if (otherPlayers[data.id]) {
+      const playerElement = otherPlayers[data.id].element;
+
+      // Add laser beam element if it doesn't exist
+      let laserBeam = playerElement.querySelector(".other-player-laser");
+      if (!laserBeam) {
+        laserBeam = document.createElement("div");
+        laserBeam.className = "other-player-laser";
+        playerElement.appendChild(laserBeam);
+      }
+
+      // Show the laser beam
+      laserBeam.style.display = "block";
+
+      // Store laser state
+      otherPlayers[data.id].laser = {
+        active: true,
+        angle: 0,
+      };
+
+      // Add laser active class
+      playerElement.classList.add("laser-active");
+    }
+  });
+
+  // Handle laser deactivation from other players
+  socket.on("playerLaserDeactivated", (data) => {
+    if (otherPlayers[data.id]) {
+      const playerElement = otherPlayers[data.id].element;
+
+      // Hide the laser beam
+      const laserBeam = playerElement.querySelector(".other-player-laser");
+      if (laserBeam) {
+        laserBeam.style.display = "none";
+      }
+
+      // Update laser state
+      if (otherPlayers[data.id].laser) {
+        otherPlayers[data.id].laser.active = false;
+      }
+
+      // Remove laser active class
+      playerElement.classList.remove("laser-active");
+    }
+  });
+
+  // Handle laser updates (angle) from other players
+  socket.on("playerLaserUpdate", (data) => {
+    if (
+      otherPlayers[data.id] &&
+      otherPlayers[data.id].laser &&
+      otherPlayers[data.id].laser.active
+    ) {
+      // Update the laser angle
+      const laserBeam = otherPlayers[data.id].element.querySelector(
+        ".other-player-laser"
+      );
+      if (laserBeam) {
+        laserBeam.style.transform = `rotate(${data.angle}deg)`;
+        otherPlayers[data.id].laser.angle = data.angle;
+      }
+    }
   });
 
   // Add styles for other players if they don't exist yet
@@ -184,89 +320,54 @@ function addMultiplayerStyles() {
     const styleElement = document.createElement('style');
     styleElement.id = 'multiplayer-player-styles';
     styleElement.textContent = `
-      .other-player {
-        width: 40px;
-        height: 50px;
+      /* Existing styles... */
+      
+      /* Mining animation styles */
+      .mining-animation {
+        animation: mining-anim 0.5s infinite alternate;
+      }
+      
+      @keyframes mining-anim {
+        0% { transform: rotate(60deg) scale(1.5); }
+        100% { transform: rotate(80deg) scale(1.5); }
+      }
+      
+      .drilling-animation {
+        animation: drill-spin 0.2s infinite linear;
+      }
+      
+      @keyframes drill-spin {
+        0% { transform: rotate(0deg) scale(1.5); }
+        100% { transform: rotate(360deg) scale(1.5); }
+      }
+      
+      /* Mining effect at blocks */
+      .mining-effect {
         position: absolute;
-        z-index: 50;
-        background-image: url(../imgs/character.svg);
+        width: ${gameState.blockSize}px;
+        height: ${gameState.blockSize}px;
+        background-image: url('imgs/crack-overlay.png');
         background-size: cover;
-        background-position: center;
-        transition: transform 0.1s;
         pointer-events: none;
+        z-index: 40;
       }
-
-      .other-player.facing-left {
-        transform: scaleX(-1);
-      }
-
-      .player-name {
+      
+      /* Laser beam */
+      .other-player-laser {
         position: absolute;
-        top: -20px;
-        left: 0;
-        width: 100%;
-        text-align: center;
-        color: white;
-        font-size: 12px;
-        font-weight: bold;
-        text-shadow: 0px 0px 3px #000;
-        white-space: nowrap;
-        pointer-events: none;
-      }
-
-      .player-tool-container {
-        position: absolute;
-        top: 10px;
-        right: -15px;
-        width: 24px;
-        height: 24px;
-        z-index: 30;
-        pointer-events: none;
-      }
-
-      .other-player.facing-left .player-tool-container {
-        right: auto;
-        left: -15px;
-        transform: scaleX(-1);
+        width: 100px;
+        height: 4px;
+        background: linear-gradient(to right, rgba(255,0,0,0.7), rgba(255,0,0,0.9));
+        top: 50%;
+        left: 50%;
+        transform-origin: left center;
+        border-radius: 2px;
+        box-shadow: 0 0 10px rgba(255,0,0,0.7);
+        display: none;
       }
       
-      .game-code-display {
-        background-color: #333;
-        color: #4caf50;
-        font-family: monospace;
-        font-size: 18px;
-        padding: 8px 12px;
-        margin-bottom: 15px;
-        border-radius: 4px;
-        user-select: all;
-        border: 1px dashed #666;
-        letter-spacing: 2px;
-        text-align: center;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      
-      .game-code-label {
-        color: #ccc;
-        font-size: 14px;
-        margin-right: 10px;
-      }
-      
-      .copy-code-btn {
-        background-color: #2a2a2a;
-        border: 1px solid #555;
-        color: #ccc;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      
-      .copy-code-btn:hover {
-        background-color: #3a3a3a;
-        color: #fff;
+      .laser-active .other-player-laser {
+        display: block;
       }
     `;
     document.head.appendChild(styleElement);
@@ -279,53 +380,56 @@ function addMultiplayerStyles() {
  */
 function updatePauseMenuGameCode(gameCode) {
   // Check if the game code display element exists
-  let gameCodeDisplay = document.getElementById('pause-menu-game-code');
-  
+  let gameCodeDisplay = document.getElementById("pause-menu-game-code");
+
   // If it doesn't exist yet, create it
   if (!gameCodeDisplay) {
-    const menuContent = document.querySelector('.menu-content');
-    
+    const menuContent = document.querySelector(".menu-content");
+
     // Create the game code display element
-    gameCodeDisplay = document.createElement('div');
-    gameCodeDisplay.id = 'pause-menu-game-code';
-    gameCodeDisplay.className = 'game-code-display';
-    
+    gameCodeDisplay = document.createElement("div");
+    gameCodeDisplay.id = "pause-menu-game-code";
+    gameCodeDisplay.className = "game-code-display";
+
     // Add content to the game code display
     gameCodeDisplay.innerHTML = `
       <span class="game-code-label">Game Code:</span>
       <span id="pause-menu-code-value">${gameCode}</span>
       <button id="copy-pause-menu-code" class="copy-code-btn">Copy</button>
     `;
-    
+
     // Insert at the top of the menu content
     if (menuContent && menuContent.firstChild) {
       menuContent.insertBefore(gameCodeDisplay, menuContent.firstChild);
     } else if (menuContent) {
       menuContent.appendChild(gameCodeDisplay);
     }
-    
+
     // Add event listener to copy button
     const copyBtn = document.getElementById("copy-pause-menu-code");
     if (copyBtn) {
       copyBtn.addEventListener("click", () => {
         // Copy the game code to clipboard
-        navigator.clipboard.writeText(gameCode).then(() => {
-          // Change button text temporarily
-          const originalText = copyBtn.textContent;
-          copyBtn.textContent = "Copied!";
-          
-          // Reset button text after 2 seconds
-          setTimeout(() => {
-            copyBtn.textContent = originalText;
-          }, 2000);
-        }).catch(err => {
-          console.error('Failed to copy text: ', err);
-        });
+        navigator.clipboard
+          .writeText(gameCode)
+          .then(() => {
+            // Change button text temporarily
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+
+            // Reset button text after 2 seconds
+            setTimeout(() => {
+              copyBtn.textContent = originalText;
+            }, 2000);
+          })
+          .catch((err) => {
+            console.error("Failed to copy text: ", err);
+          });
       });
     }
   } else {
     // If it exists, just update the code value
-    const codeValue = document.getElementById('pause-menu-code-value');
+    const codeValue = document.getElementById("pause-menu-code-value");
     if (codeValue) {
       codeValue.textContent = gameCode;
     }
@@ -364,9 +468,9 @@ export function showGameCode(gameCode) {
   document.body.appendChild(modal);
 
   // Add the modal styles if they don't exist yet
-  if (!document.getElementById('game-code-modal-styles')) {
-    const styleElement = document.createElement('style');
-    styleElement.id = 'game-code-modal-styles';
+  if (!document.getElementById("game-code-modal-styles")) {
+    const styleElement = document.createElement("style");
+    styleElement.id = "game-code-modal-styles";
     styleElement.textContent = `
       .game-code-modal {
         position: fixed;
@@ -449,20 +553,23 @@ export function showGameCode(gameCode) {
   if (copyButton) {
     copyButton.addEventListener("click", () => {
       // Copy the game code to clipboard
-      navigator.clipboard.writeText(gameCode).then(() => {
-        // Show success message
-        const successMessage = document.getElementById("copy-success");
-        if (successMessage) {
-          successMessage.classList.add("visible");
-          
-          // Hide the success message after 3 seconds
-          setTimeout(() => {
-            successMessage.classList.remove("visible");
-          }, 3000);
-        }
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
-      });
+      navigator.clipboard
+        .writeText(gameCode)
+        .then(() => {
+          // Show success message
+          const successMessage = document.getElementById("copy-success");
+          if (successMessage) {
+            successMessage.classList.add("visible");
+
+            // Hide the success message after 3 seconds
+            setTimeout(() => {
+              successMessage.classList.remove("visible");
+            }, 3000);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to copy text: ", err);
+        });
     });
   }
 }
@@ -480,7 +587,7 @@ export function getCurrentGameCode() {
  */
 export function sendPlayerUpdate() {
   if (isConnected && socket && gameState.player) {
-    socket.emit('playerMove', {
+    socket.emit("playerMove", {
       x: gameState.player.x,
       y: gameState.player.y,
       direction: gameState.player.direction,
@@ -488,7 +595,7 @@ export function sendPlayerUpdate() {
       velocityY: gameState.player.velocityY,
       onGround: gameState.player.onGround,
       health: gameState.player.health,
-      depth: gameState.depth
+      depth: gameState.depth,
     });
   }
 }
@@ -498,9 +605,9 @@ export function sendPlayerUpdate() {
  */
 export function sendBlockMined(x, y) {
   if (isConnected && socket) {
-    socket.emit('blockMined', {
+    socket.emit("blockMined", {
       x: x,
-      y: y
+      y: y,
     });
   }
 }
@@ -510,8 +617,8 @@ export function sendBlockMined(x, y) {
  */
 export function sendToolChanged(toolId) {
   if (isConnected && socket) {
-    socket.emit('toolChanged', {
-      tool: toolId
+    socket.emit("toolChanged", {
+      tool: toolId,
     });
   }
 }
@@ -536,10 +643,17 @@ function addOtherPlayer(id, playerData) {
   nameTag.textContent = `Player ${id.substring(0, 3)}`;
   newPlayerElement.appendChild(nameTag);
   
-  // Add tool container
+  // Add tool container with proper structure
   const toolContainer = document.createElement("div");
   toolContainer.className = "player-tool-container";
-  toolContainer.innerHTML = '<img src="imgs/pickaxe-basic.svg" alt="Pickaxe" width="24" height="24">';
+  
+  // Use an actual SVG element instead of just an img for better animations
+  toolContainer.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pickaxe">
+      <use href="#pickaxe-basic-icon" />
+    </svg>
+  `;
+  
   newPlayerElement.appendChild(toolContainer);
   
   // Position the player - adjust for camera immediately
@@ -561,13 +675,21 @@ function addOtherPlayer(id, playerData) {
     
     console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
     
-    // Store reference
+    // Store reference with additional properties for mining and laser state
     otherPlayers[id] = {
       element: newPlayerElement,
-      data: playerData
+      data: playerData,
+      mining: {
+        active: false
+      },
+      laser: {
+        active: false,
+        angle: 0
+      }
     };
   }
 }
+
 
 /**
  * Update position of another player
@@ -577,17 +699,17 @@ function updateOtherPlayerPosition(id, playerData) {
     // Update stored data
     otherPlayers[id].data = {
       ...otherPlayers[id].data,
-      ...playerData
+      ...playerData,
     };
-    
+
     // Update DOM position - adjust for camera
     const playerElement = otherPlayers[id].element;
     const adjustedX = playerData.x - gameState.camera.x;
     const adjustedY = playerData.y - gameState.camera.y;
-    
+
     playerElement.style.left = `${adjustedX}px`;
     playerElement.style.top = `${adjustedY}px`;
-    
+
     // Update direction (facing)
     if (playerData.direction === -1) {
       playerElement.classList.add("facing-left");
@@ -605,10 +727,12 @@ function updateOtherPlayerTool(id, toolId) {
     const playerElement = otherPlayers[id].element;
     const toolContainer = playerElement.querySelector(".player-tool-container");
     
-    // Determine tool image based on toolId
+    // Determine tool type and image based on toolId
+    let toolType = "pickaxe";
     let toolSrc = "imgs/pickaxe-basic.svg";
     
     if (toolId && toolId.includes("drill")) {
+      toolType = "drill";
       if (toolId.includes("ruby")) {
         toolSrc = "imgs/drill-ruby.svg";
       } else if (toolId.includes("diamond")) {
@@ -617,6 +741,7 @@ function updateOtherPlayerTool(id, toolId) {
         toolSrc = "imgs/drill-basic.svg";
       }
     } else if (toolId && toolId.includes("laser")) {
+      toolType = "laser";
       toolSrc = "imgs/laser.svg";
     } else if (toolId) {
       // Different pickaxe styles
@@ -631,12 +756,39 @@ function updateOtherPlayerTool(id, toolId) {
       }
     }
     
-    // Update tool visual using the same image sources as the main player
-    toolContainer.innerHTML = `<img src="${toolSrc}" alt="Tool" width="24" height="24">`;
-    
-    console.log(`Updated player ${id} tool to ${toolSrc}`);
+    // Fetch and load the SVG
+    fetch(toolSrc)
+      .then(response => response.text())
+      .then(svgContent => {
+        // Update tool container with the SVG content
+        toolContainer.innerHTML = svgContent;
+        
+        // Get the SVG element and add appropriate class
+        const svgElement = toolContainer.querySelector('svg');
+        if (svgElement) {
+          // Remove existing tool classes
+          svgElement.classList.remove('pickaxe', 'drill', 'laser');
+          // Add appropriate class
+          svgElement.classList.add(toolType);
+          
+          // Apply appropriate scaling
+          if (toolType === 'drill') {
+            svgElement.style.transform = 'scale(1.5)';
+          } else if (toolType === 'laser') {
+            svgElement.style.transform = 'scale(2.5)';
+          }
+        }
+        
+        console.log(`Updated player ${id} tool to ${toolType} (${toolSrc})`);
+      })
+      .catch(error => {
+        console.error(`Failed to load tool SVG for player ${id}:`, error);
+        // Fallback to simple img tag
+        toolContainer.innerHTML = `<img src="${toolSrc}" alt="Tool" width="24" height="24">`;
+      });
   }
 }
+
 
 /**
  * Remove another player from the game
@@ -648,7 +800,7 @@ function removeOtherPlayer(id) {
     if (playerElement && playerElement.parentNode) {
       playerElement.parentNode.removeChild(playerElement);
     }
-    
+
     // Remove from tracking object
     delete otherPlayers[id];
   }
@@ -670,6 +822,23 @@ export function updateOtherPlayersForCamera() {
     
     playerElement.style.left = `${adjustedX}px`;
     playerElement.style.top = `${adjustedY}px`;
+    
+    // If this player is mining, update mining effect position
+    if (otherPlayers[id].mining && otherPlayers[id].mining.active) {
+      const blockX = otherPlayers[id].mining.x;
+      const blockY = otherPlayers[id].mining.y;
+      
+      const effectElement = document.querySelector(
+        `.mining-effect[data-block-x="${blockX}"][data-block-y="${blockY}"]`
+      );
+      
+      if (effectElement) {
+        const posX = blockX * gameState.blockSize - gameState.camera.x;
+        const posY = blockY * gameState.blockSize - gameState.camera.y;
+        effectElement.style.left = `${posX}px`;
+        effectElement.style.top = `${posY}px`;
+      }
+    }
   }
 }
 
@@ -680,5 +849,85 @@ function updatePlayerCount(count) {
   const playerCountElement = document.getElementById("player-count-value");
   if (playerCountElement) {
     playerCountElement.textContent = count;
+  }
+}
+
+/**
+ * Send mining start event to server
+ */
+export function sendMiningStart(blockX, blockY, toolType) {
+  if (isConnected && socket) {
+    socket.emit("miningStart", {
+      x: blockX,
+      y: blockY,
+      tool: toolType,
+    });
+  }
+}
+
+/**
+ * Send mining stop event to server
+ */
+export function sendMiningStop() {
+  if (isConnected && socket) {
+    socket.emit("miningStop", {});
+  }
+}
+
+/**
+ * Send laser activated event to server
+ */
+export function sendLaserActivated() {
+  if (isConnected && socket) {
+    socket.emit("laserActivated", {});
+  }
+}
+
+/**
+ * Send laser deactivated event to server
+ */
+export function sendLaserDeactivated() {
+  if (isConnected && socket) {
+    socket.emit("laserDeactivated", {});
+  }
+}
+
+/**
+ * Send laser update (angle) to server
+ */
+export function sendLaserUpdate(angle) {
+  if (isConnected && socket) {
+    socket.emit("laserUpdate", {
+      angle: angle,
+    });
+  }
+}
+
+// Helper functions for mining effects
+function addMiningEffectAtBlock(blockX, blockY) {
+  // Create a mining effect element
+  const effectElement = document.createElement('div');
+  effectElement.className = 'mining-effect';
+  effectElement.dataset.blockX = blockX;
+  effectElement.dataset.blockY = blockY;
+  
+  // Position it at the block location (adjusted for camera)
+  const posX = blockX * gameState.blockSize - gameState.camera.x;
+  const posY = blockY * gameState.blockSize - gameState.camera.y;
+  effectElement.style.left = `${posX}px`;
+  effectElement.style.top = `${posY}px`;
+  
+  // Add to game world
+  const gameWorld = document.getElementById('game-world');
+  if (gameWorld) {
+    gameWorld.appendChild(effectElement);
+  }
+}
+
+function removeMiningEffectAtBlock(blockX, blockY) {
+  // Find and remove the mining effect element for this block
+  const effectElement = document.querySelector(`.mining-effect[data-block-x="${blockX}"][data-block-y="${blockY}"]`);
+  if (effectElement && effectElement.parentNode) {
+    effectElement.parentNode.removeChild(effectElement);
   }
 }

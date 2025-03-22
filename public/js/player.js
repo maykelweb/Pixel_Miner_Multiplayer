@@ -34,6 +34,11 @@ import {
   sendPlayerUpdate,
   sendBlockMined,
   sendToolChanged,
+  sendMiningStart,
+  sendMiningStop,
+  sendLaserActivated,
+  sendLaserDeactivated,
+  sendLaserUpdate
 } from "./multiplayer.js";
 
 // Get DOM elements
@@ -246,6 +251,9 @@ export function updatePlayer() {
         target = gameState.miningTarget;
       }
 
+      // Send mining animation to multiplayer 
+      syncMiningActivity();
+
       if (target) {
         // Check if block still exists
         if (
@@ -265,6 +273,11 @@ export function updatePlayer() {
           if (!miningSound.paused) {
             miningSound.pause();
             miningSound.currentTime = 0;
+          }
+
+          if (gameState.pickaxeMiningActive && !gameState.mouseHeld) {
+            gameState.pickaxeMiningActive = false;
+            sendMiningStop();
           }
 
           // CHANGED: Don't stop drill sound here, it's handled separately now
@@ -301,6 +314,11 @@ export function updatePlayer() {
           if (!miningSound.paused) {
             miningSound.pause();
             miningSound.currentTime = 0;
+          }
+
+          if (gameState.pickaxeMiningActive && !gameState.mouseHeld) {
+            gameState.pickaxeMiningActive = false;
+            sendMiningStop();
           }
 
           // CHANGED: Don't stop drill sound here, it's handled separately now
@@ -1127,9 +1145,12 @@ export function activateLaser() {
   if (laserSound.paused) {
     playSFX(laserSound, ORIGINAL_VOLUMES.laserSound, true);
   }
+
+  // Send laser activation to server for multiplayer sync
+  sendLaserActivated();
 }
 
-// Deactivates the laser
+// Modify the deactivateLaser function to send laser deactivation to server
 export function deactivateLaser() {
   if (!laserElement) return;
 
@@ -1145,6 +1166,16 @@ export function deactivateLaser() {
   clearCrackingAnimations();
   gameState.mineTimer = 0;
   gameState.laserMiningTarget = null;
+
+  // Send laser deactivation to server for multiplayer sync
+  sendLaserDeactivated();
+}
+
+function sendLaserAngleUpdate() {
+  if (_isLaserActive) {
+    const angle = gameState.player.toolRotation || 0;
+    sendLaserUpdate(angle);
+  }
 }
 
 export function updateCharacterAppearance() {
@@ -1346,6 +1377,12 @@ export function updatePlayerTool(toolType) {
   // Update the visuals
   updateToolVisuals(toolType);
 
+  // Get the currently equipped tool ID to send to other players
+  const currentToolId = gameState.crafting.equippedTools[toolType];
+  
+  // Send tool change to server for multiplayer sync
+  sendToolChanged(currentToolId);
+
   // If switching to drill or laser, set up rotation handling
   if (toolType === "drill" || toolType === "laser") {
     // Initialize rotation to 0 degrees
@@ -1365,6 +1402,7 @@ export function updatePlayerTool(toolType) {
     }
   }
 }
+
 
 export function updateToolRotation() {
   const currentTool = getCurrentTool();
@@ -1395,15 +1433,19 @@ export function updateToolRotation() {
         // and ignore the player's direction flipping.
         degrees += 180;
         scale = 2.5;
+        
+        // Send laser angle updates for multiplayer
+        if (_isLaserActive) {
+          sendLaserUpdate(degrees);
+        }
       }
 
       // For the drill, use the existing logic that accounts for player direction.
       gameState.player.toolRotation = degrees;
 
-      // Update the CSS custom property for rotation
+      // Rest of function remains the same...
       svgElement.style.setProperty("--rotation", `${degrees}deg`);
 
-      // Apply appropriate transformation based on direction
       if (gameState.player.direction === -1) {
         if (svgElement.classList.contains("drilling")) {
           svgElement.classList.add("flipped");
@@ -1502,7 +1544,23 @@ export function stopAllMiningAnimations() {
       drillSound.pause();
       drillSound.currentTime = 0;
     }
+    
+    // Send mining stop event for multiplayer sync
+    sendMiningStop();
+  }
+}
 
-    // Don't reset the transform if it's a drill or laser to allow rotation
+export function syncMiningActivity() {
+  // If we're mining and have a target, send a start event
+  if (gameState.pickaxeMiningActive && gameState.miningTarget) {
+    sendMiningStart(
+      gameState.miningTarget.x, 
+      gameState.miningTarget.y, 
+      gameState.crafting.currentToolType
+    );
+  }
+  // If we're not mining anymore, send a stop event
+  else if (!gameState.pickaxeMiningActive && gameState.mouseHeld === false) {
+    sendMiningStop();
   }
 }
