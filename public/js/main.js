@@ -246,7 +246,150 @@ export function initGame() {
   requestAnimationFrame(gameLoop);
 }
 
-// Create multiplayer dialogs if they don't exist
+/**
+ * Handles hosting a multiplayer game
+ */
+export function hostMultiplayerGame() {
+  console.log("Starting host multiplayer game process");
+  
+  // Get game name and player count
+  const gameName = 
+    document.getElementById("game-name").value || "Pixel Miner Game";
+  const maxPlayers = 
+    parseInt(document.getElementById("max-players").value) || 4;
+  const useExistingSave = document.getElementById("world-existing").checked;
+
+  // Close all UI elements - both main menu IDs to be safe
+  const mainMenu = document.getElementById("main-menu");
+  if (mainMenu) {
+    console.log("Hiding main menu");
+    mainMenu.style.display = "none";
+  }
+  
+  const mainMenuOverlay = document.getElementById("main-menu-overlay");
+  if (mainMenuOverlay) {
+    console.log("Hiding main menu overlay");
+    mainMenuOverlay.style.display = "none";
+  }
+  
+  // Close any open dialogs
+  const hostDialog = document.getElementById("host-game-dialog");
+  if (hostDialog) {
+    console.log("Hiding host game dialog");
+    hostDialog.style.display = "none";
+  }
+  
+  // Also hide options modal if it's open
+  const optionsModal = document.getElementById("options-modal");
+  if (optionsModal) {
+    optionsModal.style.display = "none";
+  }
+
+  // Clean up menu background
+  console.log("Cleaning up menu background");
+  cleanupMenuBackground();
+
+  // First initialize multiplayer systems as host BEFORE generating the world
+  // This ensures multiplayer is ready to sync world data
+  console.log("Initializing multiplayer as host");
+  initMultiplayer(true, {
+    gameName: gameName,
+    maxPlayers: maxPlayers,
+  });
+
+  // Transition from menu music to game music
+  console.log("Transitioning music");
+  crossFadeAudio(menuMusic, gameMusic, 1000, true);
+  gameState.musicStarted = true;
+
+  // Initialize the world based on chosen option
+  if (useExistingSave) {
+    try {
+      console.log("Loading existing game save");
+      gameState.loadGame();
+    } catch (error) {
+      console.error("Failed to load existing save:", error);
+      // Fall back to new world
+      console.log("Falling back to new world generation");
+      generateWorld();
+    }
+  } else {
+    // Create new world
+    console.log("Generating new world");
+    generateWorld();
+  }
+
+  // Show game UI elements
+  const infoPanel = document.getElementById("info-panel");
+  if (infoPanel) infoPanel.style.display = "block";
+  
+  const depthIndicator = document.getElementById("depth-indicator");
+  if (depthIndicator) depthIndicator.style.display = "block";
+  
+  // Make sure player is visible
+  const playerElement = document.getElementById("player");
+  if (playerElement) playerElement.style.display = "block";
+  
+  // Initialize game systems AFTER both multiplayer and world are set up
+  console.log("Initializing game");
+  initGame();
+  
+  console.log("Host game setup complete");
+}
+
+// Called once during initialization to ensure proper setup
+export function setupMultiplayer() {
+  console.log("Setting up multiplayer systems");
+  
+  // Create necessary dialog elements if they don't exist
+  createMultiplayerDialogs();
+  
+  // Set up event listeners for main menu multiplayer buttons
+  const joinGameBtn = document.getElementById("join-game");
+  if (joinGameBtn) {
+    // Use cloneNode to remove any existing listeners
+    const newJoinBtn = joinGameBtn.cloneNode(true);
+    joinGameBtn.parentNode.replaceChild(newJoinBtn, joinGameBtn);
+    
+    newJoinBtn.addEventListener("click", () => {
+      console.log("Join game button clicked");
+      // Play menu click sound
+      const menuClickSound = document.getElementById("menu-click-sound");
+      if (menuClickSound) menuClickSound.play();
+      
+      // Show the join game dialog
+      const joinDialog = document.getElementById("join-game-dialog");
+      if (joinDialog) {
+        joinDialog.style.display = "flex";
+      }
+    });
+  }
+  
+  const hostGameBtn = document.getElementById("host-game");
+  if (hostGameBtn) {
+    // Use cloneNode to remove any existing listeners
+    const newHostBtn = hostGameBtn.cloneNode(true);
+    hostGameBtn.parentNode.replaceChild(newHostBtn, hostGameBtn);
+    
+    newHostBtn.addEventListener("click", () => {
+      console.log("Host game button clicked");
+      // Play menu click sound
+      const menuClickSound = document.getElementById("menu-click-sound");
+      if (menuClickSound) menuClickSound.play();
+      
+      // Show the host game dialog
+      const hostDialog = document.getElementById("host-game-dialog");
+      if (hostDialog) {
+        hostDialog.style.display = "flex";
+      }
+    });
+  }
+  
+  // Set up event listeners for the dialog buttons
+  setupDialogButtonListeners();
+}
+
+// Create multiplayer dialog elements
 function createMultiplayerDialogs() {
   // Create join game dialog if it doesn't exist
   if (!document.getElementById("join-game-dialog")) {
@@ -254,7 +397,7 @@ function createMultiplayerDialogs() {
     joinDialog.id = "join-game-dialog";
     joinDialog.className = "modal";
     joinDialog.style.display = "none";
-    
+
     joinDialog.innerHTML = `
       <div class="modal-content">
         <h2>Join Game</h2>
@@ -266,17 +409,17 @@ function createMultiplayerDialogs() {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(joinDialog);
   }
-  
+
   // Create host game dialog if it doesn't exist
   if (!document.getElementById("host-game-dialog")) {
     const hostDialog = document.createElement("div");
     hostDialog.id = "host-game-dialog";
     hostDialog.className = "modal";
     hostDialog.style.display = "none";
-    
+
     hostDialog.innerHTML = `
       <div class="modal-content">
         <h2>Host Game</h2>
@@ -305,10 +448,10 @@ function createMultiplayerDialogs() {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(hostDialog);
   }
-  
+
   // Add CSS for modals if needed
   if (!document.getElementById("multiplayer-styles")) {
     const styleElement = document.createElement("style");
@@ -386,153 +529,162 @@ function createMultiplayerDialogs() {
         font-weight: bold;
       }
     `;
-    
+
     document.head.appendChild(styleElement);
   }
 }
 
-/**
- * Handles hosting a multiplayer game
- */
-export function hostMultiplayerGame() {
-  // Get game name and player count
-  const gameName = 
-    document.getElementById("game-name").value || "Pixel Miner Game";
-  const maxPlayers = 
-    parseInt(document.getElementById("max-players").value) || 4;
-  const useExistingSave = document.getElementById("world-existing").checked;
-
-  // Close main menu
-  const mainMenu = document.getElementById("main-menu");
-  if (mainMenu) {
-    mainMenu.style.display = "none";
+// Set up event listeners for dialog buttons
+function setupDialogButtonListeners() {
+  // Set up join game dialog buttons
+  const joinSubmitBtn = document.getElementById("join-game-submit");
+  if (joinSubmitBtn) {
+    // Use cloneNode to remove any existing listeners
+    const newJoinSubmitBtn = joinSubmitBtn.cloneNode(true);
+    joinSubmitBtn.parentNode.replaceChild(newJoinSubmitBtn, joinSubmitBtn);
+    
+    newJoinSubmitBtn.addEventListener("click", () => {
+      console.log("Join game submit clicked");
+      const joinDialog = document.getElementById("join-game-dialog");
+      if (joinDialog) {
+        joinDialog.style.display = "none";
+      }
+      joinMultiplayerGame();
+    });
   }
-
-  // Clean up menu background
-  cleanupMenuBackground();
-
-  // Initialize the world based on chosen option
-  if (useExistingSave) {
-    try {
-      gameState.loadGame();
-    } catch (error) {
-      console.error("Failed to load existing save:", error);
-      // Fall back to new world
-      generateWorld();
-    }
-  } else {
-    // Create new world
-    generateWorld();
+  
+  const joinCancelBtn = document.getElementById("join-game-cancel");
+  if (joinCancelBtn) {
+    // Use cloneNode to remove any existing listeners
+    const newJoinCancelBtn = joinCancelBtn.cloneNode(true);
+    joinCancelBtn.parentNode.replaceChild(newJoinCancelBtn, joinCancelBtn);
+    
+    newJoinCancelBtn.addEventListener("click", () => {
+      console.log("Join game cancel clicked");
+      const joinDialog = document.getElementById("join-game-dialog");
+      if (joinDialog) {
+        joinDialog.style.display = "none";
+      }
+    });
   }
-
-  // Initialize multiplayer systems as host
-  initMultiplayer(true, {
-    gameName: gameName,
-    maxPlayers: maxPlayers,
-  });
-
-  // Initialize game
-  initGame();
-
-  // Transition from menu music to game music
-  crossFadeAudio(menuMusic, gameMusic, 1000, true);
-  gameState.musicStarted = true;
+  
+  // Set up host game dialog buttons
+  const hostSubmitBtn = document.getElementById("host-game-submit");
+  if (hostSubmitBtn) {
+    // Use cloneNode to remove any existing listeners
+    const newHostSubmitBtn = hostSubmitBtn.cloneNode(true);
+    hostSubmitBtn.parentNode.replaceChild(newHostSubmitBtn, hostSubmitBtn);
+    
+    newHostSubmitBtn.addEventListener("click", () => {
+      console.log("Host game submit clicked");
+      const hostDialog = document.getElementById("host-game-dialog");
+      if (hostDialog) {
+        hostDialog.style.display = "none";
+      }
+      hostMultiplayerGame();
+    });
+  }
+  
+  const hostCancelBtn = document.getElementById("host-game-cancel");
+  if (hostCancelBtn) {
+    // Use cloneNode to remove any existing listeners
+    const newHostCancelBtn = hostCancelBtn.cloneNode(true);
+    hostCancelBtn.parentNode.replaceChild(newHostCancelBtn, hostCancelBtn);
+    
+    newHostCancelBtn.addEventListener("click", () => {
+      console.log("Host game cancel clicked");
+      const hostDialog = document.getElementById("host-game-dialog");
+      if (hostDialog) {
+        hostDialog.style.display = "none";
+      }
+    });
+  }
 }
-
 /**
  * Handles joining a multiplayer game
  */
 export function joinMultiplayerGame() {
-  // Close main menu
+  console.log("Starting join multiplayer game process");
+  
+  // Get the game code from the input
+  const gameCode = document.getElementById("game-code").value;
+  if (!gameCode || gameCode.trim() === "") {
+    console.error("No game code provided");
+    // Here you could show an error message to the user
+    return;
+  }
+  
+  // Close all UI elements - check both main menu IDs to be safe
   const mainMenu = document.getElementById("main-menu");
   if (mainMenu) {
+    console.log("Hiding main menu");
     mainMenu.style.display = "none";
+  }
+  
+  const mainMenuOverlay = document.getElementById("main-menu-overlay");
+  if (mainMenuOverlay) {
+    console.log("Hiding main menu overlay");
+    mainMenuOverlay.style.display = "none";
+  }
+  
+  // Close any open dialogs
+  const joinDialog = document.getElementById("join-game-dialog");
+  if (joinDialog) {
+    console.log("Hiding join game dialog");
+    joinDialog.style.display = "none";
+  }
+  
+  // Also hide options modal if it's open
+  const optionsModal = document.getElementById("options-modal");
+  if (optionsModal) {
+    optionsModal.style.display = "none";
   }
 
   // Clean up menu background
+  console.log("Cleaning up menu background");
   cleanupMenuBackground();
 
-  // Initialize multiplayer systems
-  initMultiplayer(false);
+  // Initialize multiplayer systems as client with the game code
+  console.log("Initializing multiplayer as client with game code:", gameCode);
+  initMultiplayer(false, {
+    gameCode: gameCode
+  });
+
+  // Show game UI elements
+  const infoPanel = document.getElementById("info-panel");
+  if (infoPanel) infoPanel.style.display = "block";
+  
+  const depthIndicator = document.getElementById("depth-indicator");
+  if (depthIndicator) depthIndicator.style.display = "block";
+  
+  // Make sure player is visible
+  const playerElement = document.getElementById("player");
+  if (playerElement) playerElement.style.display = "block";
 
   // Initialize game
+  console.log("Initializing game");
   initGame();
 
   // Transition from menu music to game music
+  console.log("Transitioning music");
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
+  
+  console.log("Join game setup complete");
 }
 
-// Modify the DOMContentLoaded listener to show the main menu first
+// Modify the DOMContentLoaded listener to properly initialize multiplayer
 document.addEventListener("DOMContentLoaded", function () {
+  console.log("DOM Content Loaded - Starting initialization");
+  
   // Load audio settings first, before any music plays
   loadAudioSettings();
 
-  // Create multiplayer dialogs
-  createMultiplayerDialogs();
+  // Setup multiplayer with the consolidated setup function
+  setupMultiplayer();
 
-  // Instead of immediately starting the game, show the main menu
+  // Show the main menu
   showMainMenu();
-
-  // Add multiplayer button listeners
-  const joinGameBtn = document.getElementById("join-game");
-  if (joinGameBtn) {
-    joinGameBtn.addEventListener("click", () => {
-      // Play menu click sound
-      const menuClickSound = document.getElementById("menu-click-sound");
-      if (menuClickSound) menuClickSound.play();
-      
-      // Show join game dialog
-      const joinDialog = document.getElementById("join-game-dialog");
-      joinDialog.style.display = "flex";
-    });
-  }
-
-  const hostGameBtn = document.getElementById("host-game");
-  if (hostGameBtn) {
-    hostGameBtn.addEventListener("click", () => {
-      // Play menu click sound
-      const menuClickSound = document.getElementById("menu-click-sound");
-      if (menuClickSound) menuClickSound.play();
-      
-      // Show host game dialog
-      const hostDialog = document.getElementById("host-game-dialog");
-      hostDialog.style.display = "flex";
-    });
-  }
-
-  // Handle dialog buttons
-  const joinSubmitBtn = document.getElementById("join-game-submit");
-  if (joinSubmitBtn) {
-    joinSubmitBtn.addEventListener("click", () => {
-      const joinDialog = document.getElementById("join-game-dialog");
-      joinDialog.style.display = "none";
-      joinMultiplayerGame();
-    });
-  }
-
-  const joinCancelBtn = document.getElementById("join-game-cancel");
-  if (joinCancelBtn) {
-    joinCancelBtn.addEventListener("click", () => {
-      const joinDialog = document.getElementById("join-game-dialog");
-      joinDialog.style.display = "none";
-    });
-  }
-
-  const hostSubmitBtn = document.getElementById("host-game-submit");
-  if (hostSubmitBtn) {
-    hostSubmitBtn.addEventListener("click", () => {
-      const hostDialog = document.getElementById("host-game-dialog");
-      hostDialog.style.display = "none";
-      hostMultiplayerGame();
-    });
-  }
-
-  const hostCancelBtn = document.getElementById("host-game-cancel");
-  if (hostCancelBtn) {
-    hostCancelBtn.addEventListener("click", () => {
-      const hostDialog = document.getElementById("host-game-dialog");
-      hostDialog.style.display = "none";
-    });
-  }
+  
+  console.log("Initialization complete");
 });

@@ -78,7 +78,11 @@
 
         <!-- Crafting Station with Interaction Hint -->
         <div id="crafting-station" class="crafting-station">
-          <img src="imgs/craftingHouse.svg" alt="Crafting Station" class="crafting-icon" />
+          <img
+            src="imgs/craftingHouse.svg"
+            alt="Crafting Station"
+            class="crafting-icon"
+          />
         </div>
 
         <!-- Crafting Menu Container -->
@@ -156,50 +160,151 @@
           <h2>Game Menu</h2>
           <button id="resume-button" class="menu-button">Resume Game</button>
           <button id="save-button" class="menu-button">Save Game</button>
-          <button id="delete-save-button" class="menu-button">Delete Save</button>
-          <button id="in-game-options-button" class="menu-button">Options</button>
-          <button id="respawn-button" class="menu-button">Respawn at Top</button>
+          <button id="delete-save-button" class="menu-button">
+            Delete Save
+          </button>
+          <button id="in-game-options-button" class="menu-button">
+            Options
+          </button>
+          <button id="respawn-button" class="menu-button">
+            Respawn at Top
+          </button>
         </div>
         <!-- In-game Options Panel -->
-        <div id="in-game-options" class="options-container" style="display: none;">
+        <div
+          id="in-game-options"
+          class="options-container"
+          style="display: none"
+        >
           <h2 class="options-title">Options</h2>
           <div class="options-section">
             <h3 class="options-section-title">Audio Settings</h3>
             <div class="volume-control">
               <span class="volume-label">Music</span>
-              <input type="range" min="0" max="100" value="100" class="volume-slider" id="in-game-music-volume" />
-              <span class="volume-value" id="in-game-music-volume-value">100%</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value="100"
+                class="volume-slider"
+                id="in-game-music-volume"
+              />
+              <span class="volume-value" id="in-game-music-volume-value"
+                >100%</span
+              >
             </div>
             <div class="volume-control">
               <span class="volume-label">Sound Effects</span>
-              <input type="range" min="0" max="100" value="100" class="volume-slider" id="in-game-sfx-volume" />
-              <span class="volume-value" id="in-game-sfx-volume-value">100%</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value="100"
+                class="volume-slider"
+                id="in-game-sfx-volume"
+              />
+              <span class="volume-value" id="in-game-sfx-volume-value"
+                >100%</span
+              >
             </div>
             <div class="mute-control">
               <div class="checkbox-wrapper">
-                <input type="checkbox" id="in-game-mute-all" class="custom-checkbox" />
+                <input
+                  type="checkbox"
+                  id="in-game-mute-all"
+                  class="custom-checkbox"
+                />
               </div>
-              <label for="in-game-mute-all" class="mute-label">Mute All Audio</label>
+              <label for="in-game-mute-all" class="mute-label"
+                >Mute All Audio</label
+              >
             </div>
           </div>
-          <button id="back-to-pause-menu" class="back-button">Back to Menu</button>
+          <button id="back-to-pause-menu" class="back-button">
+            Back to Menu
+          </button>
         </div>
       </div>
 
+      <!-- Main Menu Overlay -->
       <!-- Main Menu Overlay -->
       <div id="main-menu-overlay" class="menu-container">
         <div class="menu-header">
           <img src="imgs/game-logo.png" alt="Pixel Miner" class="game-logo" />
         </div>
         <div class="menu-buttons">
-          <button id="start-new-game" class="main-menu-button">Start New Game</button>
+          <button id="start-new-game" class="main-menu-button">
+            Start New Game
+          </button>
           <button id="load-game" class="main-menu-button">Continue</button>
-          <button id="join-game" class="main-menu-button">Join Game</button>
           <button id="host-game" class="main-menu-button">Host Game</button>
+          <button id="join-game" class="main-menu-button">Join Game</button>
           <button id="game-options" class="main-menu-button">Options</button>
         </div>
         <div class="menu-footer">
           <p>v1.0.0 &copy; 2025 - Your Studio Name</p>
+        </div>
+      </div>
+
+      <!-- Join Game Dialog -->
+      <div id="join-game-dialog" class="modal" style="display: none">
+        <div class="modal-content">
+          <h2>Join Game</h2>
+          <p>Enter the game code to join:</p>
+          <input
+            type="text"
+            id="game-code"
+            placeholder="Enter game code"
+            class="modal-input"
+          />
+          <div class="modal-buttons">
+            <button id="join-game-submit" class="modal-button">Join</button>
+            <button id="join-game-cancel" class="modal-button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Host Game Dialog -->
+      <div id="host-game-dialog" class="modal" style="display: none">
+        <div class="modal-content">
+          <h2>Host Game</h2>
+          <div class="form-group">
+            <label for="game-name">Game Name:</label>
+            <input
+              type="text"
+              id="game-name"
+              placeholder="My Pixel Miner Game"
+              class="modal-input"
+            />
+          </div>
+          <div class="form-group">
+            <label for="max-players">Max Players:</label>
+            <input
+              type="number"
+              id="max-players"
+              min="2"
+              max="8"
+              value="4"
+              class="modal-input"
+            />
+          </div>
+          <div class="form-group">
+            <p>World Selection:</p>
+            <div class="radio-group">
+              <input type="radio" id="world-new" name="world-type" checked />
+              <label for="world-new">New World</label>
+            </div>
+            <div class="radio-group">
+              <input type="radio" id="world-existing" name="world-type" />
+              <label for="world-existing">Use Existing Save</label>
+            </div>
+          </div>
+          <div class="modal-buttons">
+            <button id="host-game-submit" class="modal-button">
+              Create Game
+            </button>
+            <button id="host-game-cancel" class="modal-button">Cancel</button>
+          </div>
         </div>
       </div>
 
@@ -211,12 +316,24 @@
             <h3>Audio Settings</h3>
             <div class="volume-control">
               <span class="volume-label">Music</span>
-              <input type="range" id="music-volume" min="0" max="100" value="100" />
+              <input
+                type="range"
+                id="music-volume"
+                min="0"
+                max="100"
+                value="100"
+              />
               <span class="volume-value" id="music-volume-value">100%</span>
             </div>
             <div class="volume-control">
               <span class="volume-label">Sound Effects</span>
-              <input type="range" id="sfx-volume" min="0" max="100" value="100" />
+              <input
+                type="range"
+                id="sfx-volume"
+                min="0"
+                max="100"
+                value="100"
+              />
               <span class="volume-value" id="sfx-volume-value">100%</span>
             </div>
             <div class="mute-control">
