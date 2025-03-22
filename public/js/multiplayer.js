@@ -9,6 +9,7 @@ let socket;
 let isConnected = false;
 let otherPlayers = {}; // Store references to other player elements
 let currentGameCode = ""; // Store the current game code
+let hasShownGameCode = false;
 
 /**
  * Initialize connection to multiplayer server
@@ -742,6 +743,16 @@ function updatePauseMenuGameCode(gameCode) {
  * @param {string} gameCode - The game code to display
  */
 export function showGameCode(gameCode) {
+  // Skip showing the modal if we've already shown it this session
+  if (hasShownGameCode) {
+    // Still update the pause menu code
+    updatePauseMenuGameCode(gameCode);
+    return;
+  }
+
+  // Mark that we've shown the code
+  hasShownGameCode = true;
+
   // First, remove any existing game code modal
   const existingModal = document.getElementById("game-code-modal");
   if (existingModal) {
@@ -1297,12 +1308,26 @@ function triggerRocketLaunchAnimation(targetPlanet) {
  * Request updated player list after changing planets
  * This ensures we see players already on our new planet
  */
-function requestPlayersOnCurrentPlanet() {
+export function requestPlayersOnCurrentPlanet() {
   if (isConnected && socket) {
+    console.log(`Requesting players on planet: ${gameState.currentPlanet}`);
+    
+    // Send request immediately - no need for timeout
+    socket.emit("getPlayersOnPlanet", {
+      planet: gameState.currentPlanet
+    });
+    
+    // Add a safeguard retry in case the first request fails
     setTimeout(() => {
-      socket.emit("getPlayersOnPlanet", {
-        planet: gameState.currentPlanet,
-      });
-    }, 1000); // Slight delay to ensure server has processed planet change
+      // Only retry if we're still connected
+      if (isConnected && socket) {
+        console.log(`Retry: requesting players on planet: ${gameState.currentPlanet}`);
+        socket.emit("getPlayersOnPlanet", {
+          planet: gameState.currentPlanet
+        });
+      }
+    }, 2000);
+  } else {
+    console.warn("Cannot request players - socket not connected");
   }
 }

@@ -103,14 +103,33 @@ export function generateWorld() {
 }
 
 export function transitionToEarth() {
-    // Position the rocket on Earth
-    placeEarthRocket();
+  // Position the rocket on Earth
+  placeEarthRocket();
 
-    // Use deep copy to avoid reference issues
-    gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
-
-    // Remove stars and earth planet
-    removeSpaceBackgroundElements();
+  // Use deep copy to avoid reference issues
+  gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
+  
+  // Set the current planet
+  gameState.currentPlanet = "earth";
+  
+  // IMPORTANT: We need to keep multiplayer connection alive
+  // The flag handling is different for hosts and non-hosts
+  if (gameState.isHost) {
+    // For hosts, leave the flag as-is and let uploadWorldToServer handle it
+    console.log("Host transitioning to Earth, maintaining upload flag:", gameState.needToUploadWorld);
+  }
+  // Do not modify the flag for non-hosts at all
+  
+  // Remove stars and earth planet
+  removeSpaceBackgroundElements();
+  
+  // Small delay before requesting player list to ensure server processes planet change first
+  setTimeout(() => {
+    if (typeof requestPlayersOnCurrentPlanet === "function") {
+      console.log("Requesting updated player list for Earth");
+      requestPlayersOnCurrentPlanet();
+    }
+  }, 500);
 }
 
 // Function to remove Moon-specific background elements when returning to Earth
