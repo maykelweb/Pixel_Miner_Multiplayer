@@ -58,6 +58,9 @@ io.on('connection', (socket) => {
     // Add player to game mapping
     playerGameMap[socket.id] = gameCode;
     
+    // Join the socket room for this game
+    socket.join(gameCode);
+    
     // Send game code back to host
     socket.emit('gameHosted', { gameCode, success: true });
     
@@ -111,6 +114,9 @@ io.on('connection', (socket) => {
     // Map player to game
     playerGameMap[socket.id] = gameCode;
     
+    // Join the socket room for this game
+    socket.join(gameCode);
+    
     // Send success response
     socket.emit('joinResponse', { 
       success: true, 
@@ -143,6 +149,7 @@ io.on('connection', (socket) => {
       games[gameCode].players[socket.id].velocityX = data.velocityX;
       games[gameCode].players[socket.id].velocityY = data.velocityY;
       games[gameCode].players[socket.id].onGround = data.onGround;
+      games[gameCode].players[socket.id].depth = data.depth;
       
       // Broadcast updated position to all other players in the same game
       socket.to(gameCode).emit('playerMoved', {

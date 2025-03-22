@@ -56,7 +56,7 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle hosting response
   socket.on('gameHosted', (data) => {
     currentGameCode = data.gameCode;
-    console.log(currentGameCode);
+    console.log("Game created with code:", currentGameCode);
     showMessage("Game created! Code: " + currentGameCode, 5000);
     // Display the game code for the host
     showGameCode(currentGameCode);
@@ -84,6 +84,8 @@ export function initMultiplayer(isHost = false, options = {}) {
   
   // Handle initial game state
   socket.on('gameState', (data) => {
+    console.log("Received initial game state:", data);
+    
     // Set local player ID
     gameState.playerId = data.playerId;
     
@@ -100,7 +102,13 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Handle world block sync - only for new blocks different from local state
     for (const y in data.worldBlocks) {
       for (const x in data.worldBlocks[y]) {
-        if (gameState.blockMap[y] && gameState.blockMap[y][x] !== data.worldBlocks[y][x]) {
+        // Create the row in the block map if it doesn't exist
+        if (!gameState.blockMap[y]) {
+          gameState.blockMap[y] = {};
+        }
+        
+        // Update the block if it's different from local state
+        if (gameState.blockMap[y][x] !== data.worldBlocks[y][x]) {
           gameState.blockMap[y][x] = data.worldBlocks[y][x];
         }
       }
@@ -110,6 +118,7 @@ export function initMultiplayer(isHost = false, options = {}) {
   
   // Handle new player joining
   socket.on('newPlayer', (playerData) => {
+    console.log("New player joined:", playerData);
     addOtherPlayer(playerData.id, playerData);
     
     // Update player count
@@ -130,13 +139,20 @@ export function initMultiplayer(isHost = false, options = {}) {
   
   // Handle world updates (blocks mined by others)
   socket.on('worldUpdated', (data) => {
-    if (gameState.blockMap[data.y] && gameState.blockMap[data.y][data.x] !== null) {
-      // Show breaking animation
-      createBreakingAnimation(
-        data.x,
-        data.y,
-        gameState.blockMap[data.y][data.x].color
-      );
+    // Ensure we have a data structure to work with
+    if (!gameState.blockMap[data.y]) {
+      gameState.blockMap[data.y] = {};
+    }
+    
+    if (gameState.blockMap[data.y][data.x] !== null) {
+      // Show breaking animation if we have block data
+      if (gameState.blockMap[data.y][data.x] && gameState.blockMap[data.y][data.x].color) {
+        createBreakingAnimation(
+          data.x,
+          data.y,
+          gameState.blockMap[data.y][data.x].color
+        );
+      }
       
       // Update local block map
       gameState.blockMap[data.y][data.x] = null;
@@ -282,32 +298,37 @@ function updatePauseMenuGameCode(gameCode) {
     `;
     
     // Insert at the top of the menu content
-    if (menuContent.firstChild) {
+    if (menuContent && menuContent.firstChild) {
       menuContent.insertBefore(gameCodeDisplay, menuContent.firstChild);
-    } else {
+    } else if (menuContent) {
       menuContent.appendChild(gameCodeDisplay);
     }
     
     // Add event listener to copy button
-    document.getElementById("copy-pause-menu-code").addEventListener("click", () => {
-      // Copy the game code to clipboard
-      navigator.clipboard.writeText(gameCode).then(() => {
-        // Change button text temporarily
-        const copyBtn = document.getElementById("copy-pause-menu-code");
-        const originalText = copyBtn.textContent;
-        copyBtn.textContent = "Copied!";
-        
-        // Reset button text after 2 seconds
-        setTimeout(() => {
-          copyBtn.textContent = originalText;
-        }, 2000);
-      }).catch(err => {
-        console.error('Failed to copy text: ', err);
+    const copyBtn = document.getElementById("copy-pause-menu-code");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        // Copy the game code to clipboard
+        navigator.clipboard.writeText(gameCode).then(() => {
+          // Change button text temporarily
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = "Copied!";
+          
+          // Reset button text after 2 seconds
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+          }, 2000);
+        }).catch(err => {
+          console.error('Failed to copy text: ', err);
+        });
       });
-    });
+    }
   } else {
     // If it exists, just update the code value
-    document.getElementById('pause-menu-code-value').textContent = gameCode;
+    const codeValue = document.getElementById('pause-menu-code-value');
+    if (codeValue) {
+      codeValue.textContent = gameCode;
+    }
   }
 }
 
@@ -416,26 +437,34 @@ export function showGameCode(gameCode) {
   }
 
   // Add event listener to close button
-  document.getElementById("close-code-modal").addEventListener("click", () => {
-    document.body.removeChild(modal);
-  });
+  const closeButton = document.getElementById("close-code-modal");
+  if (closeButton) {
+    closeButton.addEventListener("click", () => {
+      document.body.removeChild(modal);
+    });
+  }
 
   // Add event listener to copy button
-  document.getElementById("copy-code-button").addEventListener("click", () => {
-    // Copy the game code to clipboard
-    navigator.clipboard.writeText(gameCode).then(() => {
-      // Show success message
-      const successMessage = document.getElementById("copy-success");
-      successMessage.classList.add("visible");
-      
-      // Hide the success message after 3 seconds
-      setTimeout(() => {
-        successMessage.classList.remove("visible");
-      }, 3000);
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
+  const copyButton = document.getElementById("copy-code-button");
+  if (copyButton) {
+    copyButton.addEventListener("click", () => {
+      // Copy the game code to clipboard
+      navigator.clipboard.writeText(gameCode).then(() => {
+        // Show success message
+        const successMessage = document.getElementById("copy-success");
+        if (successMessage) {
+          successMessage.classList.add("visible");
+          
+          // Hide the success message after 3 seconds
+          setTimeout(() => {
+            successMessage.classList.remove("visible");
+          }, 3000);
+        }
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+      });
     });
-  });
+  }
 }
 
 /**
@@ -491,6 +520,11 @@ export function sendToolChanged(toolId) {
  * Create and add another player to the game world
  */
 function addOtherPlayer(id, playerData) {
+  // Don't add if the player already exists
+  if (otherPlayers[id]) {
+    return;
+  }
+  
   // Create player element for the new player
   const newPlayerElement = document.createElement("div");
   newPlayerElement.className = "player other-player";
@@ -522,15 +556,17 @@ function addOtherPlayer(id, playerData) {
   
   // Add to game world
   const gameWorld = document.getElementById("game-world");
-  gameWorld.appendChild(newPlayerElement);
-  
-  console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
-  
-  // Store reference
-  otherPlayers[id] = {
-    element: newPlayerElement,
-    data: playerData
-  };
+  if (gameWorld) {
+    gameWorld.appendChild(newPlayerElement);
+    
+    console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
+    
+    // Store reference
+    otherPlayers[id] = {
+      element: newPlayerElement,
+      data: playerData
+    };
+  }
 }
 
 /**
@@ -609,7 +645,9 @@ function removeOtherPlayer(id) {
   if (otherPlayers[id]) {
     // Remove from DOM
     const playerElement = otherPlayers[id].element;
-    playerElement.parentNode.removeChild(playerElement);
+    if (playerElement && playerElement.parentNode) {
+      playerElement.parentNode.removeChild(playerElement);
+    }
     
     // Remove from tracking object
     delete otherPlayers[id];
