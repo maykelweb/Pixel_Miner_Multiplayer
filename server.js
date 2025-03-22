@@ -67,6 +67,8 @@ io.on("connection", (socket) => {
         depth: 0,
         currentPlanet: "earth", // Added planet property
         jetpackActive: false, // Add the jetpack state property
+        currentPlanet: "earth", // Added planet property
+        jetpackActive: false, // Add the jetpack state property
       };
 
       games[gameCode].currentPlayers = 1;
@@ -155,6 +157,8 @@ io.on("connection", (socket) => {
       currentTool: "pickaxe-basic",
       depth: 0,
       currentPlanet: "earth", // Default to earth
+      jetpackActive: false, // Add the jetpack state property
+      currentPlanet: "earth", // Added planet property
       jetpackActive: false, // Add the jetpack state property
     };
     games[gameCode].currentPlayers++;
@@ -498,6 +502,87 @@ io.on("connection", (socket) => {
         ) {
           io.to(playerId).emit("playerJetpackDeactivated", {
             id: socket.id,
+          });
+        }
+      });
+    }
+  });
+
+  // Handle laser activation
+  socket.on("laserActivated", () => {
+    console.log("here");
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
+      // Store the laser state in the player object
+      games[gameCode].players[socket.id].laserActive = true;
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerLaserActivated", {
+            id: socket.id,
+          });
+        }
+      });
+
+      console.log(`Player ${socket.id} activated laser in game ${gameCode}`);
+    }
+  });
+
+  // Handle laser deactivation
+  socket.on("laserDeactivated", () => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
+      // Update laser state
+      games[gameCode].players[socket.id].laserActive = false;
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerLaserDeactivated", {
+            id: socket.id,
+          });
+        }
+      });
+
+      console.log(`Player ${socket.id} deactivated laser in game ${gameCode}`);
+    }
+  });
+
+  // Handle laser update (angle)
+  socket.on("laserUpdate", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
+      // Store the laser angle in player data
+      games[gameCode].players[socket.id].laserAngle = data.angle;
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerLaserUpdate", {
+            id: socket.id,
+            angle: data.angle,
           });
         }
       });

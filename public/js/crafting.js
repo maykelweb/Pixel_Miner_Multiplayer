@@ -148,7 +148,6 @@ const availableTools = [
 
 // Initialize crafting system
 export function initializeCrafting() {
-  console.log("Initializing crafting system...");
   
   // Default crafting station settings
   const defaultCraftingStation = {
@@ -193,7 +192,6 @@ export function initializeCrafting() {
     
     // CRITICAL FIX: Make sure availableTools is properly set
     if (!gameState.crafting.availableTools || gameState.crafting.availableTools.length === 0) {
-      console.log("Resetting available tools list");
       gameState.crafting.availableTools = [...availableTools];
     }
   }
@@ -212,8 +210,6 @@ export function initializeCrafting() {
   if (gameState.hasMoonBoots === undefined) {
     gameState.hasMoonBoots = false; // Moon boots are not equipped by default
   }
-  
-  console.log(`Crafting initialized with ${gameState.crafting.availableTools.length} tools`);
 }
 
 // Check if player is near crafting station
@@ -353,8 +349,6 @@ function updateCraftingUI() {
     gameState.crafting.availableTools = [...availableTools]; // Reinitialize with default tools
   }
   
-  console.log(`Updating crafting UI with ${gameState.crafting.availableTools.length} tools`);
-  
   // Group tools by tab
   const toolsByTab = {
     pickaxes: [],
@@ -377,11 +371,6 @@ function updateCraftingUI() {
     } else {
       console.warn(`Could not map tool type "${tool.type}" to a tab`);
     }
-  });
-  
-  // Log how many tools were found for each tab
-  Object.entries(toolsByTab).forEach(([tabId, tools]) => {
-    console.log(`Tab ${tabId} has ${tools.length} tools`);
   });
   
   // Populate each tab with its tools
@@ -694,7 +683,6 @@ function equipTool(tool) {
   });
 
   // MULTIPLAYER: Send tool change to server for other players
-  console.log(`Sending tool change to server: ${tool.id}`);
   sendToolChanged(tool.id);
 }
 
