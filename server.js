@@ -28,6 +28,7 @@ io.on('connection', (socket) => {
   // Handle hosting a new game
   socket.on('hostGame', (options) => {
     const gameCode = generateGameCode();
+    console.log(gameCode)
     
     // Create a new game instance
     games[gameCode] = {

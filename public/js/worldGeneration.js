@@ -199,10 +199,10 @@ function getAdjustedOreChance(ore, depthFromSurface) {
   // Apply the modifier and return the adjusted chance
   const adjustedChance = ore.chance * modifier;
 
-  // Debug logging to verify modifiers are applied
+  /* Debug logging to verify modifiers are applied
   console.log(
     `Ore: ${ore.name}, Depth: ${depthFromSurface}, Base chance: ${ore.chance}, Modifier: ${modifier}, Adjusted: ${adjustedChance}`
-  );
+  ); */
 
   return adjustedChance;
 }
@@ -220,13 +220,13 @@ function addOreVeins() {
     
     // FIXED: Skip moon-only ores when on Earth
     if (gameState.currentPlanet === "earth" && ore.moonOnly) {
-      console.log(`Skipping moon-only ore ${ore.name} on Earth`);
+      //console.log(`Skipping moon-only ore ${ore.name} on Earth`);
       return;
     }
     
     // Skip earth-only ores when on Moon
     if (gameState.currentPlanet === "moon" && ore.earthOnly) {
-      console.log(`Skipping earth-only ore ${ore.name} on Moon`);
+      //console.log(`Skipping earth-only ore ${ore.name} on Moon`);
       return;
     }
 
@@ -302,9 +302,9 @@ function addOreVeins() {
       // Ensure reasonable minimum
       rangeVeins = Math.max(rangeVeins, Math.ceil(5 * rangeFraction));
 
-      console.log(
+      /*console.log(
         `${ore.name}: Creating ${rangeVeins} veins for depth range ${range.start}-${range.end} (multiplier: ${range.multiplier})`
-      );
+      );*/
 
       // Create the veins for this range
       for (let i = 0; i < rangeVeins; i++) {
@@ -314,7 +314,7 @@ function addOreVeins() {
       totalVeins += rangeVeins;
     }
 
-    console.log(`${ore.name}: Created total of ${totalVeins} veins`);
+    //console.log(`${ore.name}: Created total of ${totalVeins} veins`);
   });
 }
 
@@ -335,7 +335,7 @@ function createOreVein(ore, minDepth = null, maxDepth = null) {
 
   // Don't continue if there's no valid depth range
   if (minY >= maxY) {
-    console.log(`${ore.name} has invalid depth range: ${minY} to ${maxY}`);
+    //console.log(`${ore.name} has invalid depth range: ${minY} to ${maxY}`);
     return;
   }
 

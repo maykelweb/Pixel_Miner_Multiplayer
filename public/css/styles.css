@@ -1388,3 +1388,61 @@ body {
   z-index: 2002;
   pointer-events: auto !important;
 }
+
+/* Add this to your CSS file (e.g. styles.css) */
+
+.game-code-display {
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 5px 10px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.code-label {
+  font-weight: bold;
+  margin-right: 8px;
+  color: #aaa;
+}
+
+.code-value {
+  color: #fff;
+  font-family: monospace;
+  font-size: 16px;
+  letter-spacing: 2px;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 8px;
+}
+
+.code-copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #aaa;
+  transition: color 0.2s;
+}
+
+.code-copy-btn:hover {
+  color: #fff;
+}
+
+/* Improve the initial modal display as well */
+.game-code {
+  font-size: 28px;
+  font-family: monospace;
+  text-align: center;
+  padding: 15px;
+  margin: 15px 0;
+  background-color: #333;
+  border-radius: 6px;
+  letter-spacing: 4px;
+  font-weight: bold;
+  border: 1px solid #555;
+  color: #fff;
+}

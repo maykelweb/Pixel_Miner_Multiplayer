@@ -56,6 +56,7 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle hosting response
   socket.on('gameHosted', (data) => {
     currentGameCode = data.gameCode;
+    console.log(currentGameCode)
     showMessage("Game created! Code: " + currentGameCode, 5000);
     // Display the game code for the host
     showGameCode(currentGameCode);
