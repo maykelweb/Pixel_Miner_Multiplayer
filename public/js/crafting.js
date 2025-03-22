@@ -2,9 +2,11 @@
 import { gameState } from "./config.js";
 import { updateUI } from "./updates.js";
 import { showMessage, equipSound, craftingSound, playSFX, ORIGINAL_VOLUMES } from "./setup.js";
+// Import sendToolChanged from multiplayer.js to sync tool changes
+import { sendToolChanged } from "./multiplayer.js";
 
 // Define tool types
-const TOOL_TYPES = {
+export const TOOL_TYPES = {
   PICKAXE: "pickaxe",
   LASER: "laser",
   BOOTS: "boots",
@@ -146,6 +148,8 @@ const availableTools = [
 
 // Initialize crafting system
 export function initializeCrafting() {
+  console.log("Initializing crafting system...");
+  
   // Default crafting station settings
   const defaultCraftingStation = {
     x: 200,
@@ -186,6 +190,12 @@ export function initializeCrafting() {
         }
       });
     }
+    
+    // CRITICAL FIX: Make sure availableTools is properly set
+    if (!gameState.crafting.availableTools || gameState.crafting.availableTools.length === 0) {
+      console.log("Resetting available tools list");
+      gameState.crafting.availableTools = [...availableTools];
+    }
   }
 
   // Set initial tool speeds
@@ -202,6 +212,8 @@ export function initializeCrafting() {
   if (gameState.hasMoonBoots === undefined) {
     gameState.hasMoonBoots = false; // Moon boots are not equipped by default
   }
+  
+  console.log(`Crafting initialized with ${gameState.crafting.availableTools.length} tools`);
 }
 
 // Check if player is near crafting station
@@ -258,6 +270,11 @@ export function openCraftingMenu() {
 
   // Show the crafting UI
   const craftingContainer = document.getElementById("crafting-container");
+  if (!craftingContainer) {
+    console.error("Crafting container not found in DOM!");
+    return;
+  }
+  
   craftingContainer.style.display = "flex";
 
   // Determine which tab to show based on equipped tool
@@ -277,7 +294,9 @@ export function closeCraftingMenu() {
 
   // Hide the crafting UI
   const craftingContainer = document.getElementById("crafting-container");
-  craftingContainer.style.display = "none";
+  if (craftingContainer) {
+    craftingContainer.style.display = "none";
+  }
 }
 
 // Function to handle tab switching
@@ -293,19 +312,48 @@ function activateTab(tabId) {
   });
   
   // Show the selected tab
-  document.getElementById(`${tabId}-tab`).classList.add('active');
+  const tabContent = document.getElementById(`${tabId}-tab`);
+  if (tabContent) {
+    tabContent.classList.add('active');
+  } else {
+    console.error(`Tab content with id "${tabId}-tab" not found!`);
+  }
   
   // Add active class to the clicked tab button
-  document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+  const tabButton = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  if (tabButton) {
+    tabButton.classList.add('active');
+  } else {
+    console.error(`Tab button for "${tabId}" not found!`);
+  }
 }
 
 // Update the crafting UI with available tools
 function updateCraftingUI() {
+  // Verify all required DOM elements exist
+  const pickaxesList = document.getElementById("pickaxes-list");
+  const drillsList = document.getElementById("drills-list");
+  const lasersList = document.getElementById("lasers-list");
+  const equipmentList = document.getElementById("equipment-list");
+  
+  if (!pickaxesList || !drillsList || !lasersList || !equipmentList) {
+    console.error("One or more crafting list containers not found in DOM!");
+    return;
+  }
+  
   // Clear all tab content
-  document.getElementById("pickaxes-list").innerHTML = "";
-  document.getElementById("drills-list").innerHTML = "";
-  document.getElementById("lasers-list").innerHTML = "";
-  document.getElementById("equipment-list").innerHTML = "";
+  pickaxesList.innerHTML = "";
+  drillsList.innerHTML = "";
+  lasersList.innerHTML = "";
+  equipmentList.innerHTML = "";
+  
+  // Check if availableTools exists and has items
+  if (!gameState.crafting.availableTools || gameState.crafting.availableTools.length === 0) {
+    console.error("No available tools found in game state!");
+    gameState.crafting.availableTools = [...availableTools]; // Reinitialize with default tools
+  }
+  
+  console.log(`Updating crafting UI with ${gameState.crafting.availableTools.length} tools`);
   
   // Group tools by tab
   const toolsByTab = {
@@ -317,15 +365,32 @@ function updateCraftingUI() {
   
   // Distribute tools to appropriate tabs
   gameState.crafting.availableTools.forEach(tool => {
+    // Check that the tool and its type exist
+    if (!tool || !tool.type) {
+      console.warn("Found invalid tool in availableTools:", tool);
+      return;
+    }
+    
     const targetTab = TOOL_TYPE_TO_TAB[tool.type];
     if (targetTab && toolsByTab[targetTab]) {
       toolsByTab[targetTab].push(tool);
+    } else {
+      console.warn(`Could not map tool type "${tool.type}" to a tab`);
     }
+  });
+  
+  // Log how many tools were found for each tab
+  Object.entries(toolsByTab).forEach(([tabId, tools]) => {
+    console.log(`Tab ${tabId} has ${tools.length} tools`);
   });
   
   // Populate each tab with its tools
   Object.entries(toolsByTab).forEach(([tabId, tools]) => {
     const tabContent = document.getElementById(`${tabId}-list`);
+    if (!tabContent) {
+      console.error(`Tab content list "${tabId}-list" not found!`);
+      return;
+    }
     
     // If no tools for this tab, add a placeholder
     if (tools.length === 0) {
@@ -450,6 +515,11 @@ function addToolToUI(tool, container) {
 
 // Check if player has enough resources for the tool
 function checkRequirements(requirements) {
+  if (!requirements) {
+    console.warn("Tool has undefined requirements");
+    return true; // If no requirements, always craftable
+  }
+  
   for (const [resource, amount] of Object.entries(requirements)) {
     if (
       !gameState.inventory[resource] ||
@@ -463,6 +533,8 @@ function checkRequirements(requirements) {
 
 // Create HTML for displaying requirements
 function createRequirementsHTML(requirements) {
+  if (!requirements) return "";
+  
   let html = "<ul>";
   for (const [resource, amount] of Object.entries(requirements)) {
     const hasEnough =
@@ -520,7 +592,7 @@ function craftTool(tool) {
   playCraftSound(tool.type);
 }
 
-// Enhanced equipTool function to handle boots
+// Enhanced equipTool function to handle boots and multiplayer sync
 function equipTool(tool) {
   // Update equipped tool for this type
   gameState.crafting.equippedTools[tool.type] = tool.id;
@@ -620,6 +692,10 @@ function equipTool(tool) {
       module.saveToolState();
     }
   });
+
+  // MULTIPLAYER: Send tool change to server for other players
+  console.log(`Sending tool change to server: ${tool.id}`);
+  sendToolChanged(tool.id);
 }
 
 // Setup event listeners for crafting UI
@@ -658,7 +734,20 @@ export function setupCraftingEventListeners() {
 export function getCurrentTool() {
   const toolType = gameState.crafting.currentToolType;
   const toolId = gameState.crafting.equippedTools[toolType];
-  return gameState.crafting.availableTools.find((tool) => tool.id === toolId);
+  
+  if (!toolId) {
+    // No tool equipped for this type
+    return null;
+  }
+  
+  const tool = gameState.crafting.availableTools.find((tool) => tool.id === toolId);
+  
+  if (!tool) {
+    console.warn(`Cannot find tool with ID ${toolId} in availableTools!`);
+    return null;
+  }
+  
+  return tool;
 }
 
 // Get whether moon boots are equipped
