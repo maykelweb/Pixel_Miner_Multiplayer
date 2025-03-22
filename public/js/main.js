@@ -65,7 +65,7 @@ const FRAME_RATE = 60;
 const FRAME_DELAY = 1000 / FRAME_RATE;
 let lastFrameTime = 0;
 let lastNetworkUpdateTime = 0;
-const NETWORK_UPDATE_INTERVAL = 100; // Send updates every 100ms
+const NETWORK_UPDATE_INTERVAL = 50; // Send updates every 100ms
 
 /**
  * The main game loop with multiplayer support
@@ -600,6 +600,7 @@ function setupDialogButtonListeners() {
     });
   }
 }
+
 /**
  * Handles joining a multiplayer game
  */
@@ -610,7 +611,7 @@ export function joinMultiplayerGame() {
   const gameCode = document.getElementById("game-code").value;
   if (!gameCode || gameCode.trim() === "") {
     console.error("No game code provided");
-    // Here you could show an error message to the user
+    showMessage("Please enter a valid game code", 3000);
     return;
   }
   

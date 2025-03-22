@@ -33,7 +33,7 @@ export function initMultiplayer(isHost = false, options = {}) {
       showMessage("Hosting a new game!", 3000);
     } else {
       // If joining, send the game code to join
-      const gameCode = document.getElementById("game-code").value;
+      const gameCode = options.gameCode;
       if (gameCode) {
         socket.emit('joinGame', {
           gameCode: gameCode
@@ -149,6 +149,67 @@ export function initMultiplayer(isHost = false, options = {}) {
     
     showMessage("A player has left the game", 2000);
   });
+
+  // Add styles for other players if they don't exist yet
+  addMultiplayerStyles();
+}
+
+/**
+ * Adds necessary CSS styles for multiplayer players
+ */
+function addMultiplayerStyles() {
+  if (!document.getElementById('multiplayer-player-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'multiplayer-player-styles';
+    styleElement.textContent = `
+      .other-player {
+        width: 40px;
+        height: 50px;
+        position: absolute;
+        z-index: 50;
+        background-image: url(../imgs/character.svg);
+        background-size: cover;
+        background-position: center;
+        transition: transform 0.1s;
+        pointer-events: none;
+      }
+
+      .other-player.facing-left {
+        transform: scaleX(-1);
+      }
+
+      .player-name {
+        position: absolute;
+        top: -20px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        text-shadow: 0px 0px 3px #000;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      .player-tool-container {
+        position: absolute;
+        top: 10px;
+        right: -15px;
+        width: 24px;
+        height: 24px;
+        z-index: 30;
+        pointer-events: none;
+      }
+
+      .other-player.facing-left .player-tool-container {
+        right: auto;
+        left: -15px;
+        transform: scaleX(-1);
+      }
+    `;
+    document.head.appendChild(styleElement);
+  }
 }
 
 /**
@@ -228,26 +289,35 @@ function addOtherPlayer(id, playerData) {
   newPlayerElement.className = "player other-player";
   newPlayerElement.dataset.playerId = id;
   
-  // Create player avatar with tool
-  const playerAvatar = document.createElement("div");
-  playerAvatar.className = "player-avatar";
-  playerAvatar.innerHTML = `
-    <div class="player-tool-container">
-      <img src="imgs/pickaxe-basic.svg" alt="Player Tool" class="player-tool" />
-    </div>
-    <div class="player-body"></div>
-    <div class="player-name">${id.substring(0, 5)}</div>
-  `;
+  // Add name tag
+  const nameTag = document.createElement("div");
+  nameTag.className = "player-name";
+  nameTag.textContent = `Player ${id.substring(0, 3)}`;
+  newPlayerElement.appendChild(nameTag);
   
-  newPlayerElement.appendChild(playerAvatar);
+  // Add tool container
+  const toolContainer = document.createElement("div");
+  toolContainer.className = "player-tool-container";
+  toolContainer.innerHTML = '<img src="imgs/pickaxe-basic.svg" alt="Pickaxe" width="24" height="24">';
+  newPlayerElement.appendChild(toolContainer);
   
-  // Position the player
-  newPlayerElement.style.left = `${playerData.x}px`;
-  newPlayerElement.style.top = `${playerData.y}px`;
+  // Position the player - adjust for camera immediately
+  const adjustedX = playerData.x - gameState.camera.x;
+  const adjustedY = playerData.y - gameState.camera.y;
+  
+  newPlayerElement.style.left = `${adjustedX}px`;
+  newPlayerElement.style.top = `${adjustedY}px`;
+  
+  // Set initial direction
+  if (playerData.direction === -1) {
+    newPlayerElement.classList.add("facing-left");
+  }
   
   // Add to game world
   const gameWorld = document.getElementById("game-world");
   gameWorld.appendChild(newPlayerElement);
+  
+  console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
   
   // Store reference
   otherPlayers[id] = {
@@ -267,23 +337,19 @@ function updateOtherPlayerPosition(id, playerData) {
       ...playerData
     };
     
-    // Update DOM position
+    // Update DOM position - adjust for camera
     const playerElement = otherPlayers[id].element;
-    playerElement.style.left = `${playerData.x - gameState.camera.x}px`;
-    playerElement.style.top = `${playerData.y - gameState.camera.y}px`;
+    const adjustedX = playerData.x - gameState.camera.x;
+    const adjustedY = playerData.y - gameState.camera.y;
+    
+    playerElement.style.left = `${adjustedX}px`;
+    playerElement.style.top = `${adjustedY}px`;
     
     // Update direction (facing)
     if (playerData.direction === -1) {
       playerElement.classList.add("facing-left");
     } else {
       playerElement.classList.remove("facing-left");
-    }
-    
-    // Add jumping animation if player is not on ground
-    if (!playerData.onGround) {
-      playerElement.classList.add("jumping");
-    } else {
-      playerElement.classList.remove("jumping");
     }
   }
 }
@@ -297,17 +363,35 @@ function updateOtherPlayerTool(id, toolId) {
     const toolContainer = playerElement.querySelector(".player-tool-container");
     
     // Determine tool image based on toolId
-    let toolImage = "pickaxe-basic";
-    if (toolId.includes("drill")) {
-      toolImage = toolId;
-    } else if (toolId.includes("laser")) {
-      toolImage = "laser";
-    } else {
-      toolImage = toolId;
+    let toolSrc = "imgs/pickaxe-basic.svg";
+    
+    if (toolId && toolId.includes("drill")) {
+      if (toolId.includes("ruby")) {
+        toolSrc = "imgs/drill-ruby.svg";
+      } else if (toolId.includes("diamond")) {
+        toolSrc = "imgs/drill-diamond.svg";
+      } else {
+        toolSrc = "imgs/drill-basic.svg";
+      }
+    } else if (toolId && toolId.includes("laser")) {
+      toolSrc = "imgs/laser.svg";
+    } else if (toolId) {
+      // Different pickaxe styles
+      if (toolId.includes("gold")) {
+        toolSrc = "imgs/pickaxe-gold.svg";
+      } else if (toolId.includes("diamond")) {
+        toolSrc = "imgs/pickaxe-diamond.svg";
+      } else if (toolId.includes("iron")) {
+        toolSrc = "imgs/pickaxe-iron.svg";
+      } else {
+        toolSrc = "imgs/pickaxe-basic.svg";
+      }
     }
     
-    // Update tool visual
-    toolContainer.innerHTML = `<img src="imgs/${toolImage}.svg" alt="Player Tool" class="player-tool" />`;
+    // Update tool visual using the same image sources as the main player
+    toolContainer.innerHTML = `<img src="${toolSrc}" alt="Tool" width="24" height="24">`;
+    
+    console.log(`Updated player ${id} tool to ${toolSrc}`);
   }
 }
 
@@ -336,8 +420,11 @@ export function updateOtherPlayersForCamera() {
     const playerElement = otherPlayers[id].element;
     
     // Adjust position based on camera
-    playerElement.style.left = `${playerData.x - gameState.camera.x}px`;
-    playerElement.style.top = `${playerData.y - gameState.camera.y}px`;
+    const adjustedX = playerData.x - gameState.camera.x;
+    const adjustedY = playerData.y - gameState.camera.y;
+    
+    playerElement.style.left = `${adjustedX}px`;
+    playerElement.style.top = `${adjustedY}px`;
   }
 }
 
