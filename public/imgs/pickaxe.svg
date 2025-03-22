@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  
+  <circle cx="100" cy="100" r="80" fill="none"/>
+  
+  <!-- Handle (wood texture) - SHORTENED -->
+  <path d="M70 130 L130 70" stroke="#8B4513" stroke-width="10" stroke-linecap="round"/>
+  <path d="M72 128 L128 72" stroke="#A0522D" stroke-width="8" stroke-linecap="round"/>
+  <path d="M74 126 L126 74" stroke="#CD853F" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Pickaxe head properly placed at the handle end with larger size -->
+  <g transform="rotate(225, 130, 70)">
+    <!-- Less rounded, more angular pickaxe head -->
+    <path d="M100 60 Q130 90 160 60" stroke="#A8A8A8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    
+    <!-- Metal highlights with less curve -->
+    <path d="M102 62 Q130 88 158 62" stroke="#D8D8D8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <!-- Connection point reinforcement -->
+  <circle cx="130" cy="70" r="8" fill="#8B4513"/>
+  <circle cx="130" cy="70" r="5" fill="#A8A8A8"/>
+  <circle cx="130" cy="70" r="3" fill="#D8D8D8"/>
+</svg>

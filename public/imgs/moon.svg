@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Background (optional) -->
+  <rect width="400" height="400" fill="#000" fill-opacity="0" />
+  
+  <!-- Moon base with gradient -->
+  <defs>
+    <radialGradient id="moonGradient" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+      <stop offset="0%" stop-color="#EEEEE6" />
+      <stop offset="80%" stop-color="#D9D9D0" />
+      <stop offset="100%" stop-color="#BCBCB4" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Main moon circle -->
+  <circle cx="200" cy="200" r="150" fill="url(#moonGradient)" />
+  
+  <!-- Craters -->
+  <circle cx="150" cy="130" r="30" fill="#C9C9C2" stroke="#BCBCB4" stroke-width="1" opacity="0.9" />
+  <circle cx="250" cy="150" r="25" fill="#D0D0C9" stroke="#C0C0B8" stroke-width="1" opacity="0.8" />
+  <circle cx="180" cy="240" r="40" fill="#CFCFC8" stroke="#BDBDB6" stroke-width="1" opacity="0.85" />
+  <circle cx="270" cy="230" r="20" fill="#D2D2CB" stroke="#C2C2BB" stroke-width="1" opacity="0.75" />
+  <circle cx="120" cy="200" r="15" fill="#CDCDC6" stroke="#BDBDB6" stroke-width="1" opacity="0.8" />
+  <circle cx="220" cy="190" r="18" fill="#D4D4CD" stroke="#C4C4BD" stroke-width="1" opacity="0.7" />
+  <circle cx="140" cy="280" r="22" fill="#CECEC7" stroke="#BEBEB7" stroke-width="1" opacity="0.75" />
+  
+  <!-- Subtle overlay to create shadow effect -->
+  <path d="M 350 200 A 150 150 0 0 1 50 200 A 150 150 0 0 1 350 200 Z" fill="#000" opacity="0.1" />
+</svg>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel Miner</title>
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/blocks.css" />
+    <link rel="stylesheet" href="css/shop.css" />
+    <link rel="stylesheet" href="css/crafting.css" />
+    <link rel="stylesheet" href="css/rocket.css" />
+    <link rel="stylesheet" href="css/menu.css" />
+    <link rel="stylesheet" href="css/inventory.css" />
+    <!-- Include Socket.IO client for multiplayer -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="fixed-background"></div>
+      <div id="game-world">
+        <!-- Game stats header -->
+        <div class="game-header">
+          <div id="depth-indicator" class="depth-indicator">
+            Depth: <span id="depth">0</span>m
+          </div>
+        </div>
+
+        <!-- Shop building -->
+        <div class="shop-sign" id="shop-sign">
+          <img src="imgs/shop.svg" alt="Shop Icon" class="shop-icon" />
+        </div>
+
+        <!-- Shop inventory UI -->
+        <div class="shop" id="shop"></div>
+
+        <!-- Info panel -->
+        <div id="info-panel" class="info-panel">
+          <!-- Health Section -->
+          <div id="health-container" class="panel-section">
+            <div id="health-text">
+              <span class="health-value">100</span>
+              <span class="max">/100</span>
+            </div>
+            <div id="health-bar">
+              <div id="health-fill"></div>
+            </div>
+          </div>
+
+          <!-- Jetpack Section -->
+          <div id="jetpack-panel" class="jetpack-panel">
+            <div class="jetpack-header">
+              <div class="jetpack-icon"></div>
+              <span class="jetpack-label">Jetpack</span>
+              <span class="fuel-value"></span>
+            </div>
+            <div class="fuel-gauge">
+              <div class="fuel-level" id="fuel-level-fill"></div>
+            </div>
+          </div>
+
+          <!-- Inventory Section -->
+          <div id="inventory-info">
+            <div id="money-display" class="status-item">
+              <span class="money-icon">💰</span>
+              <span id="money">0</span>
+            </div>
+            <div id="bomb-display" class="status-item">
+              <span class="bomb-icon">💣</span>
+              <span id="bomb-count">0</span>
+            </div>
+            <div class="bag-capacity" id="bag-capacity">
+              <span class="bag-icon">🎒</span>
+              <span id="bag-current">0</span>/<span id="bag-max"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Crafting Station with Interaction Hint -->
+        <div id="crafting-station" class="crafting-station">
+          <img src="imgs/craftingHouse.svg" alt="Crafting Station" class="crafting-icon" />
+        </div>
+
+        <!-- Crafting Menu Container -->
+        <div id="crafting-container">
+          <div class="crafting-menu">
+            <!-- Header -->
+            <div class="crafting-menu-header">
+              <h2>Crafting Station</h2>
+              <div id="crafting-close" class="close-button">&times;</div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <ul class="crafting-tabs">
+              <li>
+                <button class="tab-btn active" data-tab="pickaxes">
+                  <span class="tab-btn-icon">⛏️</span>Pickaxes
+                </button>
+              </li>
+              <li>
+                <button class="tab-btn" data-tab="drills">
+                  <span class="tab-btn-icon">🪛</span>Drills
+                </button>
+              </li>
+              <li>
+                <button class="tab-btn" data-tab="lasers">
+                  <span class="tab-btn-icon">⚡</span>Lasers
+                </button>
+              </li>
+              <li>
+                <button class="tab-btn" data-tab="equipment">
+                  <span class="tab-btn-icon">🛡️</span>Equipment
+                </button>
+              </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="crafting-menu-content">
+              <div id="pickaxes-tab" class="tab-content active">
+                <div id="pickaxes-list" class="crafting-list">
+                  <!-- Pickaxe items will be populated here by JS -->
+                </div>
+              </div>
+              <div id="drills-tab" class="tab-content">
+                <div id="drills-list" class="crafting-list">
+                  <!-- Drill items will be populated here by JS -->
+                </div>
+              </div>
+              <div id="lasers-tab" class="tab-content">
+                <div id="lasers-list" class="crafting-list">
+                  <!-- Laser items will be populated here by JS -->
+                </div>
+              </div>
+              <div id="equipment-tab" class="tab-content">
+                <div id="equipment-list" class="crafting-list">
+                  <!-- Equipment items (like boots) will be populated here by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sell Modal -->
+      <div id="sell-modal" class="modal">
+        <div class="modal-content">
+          <button class="modal-close" id="sell-modal-close">&times;</button>
+          <h2>Sell Ores</h2>
+          <div id="sell-options" class="sell-options"></div>
+        </div>
+      </div>
+
+      <!-- Pause Menu -->
+      <div id="game-menu" class="game-menu">
+        <div class="menu-content">
+          <h2>Game Menu</h2>
+          <button id="resume-button" class="menu-button">Resume Game</button>
+          <button id="save-button" class="menu-button">Save Game</button>
+          <button id="delete-save-button" class="menu-button">Delete Save</button>
+          <button id="in-game-options-button" class="menu-button">Options</button>
+          <button id="respawn-button" class="menu-button">Respawn at Top</button>
+        </div>
+        <!-- In-game Options Panel -->
+        <div id="in-game-options" class="options-container" style="display: none;">
+          <h2 class="options-title">Options</h2>
+          <div class="options-section">
+            <h3 class="options-section-title">Audio Settings</h3>
+            <div class="volume-control">
+              <span class="volume-label">Music</span>
+              <input type="range" min="0" max="100" value="100" class="volume-slider" id="in-game-music-volume" />
+              <span class="volume-value" id="in-game-music-volume-value">100%</span>
+            </div>
+            <div class="volume-control">
+              <span class="volume-label">Sound Effects</span>
+              <input type="range" min="0" max="100" value="100" class="volume-slider" id="in-game-sfx-volume" />
+              <span class="volume-value" id="in-game-sfx-volume-value">100%</span>
+            </div>
+            <div class="mute-control">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="in-game-mute-all" class="custom-checkbox" />
+              </div>
+              <label for="in-game-mute-all" class="mute-label">Mute All Audio</label>
+            </div>
+          </div>
+          <button id="back-to-pause-menu" class="back-button">Back to Menu</button>
+        </div>
+      </div>
+
+      <!-- Main Menu Overlay -->
+      <div id="main-menu-overlay" class="menu-container">
+        <div class="menu-header">
+          <img src="imgs/game-logo.png" alt="Pixel Miner" class="game-logo" />
+        </div>
+        <div class="menu-buttons">
+          <button id="start-new-game" class="main-menu-button">Start New Game</button>
+          <button id="load-game" class="main-menu-button">Continue</button>
+          <button id="join-game" class="main-menu-button">Join Game</button>
+          <button id="host-game" class="main-menu-button">Host Game</button>
+          <button id="game-options" class="main-menu-button">Options</button>
+        </div>
+        <div class="menu-footer">
+          <p>v1.0.0 &copy; 2025 - Your Studio Name</p>
+        </div>
+      </div>
+
+      <!-- Options Modal -->
+      <div id="options-modal" class="modal">
+        <div class="modal-content">
+          <h2>Options</h2>
+          <div class="options-section">
+            <h3>Audio Settings</h3>
+            <div class="volume-control">
+              <span class="volume-label">Music</span>
+              <input type="range" id="music-volume" min="0" max="100" value="100" />
+              <span class="volume-value" id="music-volume-value">100%</span>
+            </div>
+            <div class="volume-control">
+              <span class="volume-label">Sound Effects</span>
+              <input type="range" id="sfx-volume" min="0" max="100" value="100" />
+              <span class="volume-value" id="sfx-volume-value">100%</span>
+            </div>
+            <div class="mute-control">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="mute-all" class="custom-checkbox" />
+              </div>
+              <label for="mute-all" class="mute-label">Mute All Audio</label>
+            </div>
+          </div>
+          <button id="back-to-menu" class="back-button">Back to Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

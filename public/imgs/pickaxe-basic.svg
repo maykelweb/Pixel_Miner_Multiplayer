@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  
+  <!-- BASIC/STONE PICKAXE -->
+  <g transform="translate(0, 0)">
+    <!-- Handle (wood texture) -->
+    <path d="M70 130 L130 70" stroke="#8B4513" stroke-width="10" stroke-linecap="round"/>
+    <path d="M72 128 L128 72" stroke="#A0522D" stroke-width="8" stroke-linecap="round"/>
+    <path d="M74 126 L126 74" stroke="#CD853F" stroke-width="6" stroke-linecap="round"/>
+    
+    <!-- Pickaxe head -->
+    <g transform="rotate(225, 130, 70)">
+      <path d="M100 60 Q130 90 160 60" stroke="#808080" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M102 62 Q130 88 158 62" stroke="#A9A9A9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    
+    <!-- Connection point reinforcement -->
+    <circle cx="130" cy="70" r="8" fill="#8B4513"/>
+    <circle cx="130" cy="70" r="5" fill="#808080"/>
+    <circle cx="130" cy="70" r="3" fill="#A9A9A9"/>
+    
+     </g>
+</svg>

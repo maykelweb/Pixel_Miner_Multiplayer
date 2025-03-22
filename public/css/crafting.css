@@ -1,0 +1,501 @@
+/* Modern Crafting Menu CSS */
+#crafting-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.crafting-menu {
+  background: linear-gradient(to bottom, #2a2a3a, #1a1a2a);
+  width: 90%;
+  max-width: 700px;
+  max-height: 85%;
+  border: 3px solid #ffd700;
+  border-radius: 12px;
+  overflow-y: auto;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 215, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #ffd700 rgba(0, 0, 0, 0.2);
+}
+
+.crafting-menu::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.crafting-menu::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.crafting-menu::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ffd700, #ff9900);
+  border-radius: 10px;
+}
+
+.crafting-menu-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.crafting-menu-header h2 {
+  font-size: 28px;
+  color: #ffd700;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2);
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.close-button {
+  background: linear-gradient(135deg, #444, #333);
+  color: #ffd700;
+  border: 2px solid #555;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.close-button:hover {
+  background: linear-gradient(135deg, #555, #444);
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Tab navigation */
+.crafting-tabs {
+  display: flex;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+  margin-bottom: 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.tab-btn {
+  background: linear-gradient(to bottom, rgba(60, 60, 80, 0.8), rgba(40, 40, 60, 0.8));
+  color: #acf;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 12px 20px;
+  margin-right: 4px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tab-btn:hover {
+  background: linear-gradient(to bottom, rgba(70, 70, 90, 0.9), rgba(50, 50, 70, 0.9));
+}
+
+.tab-btn:hover::before {
+  opacity: 1;
+}
+
+.tab-btn.active {
+  background: linear-gradient(to bottom, rgba(70, 70, 100, 0.9), rgba(50, 50, 80, 0.9));
+  color: #ffd700;
+  border-bottom: 3px solid #ffd700;
+}
+
+.tab-btn-icon {
+  margin-right: 8px;
+  font-size: 18px;
+  vertical-align: middle;
+}
+
+/* Tab content */
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.crafting-menu-content {
+  width: 100%;
+  padding: 0;
+}
+
+/* Tool type headers in crafting menu */
+.tool-type-header {
+  width: 100%;
+  padding: 10px 15px;
+  margin: 15px 0 12px 0;
+  background: linear-gradient(to right, rgba(255, 215, 0, 0.2), transparent);
+  border-radius: 6px;
+  border-left: 3px solid #ffd700;
+}
+
+.tool-type-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #ffd700;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.5px;
+}
+
+/* Crafting Items Grid */
+.crafting-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-gap: 20px;
+  width: 100%;
+  padding: 10px 0 20px 0;
+}
+
+.crafting-item {
+  background: linear-gradient(
+    to bottom,
+    rgba(60, 60, 80, 0.8),
+    rgba(40, 40, 60, 0.8)
+  );
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(100, 100, 120, 0.5);
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.crafting-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 215, 0, 0.5),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.crafting-item:hover {
+  background: linear-gradient(
+    to bottom,
+    rgba(70, 70, 90, 0.9),
+    rgba(50, 50, 70, 0.9)
+  );
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.crafting-item:hover::before {
+  opacity: 1;
+}
+
+.crafting-item.current {
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+  background: linear-gradient(
+    to bottom,
+    rgba(70, 70, 100, 0.9),
+    rgba(50, 50, 80, 0.9)
+  );
+}
+
+.crafting-item.current::after {
+  content: "✓";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #5cb85c;
+  font-size: 18px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.3);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.crafting-item h3 {
+  font-weight: bold;
+  font-size: 19px;
+  margin: 0 0 12px 0;
+  color: #ffd700;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.crafting-item .item-description {
+  color: #acf;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 0;
+}
+
+.crafting-item .item-stats {
+  color: #d1d5e8;
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Requirements styling */
+.requirements {
+  margin: 15px 0;
+}
+
+.requirements ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.requirements li {
+  background-color: rgba(20, 20, 30, 0.6);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(100, 100, 120, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.requirements li:hover {
+  transform: scale(1.05);
+}
+
+.requirements li.available {
+  color: #5cb85c;
+  border-color: rgba(92, 184, 92, 0.4);
+}
+
+.requirements li.missing {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+/* Button styling */
+.craft-button {
+  background: linear-gradient(to bottom, #5cb85c, #4cae4c);
+  color: white;
+  border: none;
+  padding: 12px;
+  margin-top: auto;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.craft-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.craft-button:hover:not([disabled]) {
+  background: linear-gradient(to bottom, #4cae4c, #3c9e3c);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.craft-button:hover::after {
+  left: 100%;
+}
+
+.craft-button:active:not([disabled]) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.craft-button[disabled] {
+  background: linear-gradient(to bottom, #787878, #666);
+  color: #aaa;
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.equip-button {
+  background: linear-gradient(to bottom, #428bca, #3071a9);
+}
+
+.equip-button:hover:not([disabled]) {
+  background: linear-gradient(to bottom, #3071a9, #204d74);
+}
+
+.crafting-item.unavailable {
+  opacity: 0.6;
+  filter: grayscale(60%);
+  cursor: default;
+}
+
+.crafting-item.crafted:not(.current) {
+  border-left: 3px solid #5cb85c;
+}
+
+/* Animation for crafting items */
+@keyframes crafted {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(92, 184, 92, 0.7);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.item-crafted {
+  animation: crafted 0.6s ease;
+}
+
+.tool-icon {
+  width: 26px;
+  height: 26px;
+  margin-right: 10px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
+}
+
+.pickaxe-icon {
+  background-image: url("../imgs/pickaxe-icon.svg");
+}
+
+.laser-icon {
+  background-image: url("../imgs/laser-icon.svg");
+  filter: drop-shadow(0 0 4px rgba(255, 51, 102, 0.8));
+}
+
+.drill-icon {
+  background-image: url("../imgs/drill-icon.svg");
+}
+
+.equipment-icon {
+  background-image: url("../imgs/boots-icon.svg");
+}
+
+/* Crafting station styles */
+#crafting-station {
+  position: absolute;
+  width: 240px !important;
+  background-size: contain;
+  background-repeat: no-repeat;
+  z-index: 5;
+  pointer-events: none;
+  /*filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));*/
+  transition: transform 0.3s ease;
+  display: none;
+}
+
+.crafting-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Interaction hint for crafting station */
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+
+/* No items placeholder */
+.no-items-placeholder {
+  text-align: center;
+  padding: 30px;
+  color: #acf;
+  font-style: italic;
+  background: rgba(20, 20, 30, 0.4);
+  border-radius: 10px;
+  margin: 20px 0;
+}

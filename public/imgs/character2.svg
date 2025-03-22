@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <defs>
+    <!-- Define a pattern for the pixel grid -->
+    <pattern id="pixel" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="none" stroke="#444" stroke-width="0.5" opacity="0.1"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background grid for reference -->
+  <rect width="240" height="240" fill="url(#pixel)" opacity="0.8"/>
+  
+  <!-- Helmet -->
+  <rect x="90" y="30" width="60" height="40" fill="#555"/>
+  <rect x="80" y="50" width="80" height="20" fill="#444"/>
+  
+  <!-- Helmet light -->
+  <rect x="110" y="40" width="20" height="10" fill="#FFD700"/>
+  <rect x="115" y="30" width="10" height="10" fill="#FFD700"/>
+  
+  <!-- Face -->
+  <rect x="90" y="70" width="60" height="40" fill="#FFCC99"/>
+  
+  <!-- Eyes -->
+  <rect x="100" y="80" width="10" height="10" fill="#222"/>
+  <rect x="130" y="80" width="10" height="10" fill="#222"/>
+  
+  <!-- Mouth -->
+  <rect x="110" y="100" width="20" height="10" fill="#444"/>
+  
+  <!-- Torso -->
+  <rect x="90" y="110" width="60" height="60" fill="#78553B"/>
+  <rect x="80" y="110" width="10" height="60" fill="#544028"/>
+  <rect x="150" y="110" width="10" height="60" fill="#544028"/>
+  
+  <!-- Overalls front pocket -->
+  <rect x="110" y="120" width="20" height="30" fill="#3E6A96"/>
+  <rect x="115" y="130" width="10" height="10" fill="#2C4D6D"/>
+  
+  <!-- Arms -->
+  <rect x="70" y="110" width="20" height="60" fill="#FFCC99"/>
+  <rect x="150" y="110" width="20" height="60" fill="#FFCC99"/>
+  
+  <!-- Gloves -->
+  <rect x="70" y="150" width="20" height="20" fill="#CCCCCC"/>
+  <rect x="150" y="150" width="20" height="20" fill="#CCCCCC"/>
+  
+  <!-- Legs -->
+  <rect x="90" y="170" width="30" height="50" fill="#3E6A96"/>
+  <rect x="120" y="170" width="30" height="50" fill="#3E6A96"/>
+  
+  <!-- Boots -->
+  <rect x="90" y="220" width="30" height="20" fill="#444"/>
+  <rect x="120" y="220" width="30" height="20" fill="#444"/>
+  
+  <!-- Pickaxe - Handle -->
+  <rect x="50" y="140" width="40" height="10" fill="#8B4513"/>
+  
+  <!-- Pickaxe - Head -->
+  <rect x="30" y="130" width="20" height="10" fill="#999999"/>
+  <rect x="40" y="120" width="10" height="10" fill="#999999"/>
+  <rect x="40" y="150" width="10" height="10" fill="#999999"/>
+  <rect x="30" y="160" width="20" height="10" fill="#999999"/>
+</svg>

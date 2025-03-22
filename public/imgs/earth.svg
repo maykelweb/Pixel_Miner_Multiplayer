@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  
+  <!-- Earth base with oceanic gradient -->
+  <circle cx="150" cy="150" r="100" fill="url(#oceanGradient)" />
+  
+  <!-- Continents with terrain gradient -->
+  <g fill="url(#terrainGradient)">
+    <!-- Stylized continent shapes -->
+    <!-- North America -->
+    <path d="M 100 70 Q 80 90, 70 110 Q 80 130, 100 140 Q 120 130, 130 110 Q 125 90, 100 70" />
+    
+    <!-- South America -->
+    <path d="M 110 150 Q 95 170, 105 190 Q 125 205, 140 185 Q 130 165, 110 150" />
+    
+    <!-- Europe -->
+    <path d="M 150 80 Q 165 70, 180 80 Q 190 95, 175 105 Q 160 100, 150 80" />
+    
+    <!-- Africa -->
+    <path d="M 160 110 Q 180 120, 195 140 Q 190 170, 160 180 Q 140 160, 150 130 Q 155 115, 160 110" />
+    
+    <!-- Australia -->
+    <path d="M 210 180 Q 230 175, 240 190 Q 235 205, 215 205 Q 200 195, 210 180" />
+    
+    <!-- Antarctica -->
+    <path d="M 130 220 Q 150 230, 180 225 Q 200 215, 170 205 Q 150 200, 130 220" />
+  </g>
+  
+  <!-- Cloud shadows (subtle) -->
+  <g fill="#000000" opacity="0.05">
+    <!-- Shadow for North Atlantic Cloud -->
+    <path d="M 115 105 
+             C 118 100, 125 103, 128 105 
+             C 132 100, 138 100, 140 103 
+             C 143 100, 147 102, 147 107
+             C 150 105, 152 107, 150 110
+             C 152 112, 150 115, 147 113
+             C 146 116, 142 118, 138 115
+             C 135 117, 130 115, 128 112
+             C 125 115, 120 114, 118 110
+             C 115 112, 112 110, 112 107
+             C 110 109, 109 104, 112 101" 
+             transform="translate(2, 2)" />
+             
+    <!-- Shadow for North Pacific Cloud -->
+    <path d="M 70 130 
+             C 72 127, 77 128, 80 130 
+             C 83 127, 86 127, 89 129 
+             C 91 127, 94 129, 93 132
+             C 95 131, 96 133, 95 135
+             C 96 137, 94 139, 92 138
+             C 92 140, 89 141, 86 139
+             C 84 140, 82 139, 81 136
+             C 78 138, 75 137, 74 134
+             C 71 136, 70 133, 71 130" 
+             transform="translate(2, 2)" />
+             
+    <!-- Shadow for Indian Ocean Cloud -->
+    <path d="M 190 150 
+             C 193 146, 200 149, 203 150 
+             C 207 146, 213 146, 215 150 
+             C 218 146, 223 149, 223 153
+             C 226 151, 228 154, 226 156
+             C 228 158, 226 161, 223 159
+             C 222 162, 218 164, 214 161
+             C 211 163, 206 161, 204 158
+             C 201 160, 196 159, 194 156
+             C 191 158, 188 155, 188 153" 
+             transform="translate(2, 2)" />
+  </g>
+  
+  <!-- Cloud patterns -->
+  <g>
+    <!-- North Atlantic Cloud - between North America and Europe -->
+    <path d="M 115 105 
+             C 118 100, 125 103, 128 105 
+             C 132 100, 138 100, 140 103 
+             C 143 100, 147 102, 147 107
+             C 150 105, 152 107, 150 110
+             C 152 112, 150 115, 147 113
+             C 146 116, 142 118, 138 115
+             C 135 117, 130 115, 128 112
+             C 125 115, 120 114, 118 110
+             C 115 112, 112 110, 112 107
+             C 110 109, 109 104, 112 101" 
+             fill="url(#cloudGradient1)" />
+             
+    <!-- North Pacific Cloud - near west coast of North America -->
+    <path d="M 70 130 
+             C 72 127, 77 128, 80 130 
+             C 83 127, 86 127, 89 129 
+             C 91 127, 94 129, 93 132
+             C 95 131, 96 133, 95 135
+             C 96 137, 94 139, 92 138
+             C 92 140, 89 141, 86 139
+             C 84 140, 82 139, 81 136
+             C 78 138, 75 137, 74 134
+             C 71 136, 70 133, 71 130" 
+             fill="url(#cloudGradient2)" />
+             
+    <!-- Indian Ocean Cloud - between Africa and Australia -->
+    <path d="M 190 150 
+             C 193 146, 200 149, 203 150 
+             C 207 146, 213 146, 215 150 
+             C 218 146, 223 149, 223 153
+             C 226 151, 228 154, 226 156
+             C 228 158, 226 161, 223 159
+             C 222 162, 218 164, 214 161
+             C 211 163, 206 161, 204 158
+             C 201 160, 196 159, 194 156
+             C 191 158, 188 155, 188 153" 
+             fill="url(#cloudGradient3)" />
+             
+    <!-- Small Equatorial Cloud - Central Pacific -->
+    <path d="M 110 165
+             C 112 163, 115 164, 118 165
+             C 120 163, 123 164, 123 166
+             C 125 165, 127 167, 126 169
+             C 127 171, 125 173, 123 172
+             C 122 174, 120 173, 118 171
+             C 116 173, 114 171, 113 169
+             C 110 170, 109 167, 110 165"
+             fill="url(#cloudGradient1)" />
+             
+    <!-- Northern Europe Cloud System -->
+    <path d="M 155 95
+             C 157 92, 162 93, 165 95
+             C 168 92, 171 92, 174 94
+             C 176 92, 179 94, 178 97
+             C 180 96, 181 98, 180 100
+             C 181 102, 179 104, 177 103
+             C 177 105, 174 106, 171 104
+             C 169 105, 167 104, 166 101
+             C 163 103, 160 102, 159 99
+             C 156 101, 155 98, 156 95"
+             fill="url(#cloudGradient2)" />
+  </g>
+  
+  <!-- Wispy clouds -->
+  <g opacity="0.7">
+    <!-- South Pacific wispy cloud -->
+    <path d="M 170 185
+             C 173 183, 178 186, 180 184
+             C 183 183, 186 186, 184 188
+             C 186 190, 182 192, 180 190
+             C 177 191, 173 188, 170 185"
+             fill="url(#wispyCloudGradient)" />
+             
+    <!-- North Pacific wispy cloud -->
+    <path d="M 80 100
+             C 83 98, 88 101, 90 99
+             C 93 98, 96 101, 94 103
+             C 96 105, 92 107, 90 105
+             C 87 106, 83 103, 80 100"
+             fill="url(#wispyCloudGradient)" />
+             
+    <!-- South Atlantic wispy cloud -->
+    <path d="M 130 195
+             C 133 193, 138 196, 140 194
+             C 143 193, 146 196, 144 198
+             C 146 200, 142 202, 140 200
+             C 137 201, 133 198, 130 195"
+             fill="url(#wispyCloudGradient)" />
+  </g>
+  
+  <!-- Cloud highlights -->
+  <g opacity="0.5">
+    <!-- North Atlantic highlight -->
+    <path d="M 120 103
+             C 125 100, 130 102, 133 104"
+             fill="white" />
+             
+    <!-- North Pacific highlight -->
+    <path d="M 75 128
+             C 80 126, 85 127, 87 129"
+             fill="white" />
+             
+    <!-- Indian Ocean highlight -->
+    <path d="M 200 148
+             C 205 145, 210 146, 213 149"
+             fill="white" />
+  </g>
+  
+  <!-- Atmospheric glow -->
+  <circle cx="150" cy="150" r="100" fill="url(#atmosphereGlow)" opacity="0.3" />
+  
+  <!-- Gradients definition -->
+  <defs>
+    <radialGradient id="atmosphereGlow" cx="150" cy="150" r="120" gradientUnits="userSpaceOnUse">
+      <stop offset="70%" stop-color="#4b8ae0" stop-opacity="0" />
+      <stop offset="85%" stop-color="#5c96e8" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#6ca3f0" stop-opacity="0.4" />
+    </radialGradient>
+    
+    <linearGradient id="oceanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a4ba0" />
+      <stop offset="50%" stop-color="#2968c8" />
+      <stop offset="100%" stop-color="#1e55b1" />
+    </linearGradient>
+    
+    <linearGradient id="terrainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#37a237" />
+      <stop offset="50%" stop-color="#4cba4c" />
+      <stop offset="100%" stop-color="#2e8b2e" />
+    </linearGradient>
+    
+    <radialGradient id="cloudGradient1" cx="50%" cy="50%" r="70%" fx="40%" fy="40%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="70%" stop-color="#f8f8f8" />
+      <stop offset="100%" stop-color="#f0f0f0" />
+    </radialGradient>
+    
+    <radialGradient id="cloudGradient2" cx="50%" cy="50%" r="70%" fx="40%" fy="40%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="75%" stop-color="#f5f5f5" />
+      <stop offset="100%" stop-color="#eeeeee" />
+    </radialGradient>
+    
+    <radialGradient id="cloudGradient3" cx="50%" cy="50%" r="70%" fx="40%" fy="40%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="80%" stop-color="#f8f8f8" />
+      <stop offset="100%" stop-color="#f0f0f0" />
+    </radialGradient>
+    
+    <linearGradient id="wispyCloudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f0f0f0" />
+    </linearGradient>
+  </defs>
+</svg>

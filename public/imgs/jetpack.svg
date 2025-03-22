@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
+  <!-- Main jetpack body -->
+  <rect x="70" y="120" width="60" height="80" rx="5" fill="#555"/>
+  
+  <!-- Thrusters -->
+  <rect x="75" y="200" width="20" height="15" rx="3" fill="#666"/>
+  <rect x="105" y="200" width="20" height="15" rx="3" fill="#666"/>
+  
+  <!-- Flames -->
+  <path d="M80 215 L85 230 L90 215" fill="#f62">
+    <animate attributeName="d" values="M80 215 L85 230 L90 215; M80 215 L85 235 L90 215; M80 215 L85 230 L90 215" dur="0.5s" repeatCount="indefinite"/>
+  </path>
+  <path d="M110 215 L115 230 L120 215" fill="#f62">
+    <animate attributeName="d" values="M110 215 L115 230 L120 215; M110 215 L115 235 L120 215; M110 215 L115 230 L120 215" dur="0.6s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- One simple control button -->
+  <circle cx="100" cy="140" r="5" fill="#c22"/>
+</svg>

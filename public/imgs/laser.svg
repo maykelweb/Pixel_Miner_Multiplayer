@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="165 0 400 200">
+  
+  <!-- Drill body - main section -->
+  <rect x="270" y="80" width="80" height="40" rx="5" fill="#555555" stroke="#333333" stroke-width="2"/>
+  
+  <!-- Drill body - back handle section -->
+  <rect x="350" y="85" width="30" height="30" rx="3" fill="#444444" stroke="#333333" stroke-width="2"/>
+  
+  <!-- Front section with laser emitter -->
+  <path d="M 270 80 L 260 85 L 260 115 L 270 120 Z" fill="#666666" stroke="#333333" stroke-width="2"/>
+  
+  <!-- Laser emitter core -->
+  <circle cx="270" cy="100" r="8" fill="#ff0066"/>
+  <circle cx="270" cy="100" r="3" fill="#ffffff"/>
+  
+  <!-- Energy pods/cells on top -->
+  <rect x="325" y="75" width="15" height="10" rx="2" fill="#00ccff" stroke="#0099cc" stroke-width="1"/>
+  <rect x="285" y="75" width="15" height="10" rx="2" fill="#00ccff" stroke="#0099cc" stroke-width="1"/>
+  
+  <!-- Control panel -->
+  <rect x="300" y="90" width="20" height="20" rx="2" fill="#333333" stroke="#222222" stroke-width="1"/>
+  <circle cx="310" cy="100" r="4" fill="#ff0000"/>
+</svg>

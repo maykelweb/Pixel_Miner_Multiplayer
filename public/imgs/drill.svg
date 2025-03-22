@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+<!-- Diamond Drill -->
+  
+  <!-- Power Drill -->
+  <g transform="translate(0, 0)">
+    <!-- Main Body/Motor Section -->
+    <rect x="70" y="30" width="60" height="40" rx="5" fill="#888888" stroke="#555555" stroke-width="2"/>
+    <rect x="75" y="35" width="50" height="30" rx="3" fill="#777777" stroke-width="0"/>
+    <!-- Vent Lines -->
+    <line x1="80" y1="40" x2="95" y2="40" stroke="#555555" stroke-width="2"/>
+    <line x1="80" y1="45" x2="95" y2="45" stroke="#555555" stroke-width="2"/>
+    <line x1="80" y1="50" x2="95" y2="50" stroke="#555555" stroke-width="2"/>
+    <line x1="80" y1="55" x2="95" y2="55" stroke="#555555" stroke-width="2"/>
+    <!-- Power Button -->
+    <circle cx="110" cy="45" r="5" fill="#cc0000" stroke="#aa0000" stroke-width="1"/>
+    <circle cx="110" cy="45" r="2" fill="#ff3333" stroke-width="0"/>
+    <!-- Connector -->
+    <rect x="130" y="35" width="10" height="30" fill="#777777" stroke="#555555" stroke-width="2"/>
+    <!-- Drill Bit Base -->
+    <polygon points="140,35 165,25 165,75 140,65" fill="#999999" stroke="#777777" stroke-width="2"/>
+    <!-- Power Drill Bit - Red -->
+    <polygon points="165,25 190,50 165,75" fill="#D93636" stroke="#B52424" stroke-width="2"/>
+    <!-- Drill Bit Details -->
+    <line x1="170" y1="35" x2="180" y2="50" stroke="#B52424" stroke-width="2"/>
+    <line x1="170" y1="65" x2="180" y2="50" stroke="#B52424" stroke-width="2"/>
+    <!-- Highlight on Drill Bit -->
+    <polygon points="165,40 175,50 165,60" fill="#FFFFFF" fill-opacity="0.25" stroke-width="0"/>
+  </g>
+</svg>

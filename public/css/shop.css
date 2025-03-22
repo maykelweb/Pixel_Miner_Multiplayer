@@ -1,0 +1,595 @@
+/* Modern Shop CSS */
+.shop-sign {
+  position: absolute;
+  top: 100px;
+  transition: transform 0.3s ease;
+  /*filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));*/
+  z-index: 10;
+  display: none;
+}
+
+.shop-sign img {
+  width: 150px;
+  height: 150px;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1);
+  }
+  100% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+.shop {
+  width: 90%;
+  height: auto;
+  max-width: 700px;
+  max-height: 85%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(to bottom, #2a2a3a, #1a1a2a);
+  border: 3px solid #ffd700;
+  border-radius: 12px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  z-index: 110;
+  padding: 20px;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 215, 0, 0.3);
+  overflow-y: auto;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ffd700 rgba(0, 0, 0, 0.2);
+}
+
+.shop::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.shop::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.shop::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ffd700, #ff9900);
+  border-radius: 10px;
+}
+
+.shop-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.shop-title {
+  font-size: 28px;
+  color: #ffd700;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2);
+  letter-spacing: 1px;
+}
+
+.shop-close {
+  background: linear-gradient(135deg, #444, #333);
+  color: #ffd700;
+  border: 2px solid #555;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.shop-close:hover {
+  background: linear-gradient(135deg, #555, #444);
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.shop-sell-button {
+  background: linear-gradient(to bottom, #5cb85c, #4cae4c);
+  color: white;
+  border: none;
+  padding: 14px;
+  margin: 0 0 20px 0;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-sell-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.shop-sell-button:hover {
+  background: linear-gradient(to bottom, #4cae4c, #3c9e3c);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.shop-sell-button:hover::after {
+  left: 100%;
+}
+
+.shop-sell-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.shop-sell-button svg {
+  margin-right: 10px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+.shop-items-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-gap: 20px;
+  width: 100%;
+  padding: 10px 0 20px 0;
+}
+
+.shop-item {
+  background: linear-gradient(
+    to bottom,
+    rgba(60, 60, 80, 0.8),
+    rgba(40, 40, 60, 0.8)
+  );
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(100, 100, 120, 0.5);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 215, 0, 0.5),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.shop-item:hover {
+  background: linear-gradient(
+    to bottom,
+    rgba(70, 70, 90, 0.9),
+    rgba(50, 50, 70, 0.9)
+  );
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.shop-item:hover::before {
+  opacity: 1;
+}
+
+.shop-item.disabled {
+  opacity: 0.6;
+  filter: grayscale(60%);
+  cursor: pointer;
+  pointer-events: default;
+}
+
+.shop-item-title {
+  font-weight: bold;
+  font-size: 19px;
+  margin: 0 0 12px 0;
+  color: #ffd700;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.shop-item-desc {
+  color: #ddd;
+  font-size: 15px;
+  margin-bottom: 16px;
+  flex-grow: 1;
+  line-height: 1.4;
+}
+
+.shop-item-price {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.1));
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 16px;
+  color: #5cb85c;
+  align-self: flex-end;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(92, 184, 92, 0.3);
+  transition: all 0.2s ease;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.shop-item:hover .shop-item-price {
+  transform: scale(1.05);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.shop-item-price.expensive {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+/* Animation for purchased items */
+@keyframes purchased {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(92, 184, 92, 0.7);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.item-purchased {
+  animation: purchased 0.6s ease;
+}
+
+/* Sell Modal Styling */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background: linear-gradient(to bottom, #2a2a3a, #1a1a2a);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  border: 3px solid #ffd700;
+  border-radius: 12px;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 215, 0, 0.3);
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: #ffd700 rgba(0, 0, 0, 0.2);
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ffd700, #ff9900);
+  border-radius: 10px;
+}
+
+.modal-close {
+  background: linear-gradient(135deg, #444, #333);
+  color: #ffd700;
+  border: 2px solid #555;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.modal-close:hover {
+  background: linear-gradient(135deg, #555, #444);
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.modal-content h2 {
+  font-size: 24px;
+  color: #ffd700;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2);
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+  letter-spacing: 1px;
+}
+
+.sell-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 10px;
+}
+
+.sell-option {
+  background: linear-gradient(
+    to right,
+    rgba(50, 50, 70, 0.8),
+    rgba(40, 40, 60, 0.8)
+  );
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(100, 100, 120, 0.4);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sell-option:hover {
+  background: linear-gradient(
+    to right,
+    rgba(60, 60, 80, 0.9),
+    rgba(50, 50, 70, 0.9)
+  );
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.sell-all-option {
+  background: linear-gradient(
+    to right,
+    rgba(60, 80, 60, 0.8),
+    rgba(50, 70, 50, 0.8)
+  );
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 16px;
+  margin-bottom: 8px;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(92, 184, 92, 0.3);
+}
+
+.sell-all-option:hover {
+  background: linear-gradient(
+    to right,
+    rgba(70, 90, 70, 0.9),
+    rgba(60, 80, 60, 0.9)
+  );
+  border-color: rgba(92, 184, 92, 0.5);
+}
+
+.sell-option-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sell-ore-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* Add color classes for different ore types */
+.sell-ore-icon.iron {
+  background-color: #a19d94;
+}
+
+.sell-ore-icon.gold {
+  background-color: #ffd700;
+}
+
+.sell-ore-icon.diamond {
+  background-color: #b9f2ff;
+}
+
+.sell-ore-icon.coal {
+  background-color: #333;
+}
+
+.sell-ore-icon.copper {
+  background-color: #b87333;
+}
+
+.sell-ore-name {
+  font-weight: bold;
+  color: #fff;
+  font-size: 16px;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+.sell-ore-count {
+  color: #ccc;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.sell-option-price {
+  color: #5cb85c;
+  font-weight: bold;
+  font-size: 18px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(92, 184, 92, 0.3);
+}
+
+.empty-inventory-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  color: #aaa;
+  text-align: center;
+  gap: 15px;
+}
+
+.empty-inventory-message svg {
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+
+.empty-inventory-message p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Additional animations for selling ores */
+@keyframes sold {
+  0% {
+    background: linear-gradient(
+      to right,
+      rgba(50, 50, 70, 0.8),
+      rgba(40, 40, 60, 0.8)
+    );
+    transform: scale(1);
+  }
+  50% {
+    background: linear-gradient(
+      to right,
+      rgba(60, 120, 60, 0.9),
+      rgba(40, 100, 40, 0.9)
+    );
+    transform: scale(1.03);
+    box-shadow: 0 0 15px rgba(92, 184, 92, 0.7);
+  }
+  100% {
+    background: linear-gradient(
+      to right,
+      rgba(50, 50, 70, 0.8),
+      rgba(40, 40, 60, 0.8)
+    );
+    transform: scale(1);
+  }
+}
+
+.sell-option.sold {
+  animation: sold 0.4s ease;
+}
+
+/* Money animation for both shop and crafting */
+@keyframes money-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60px);
+  }
+}
+
+.money-animation {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  color: #5cb85c;
+  font-size: 24px;
+  font-weight: bold;
+  pointer-events: none;
+  z-index: 2000;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.6), 0 0 5px rgba(0, 0, 0, 0.9);
+  animation: money-float 1.5s ease-out forwards;
+}
+
+/* Modal opening animation */
+@keyframes modal-open {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-content {
+  animation: modal-open 0.3s ease-out forwards;
+}

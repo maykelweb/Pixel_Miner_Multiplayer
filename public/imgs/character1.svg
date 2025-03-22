@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <!-- Head & Helmet -->
+  <ellipse cx="120" cy="70" rx="40" ry="45" fill="#FFCC99" />
+  
+  <!-- Mining Helmet -->
+  <path d="M80 70 C80 40, 160 40, 160 70" fill="#555" />
+  <path d="M75 70 C75 90, 165 90, 165 70" fill="#444" />
+  <rect x="75" y="70" width="90" height="10" fill="#444" />
+  
+  <!-- Helmet Light -->
+  <ellipse cx="120" cy="45" rx="12" ry="8" fill="#FFD700" />
+  <ellipse cx="120" cy="45" rx="8" ry="5" fill="#FFFF33" />
+  <path d="M120 53 L120 40 L125 35 L115 35 Z" fill="#FFD700" />
+  
+  <!-- Face Features -->
+  <ellipse cx="105" cy="75" rx="5" ry="6" fill="#222" />
+  <ellipse cx="135" cy="75" rx="5" ry="6" fill="#222" />
+  
+  <!-- White of eyes -->
+  <ellipse cx="105" cy="74" rx="2" ry="2" fill="white" />
+  <ellipse cx="135" cy="74" rx="2" ry="2" fill="white" />
+  
+  <!-- Eyebrows -->
+  <path d="M95 65 C100 60, 110 60, 115 65" fill="none" stroke="#222" stroke-width="2" />
+  <path d="M125 65 C130 60, 140 60, 145 65" fill="none" stroke="#222" stroke-width="2" />
+  
+  <!-- Mouth -->
+  <path d="M110 95 C115 100, 125 100, 130 95" fill="none" stroke="#222" stroke-width="2" />
+  
+  <!-- Neck -->
+  <path d="M110 115 C110 105, 130 105, 130 115" fill="#FFCC99" />
+  
+  <!-- Torso -->
+  <path d="M90 180 C90 130, 150 130, 150 180" fill="#78553B" />
+  
+  <!-- Overalls -->
+  <path d="M90 180 C90 140, 150 140, 150 180" fill="#3E6A96" />
+  <path d="M100 140 L100 180 L140 180 L140 140 C135 145, 105 145, 100 140 Z" fill="#2C4D6D" />
+  
+  <!-- Overall Straps -->
+  <path d="M105 140 L105 115 L115 115" fill="none" stroke="#3E6A96" stroke-width="5" />
+  <path d="M135 140 L135 115 L125 115" fill="none" stroke="#3E6A96" stroke-width="5" />
+  
+  <!-- Pocket -->
+  <rect x="115" y="150" width="10" height="15" rx="2" ry="2" fill="#2C4D6D" />
+  
+  <!-- Arms -->
+  <path d="M90 130 C80 135, 70 160, 65 180" fill="none" stroke="#FFCC99" stroke-width="15" stroke-linecap="round" />
+  <path d="M150 130 C160 135, 170 160, 175 180" fill="none" stroke="#FFCC99" stroke-width="15" stroke-linecap="round" />
+  
+  <!-- Gloves -->
+  <ellipse cx="65" cy="180" rx="10" ry="12" fill="#CCCCCC" />
+  <ellipse cx="175" cy="180" rx="10" ry="12" fill="#CCCCCC" />
+  
+  <!-- Legs -->
+  <path d="M100 180 L95 220" fill="none" stroke="#3E6A96" stroke-width="20" stroke-linecap="round" />
+  <path d="M140 180 L145 220" fill="none" stroke="#3E6A96" stroke-width="20" stroke-linecap="round" />
+  
+  <!-- Boots -->
+  <ellipse cx="95" cy="225" rx="12" ry="8" fill="#444" />
+  <path d="M95 220 L85 225 L95 230 L105 225 Z" fill="#444" />
+  
+  <ellipse cx="145" cy="225" rx="12" ry="8" fill="#444" />
+  <path d="M145 220 L135 225 L145 230 L155 225 Z" fill="#444" />
+  
+  <!-- Belt -->
+  <path d="M100 160 L140 160" fill="none" stroke="#555" stroke-width="5" />
+  <rect x="115" y="155" width="10" height="10" rx="2" ry="2" fill="#888" />
+</svg>

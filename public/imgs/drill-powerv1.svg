@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+  <!-- Main Body/Motor Section - Powerful -->
+  <rect x="70" y="25" width="70" height="50" rx="8" fill="#e63900" stroke="#aa2800" stroke-width="2"/>
+  <rect x="75" y="30" width="60" height="40" rx="5" fill="#ff4500" stroke-width="0"/>
+  
+  <!-- Enhanced Vent Lines -->
+  <line x1="80" y1="35" x2="100" y2="35" stroke="#aa2800" stroke-width="2"/>
+  <line x1="80" y1="40" x2="100" y2="40" stroke="#aa2800" stroke-width="2"/>
+  <line x1="80" y1="45" x2="100" y2="45" stroke="#aa2800" stroke-width="2"/>
+  <line x1="80" y1="50" x2="100" y2="50" stroke="#aa2800" stroke-width="2"/>
+  <line x1="80" y1="55" x2="100" y2="55" stroke="#aa2800" stroke-width="2"/>
+  <line x1="80" y1="60" x2="100" y2="60" stroke="#aa2800" stroke-width="2"/>
+  
+  <!-- Power Button -->
+  <circle cx="115" cy="40" r="6" fill="#00cc00" stroke="#008800" stroke-width="1"/>
+  <circle cx="115" cy="40" r="3" fill="#33ff33" stroke-width="0"/>
+  
+  <!-- Speed Control Dial -->
+  <circle cx="115" cy="60" r="5" fill="#555555" stroke="#333333" stroke-width="1"/>
+  <line x1="115" y1="60" x2="115" y2="56" stroke="#ffffff" stroke-width="1.5"/>
+  
+  <!-- Battery Level Indicator -->
+  <rect x="130" y="30" width="10" height="15" rx="1" fill="#333333" stroke="#222222" stroke-width="1"/>
+  <rect x="132" y="32" width="6" height="3" fill="#00ff00" stroke-width="0"/>
+  <rect x="132" y="36" width="6" height="3" fill="#00ff00" stroke-width="0"/>
+  <rect x="132" y="40" width="6" height="3" fill="#00ff00" stroke-width="0"/>
+  
+  <!-- Robust Connector -->
+  <rect x="140" y="32" width="14" height="36" fill="#666666" stroke="#444444" stroke-width="2"/>
+  
+  <!-- Drill Bit Base - Larger -->
+  <polygon points="154,32 170,22 170,78 154,68" fill="#777777" stroke="#555555" stroke-width="2"/>
+  
+  <!-- Heavy-Duty Drill Bit -->
+  <polygon points="170,22 195,50 170,78" fill="#bbbbbb" stroke="#888888" stroke-width="2"/>
+  
+  <!-- Drill Bit Details with Spiral Pattern -->
+  <path d="M175,30 Q180,40 185,50 Q180,60 175,70" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round"/>
+  <path d="M178,35 Q183,45 188,50 Q183,55 178,65" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Highlight on Drill Bit -->
+  <polygon points="170,40 180,50 170,60" fill="#FFFFFF" fill-opacity="0.2" stroke-width="0"/>
+</svg>

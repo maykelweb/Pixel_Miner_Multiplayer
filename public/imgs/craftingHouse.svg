@@ -1,0 +1,85 @@
+<svg viewBox="0 0 300 250" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient sky -->
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8CC6DE" />
+      <stop offset="100%" stop-color="#C2E5F2" />
+    </linearGradient>
+    
+    <!-- Wood grain pattern -->
+    <pattern id="woodGrain" patternUnits="userSpaceOnUse" width="100" height="50" patternTransform="rotate(0)">
+      <rect width="100" height="50" fill="#A67C52" />
+      <path d="M0 0h100v50H0z" fill="none" stroke="#8B6B3E" stroke-width="1.5" stroke-dasharray="10,8,15,4,20" />
+      <path d="M0 25h100" fill="none" stroke="#8B6B3E" stroke-width="0.7" stroke-dasharray="15,12,8,17" />
+    </pattern>
+    
+    <!-- Darker wood grain pattern -->
+    <pattern id="darkWoodGrain" patternUnits="userSpaceOnUse" width="100" height="50" patternTransform="rotate(0)">
+      <rect width="100" height="50" fill="#7D5A3C" />
+      <path d="M0 0h100v50H0z" fill="none" stroke="#5E4330" stroke-width="1.5" stroke-dasharray="10,8,15,4,20" />
+      <path d="M0 25h100" fill="none" stroke="#5E4330" stroke-width="0.7" stroke-dasharray="15,12,8,17" />
+    </pattern>
+    
+    <!-- Roof pattern -->
+    <pattern id="roofPattern" patternUnits="userSpaceOnUse" width="20" height="20">
+      <rect width="20" height="20" fill="#9C3B25" />
+      <path d="M0 0 L20 20 M20 0 L0 20" stroke="#8A2F1C" stroke-width="1" />
+    </pattern>
+    
+    <!-- Stone pattern -->
+    <pattern id="stonePattern" patternUnits="userSpaceOnUse" width="30" height="30">
+      <rect width="30" height="30" fill="#8E8E8E" />
+      <path d="M0 15 H30 M15 0 V30" stroke="#7A7A7A" stroke-width="1" />
+      <path d="M7.5 7.5 H22.5 V22.5 H7.5 Z" fill="none" stroke="#7A7A7A" stroke-width="1" />
+    </pattern>
+  </defs>
+
+
+  <!-- House base with wood texture -->
+  <rect x="50" y="100" width="200" height="100" fill="url(#woodGrain)" stroke="#6F4E37" stroke-width="2" />
+  
+  <!-- Roof with pattern -->
+  <polygon points="50,100 150,20 250,100" fill="url(#roofPattern)" stroke="#7A271A" stroke-width="2.5" />
+  
+  <!-- Chimney with stone texture -->
+  <rect x="200" y="40" width="25" height="40" fill="url(#stonePattern)" stroke="#666666" stroke-width="1.5" />
+  
+  <!-- Door with darker wood texture -->
+  <rect x="90" y="140" width="40" height="60" fill="url(#darkWoodGrain)" stroke="#5D3A1A" stroke-width="2" />
+  <!-- Door handle -->
+  <circle cx="120" cy="170" r="3" fill="#E0C080" stroke="#BFA76F" stroke-width="0.5" />
+  
+  <!-- Window with glass effect -->
+  <rect x="160" y="120" width="40" height="30" fill="#BDE5F8" stroke="#87A8B9" stroke-width="1.5" />
+  <rect x="180" y="120" width="2" height="30" fill="#E0E9ED" stroke="#87A8B9" stroke-width="0.5" />
+  <rect x="160" y="135" width="40" height="2" fill="#E0E9ED" stroke="#87A8B9" stroke-width="0.5" />
+  <!-- Window glow effect -->
+  <rect x="165" y="125" width="30" height="20" fill="#FFEDAA" fill-opacity="0.4" />
+  
+  <!-- Workbench with detailed texture -->
+  <rect x="170" y="170" width="60" height="20" fill="#8E5B3B" stroke="#704632" stroke-width="1.5" />
+  <rect x="170" y="190" width="10" height="10" fill="#704632" stroke="#5D3A1A" stroke-width="1" />
+  <rect x="220" y="190" width="10" height="10" fill="#704632" stroke="#5D3A1A" stroke-width="1" />
+  <!-- Workbench details -->
+  <rect x="175" y="175" width="50" height="2" fill="#5D3A1A" fill-opacity="0.6" />
+  <rect x="195" y="180" width="30" height="1" fill="#5D3A1A" fill-opacity="0.6" />
+  
+  <!-- Tools on wall with more detail -->
+  <!-- Hammer -->
+  <rect x="160" y="105" width="20" height="5" fill="#A88C77" stroke="#7A6656" stroke-width="0.5" />
+  <rect x="165" y="105" width="5" height="12" fill="#5D4B3E" stroke="#3C2E25" stroke-width="0.5" />
+  
+  <!-- Saw -->
+  <circle cx="195" cy="107" r="5" fill="#C0C0C0" stroke="#A0A0A0" stroke-width="0.5" />
+  <rect x="190" y="102" width="15" height="3" fill="#7D7D7D" stroke="#5A5A5A" stroke-width="0.5" />
+  <path d="M190 103.5 L205 103.5" stroke="#5A5A5A" stroke-width="0.5" stroke-dasharray="1,1" />
+  
+  <!-- Additional tools -->
+  <!-- Axe -->
+  <rect x="220" y="105" width="5" height="12" fill="#6D4C41" stroke="#5D3A1A" stroke-width="0.5" />
+  <path d="M225 105 L235 100 L235 110 Z" fill="#C0C0C0" stroke="#A0A0A0" stroke-width="0.5" />
+  
+  <!-- Plants -->
+  <path d="M20 200 C15 190, 20 185, 25 190 C30 185, 35 190, 30 200" fill="#4A7C2B" />
+  <path d="M270 200 C265 185, 270 180, 275 185 C280 175, 285 185, 280 200" fill="#4A7C2B" />
+</svg>

@@ -1,0 +1,335 @@
+/* Rocket */
+.rocket {
+    position: absolute;
+    width: 200px;
+    height: 300px;
+    background-image: url(../imgs/rocketShip.svg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: transform 0.3s ease, filter 0.3s ease;
+    z-index: 50;
+  }
+  
+  /* Rocket modal */
+  #rocket-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  #rocket-modal .modal-content {
+    width: 90%;
+    height: auto;
+    max-width: 700px;
+    max-height: 85%;
+    background: linear-gradient(to bottom, #2a2a3a, #1a1a2a);
+    border: 3px solid #4f9fe8;
+    border-radius: 12px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(79, 159, 232, 0.4);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4f9fe8 rgba(0, 0, 0, 0.2);
+  }
+  
+  #rocket-modal .modal-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  #rocket-modal .modal-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+  }
+  
+  #rocket-modal .modal-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #4f9fe8, #3a7fcd);
+    border-radius: 10px;
+  }
+  
+  #rocket-modal .modal-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid rgba(79, 159, 232, 0.3);
+    padding: 20px;
+    margin-bottom: 10px;
+  }
+  
+  #rocket-modal .modal-header h2 {
+    margin: 0;
+    font-size: 28px;
+    color: #4f9fe8;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(79, 159, 232, 0.5), 0 0 20px rgba(79, 159, 232, 0.2);
+    letter-spacing: 1px;
+  }
+  
+  #rocket-modal .modal-close {
+    background: linear-gradient(135deg, #444, #333);
+    color: #4f9fe8;
+    border: 2px solid #555;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  }
+  
+  #rocket-modal .modal-close:hover {
+    background: linear-gradient(135deg, #555, #444);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(79, 159, 232, 0.5);
+  }
+  
+  #rocket-modal .modal-body {
+    padding: 0 20px 10px;
+  }
+  
+  #rocket-modal .destination-option {
+    background: linear-gradient(to bottom, rgba(60, 60, 80, 0.8), rgba(40, 40, 60, 0.8));
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(100, 100, 120, 0.5);
+    display: flex;
+    align-items: center;
+    padding: 18px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  #rocket-modal .destination-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, transparent, rgba(79, 159, 232, 0.5), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  #rocket-modal .destination-option:hover {
+    background: linear-gradient(to bottom, rgba(70, 70, 90, 0.9), rgba(50, 50, 70, 0.9));
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    border-color: rgba(79, 159, 232, 0.3);
+  }
+  
+  #rocket-modal .destination-option:hover::before {
+    opacity: 1;
+  }
+  
+  #rocket-modal .destination-option.active {
+    background: linear-gradient(to bottom, rgba(60, 70, 90, 0.8), rgba(40, 50, 70, 0.8));
+  }
+  
+  #rocket-modal .destination-option.inactive {
+    opacity: 0.6;
+    filter: grayscale(60%);
+    cursor: default;
+    pointer-events: none;
+  }
+  
+  #rocket-modal .destination-option.selected {
+    border: 2px solid #4f9fe8;
+    background: linear-gradient(to bottom, rgba(50, 70, 100, 0.9), rgba(30, 50, 80, 0.9));
+    box-shadow: 0 0 15px rgba(79, 159, 232, 0.4);
+  }
+  
+  #rocket-modal .destination-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-size: cover;
+    margin-right: 18px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(79, 159, 232, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  #rocket-modal .destination-option:hover .destination-icon {
+    transform: scale(1.05);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
+  }
+  
+  #rocket-modal .destination-icon.earth {
+    background-image: url("../imgs/earth.svg");
+    background-color: #2a4ea0; /* Fallback */
+  }
+  
+  #rocket-modal .destination-icon.moon {
+    background-image: url("../imgs/moon.svg");
+    background-color: #808080; /* Fallback */
+  }
+  
+  #rocket-modal .destination-info {
+    flex-grow: 1;
+  }
+  
+  #rocket-modal .destination-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #4f9fe8;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    transition: color 0.2s ease;
+  }
+  
+  #rocket-modal .destination-option:hover .destination-info h3 {
+    color: #7fb8f0;
+  }
+  
+  #rocket-modal .destination-info p {
+    margin: 0;
+    font-size: 15px;
+    color: #ddd;
+    line-height: 1.4;
+  }
+  
+  #rocket-modal .modal-footer {
+    padding: 20px;
+    text-align: center;
+    background: none;
+    border-top: 1px solid rgba(79, 159, 232, 0.2);
+  }
+  
+  #rocket-modal #rocket-travel-button {
+    background: linear-gradient(to bottom, #4f9fe8, #3a7fcd);
+    color: white;
+    border: none;
+    padding: 14px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  }
+  
+  #rocket-modal #rocket-travel-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  #rocket-modal #rocket-travel-button:hover {
+    background: linear-gradient(to bottom, #3a7fcd, #2a6fbd);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  }
+  
+  #rocket-modal #rocket-travel-button:hover::after {
+    left: 100%;
+  }
+  
+  #rocket-modal #rocket-travel-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  }
+  
+  #rocket-flame {
+    position: absolute;
+    bottom: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 120px;
+    z-index: 49;
+    filter: drop-shadow(0 0 10px rgba(255, 120, 0, 0.7));
+  }
+  
+  .flame-inner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, #ff9900, #ff4400);
+    border-bottom-left-radius: 50%;
+    border-bottom-right-radius: 50%;
+    animation: flameAnimation 0.2s infinite alternate;
+    transform-origin: center bottom;
+    box-shadow: 0 0 20px 10px rgba(255, 153, 0, 0.5);
+  }
+  
+  .space-star {
+    position: absolute;
+    background-color: white;
+    border-radius: 50%;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 1.5s;
+    box-shadow: 0 0 4px 2px rgba(255, 255, 255, 0.3);
+  }
+  
+  @keyframes flameAnimation {
+    0% {
+      transform: scaleX(0.8) scaleY(0.8);
+      opacity: 0.8;
+      background: linear-gradient(to bottom, #ff9900, #ff4400);
+    }
+    100% {
+      transform: scaleX(1.1) scaleY(1.3);
+      opacity: 1;
+      background: linear-gradient(to bottom, #ffaa00, #ff5500);
+    }
+  }
+  
+  @keyframes twinkle {
+    0% {
+      opacity: 0.3;
+      box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.2);
+    }
+    50% {
+      opacity: 1;
+      box-shadow: 0 0 6px 3px rgba(255, 255, 255, 0.5);
+    }
+    100% {
+      opacity: 0.3;
+      box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.2);
+    }
+  }
+  
+  /* Add a rocket launch animation */
+  @keyframes rocketLaunch {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+    100% {
+      transform: translateY(-1000px) scale(0.5);
+    }
+  }
+  
+  .launching {
+    animation: rocketLaunch 4s ease-in forwards;
+  }
