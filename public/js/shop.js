@@ -2,6 +2,7 @@
 import { gameState } from "./config.js";
 import { createMoneyAnimation } from "./animations.js";
 import { updateUI } from "./updates.js";
+import { sendRocketPurchased } from "./multiplayer.js";
 import {
   showMessage,
   purchaseSound,
@@ -9,7 +10,7 @@ import {
   buildingRocketSound,
   menuHoverSound,
   playSFX,
-  ORIGINAL_VOLUMES
+  ORIGINAL_VOLUMES,
 } from "./setup.js";
 
 const sellOptions = document.getElementById("sell-options");
@@ -200,6 +201,9 @@ function handleShopItemClick(item) {
       // Place the rocket near the surface in a clear area
       placeRocketInWorld();
 
+      // Send purchase to multiplayer
+      sendRocketPurchased();
+
       // Show purchase message
       showMessage("Rocket purchased! Find it on the surface.", 3000);
     }
@@ -221,7 +225,7 @@ export function openSellModal() {
     sellAllOption.addEventListener("mouseenter", () => {
       playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
     });
-    
+
     sellAllOption.addEventListener("click", () => {
       sellAllOres();
     });
@@ -251,7 +255,7 @@ export function openSellModal() {
         sellOption.addEventListener("mouseenter", () => {
           playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
         });
-        
+
         sellOption.addEventListener("click", () => {
           const saleAmount = value * count;
           gameState.money += saleAmount;

@@ -59,10 +59,17 @@ export function initMultiplayer(isHost = false, options = {}) {
     currentGameCode = data.gameCode;
     console.log("Game created with code:", currentGameCode);
     showMessage("Game created! Code: " + currentGameCode, 5000);
+
     // Display the game code for the host
     showGameCode(currentGameCode);
     // Update game code in pause menu
     updatePauseMenuGameCode(currentGameCode);
+
+    // For the host, we need to wait until the world is generated before uploading it
+    if (isHost) {
+      // Set a flag to indicate we need to upload the world
+      gameState.needToUploadWorld = true;
+    }
   });
 
   // Handle join response
@@ -90,7 +97,12 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Set local player ID
     gameState.playerId = data.playerId;
 
-    // Initialize other players
+    // Clear any existing other players first
+    for (const id in otherPlayers) {
+      removeOtherPlayer(id);
+    }
+
+    // Initialize other players (already filtered by planet on the server)
     for (const id in data.players) {
       if (id !== gameState.playerId) {
         addOtherPlayer(id, data.players[id]);
@@ -100,32 +112,72 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Update player count
     updatePlayerCount(Object.keys(data.players).length);
 
-    // Handle world block sync - only for new blocks different from local state
-    for (const y in data.worldBlocks) {
-      for (const x in data.worldBlocks[y]) {
-        // Create the row in the block map if it doesn't exist
+    // If we're not the host, we should use the received world data
+    // and override our local world generation
+    if (
+      !isHost &&
+      data.worldBlocks &&
+      Object.keys(data.worldBlocks).length > 0
+    ) {
+      console.log("Using host's world data");
+
+      // Clear any existing block map to prevent mixing
+      gameState.blockMap = [];
+
+      // Handle world block sync by fully replacing the blockMap
+      // We need to recreate the full 2D array structure
+      const maxY = Math.max(...Object.keys(data.worldBlocks).map(Number));
+
+      // Create a new blockMap with the right dimensions
+      for (let y = 0; y <= maxY; y++) {
         if (!gameState.blockMap[y]) {
-          gameState.blockMap[y] = {};
+          gameState.blockMap[y] = [];
         }
 
-        // Update the block if it's different from local state
-        if (gameState.blockMap[y][x] !== data.worldBlocks[y][x]) {
-          gameState.blockMap[y][x] = data.worldBlocks[y][x];
+        // If we have data for this row, process it
+        if (data.worldBlocks[y]) {
+          for (const x in data.worldBlocks[y]) {
+            // IMPORTANT: Fix ore references by looking up the proper ore object
+            const blockData = data.worldBlocks[y][x];
+
+            if (blockData === null) {
+              gameState.blockMap[y][x] = null;
+            } else if (blockData && blockData.name) {
+              // Find the matching ore in our local ores array
+              const matchingOre = gameState.ores.find(
+                (ore) => ore.name === blockData.name
+              );
+              if (matchingOre) {
+                gameState.blockMap[y][x] = matchingOre;
+              } else {
+                console.warn(`Unknown ore received: ${blockData.name}`);
+                gameState.blockMap[y][x] = blockData;
+              }
+            } else {
+              gameState.blockMap[y][x] = blockData;
+            }
+          }
         }
       }
+
+      console.log("World synchronized from host data");
+      updateVisibleBlocks();
     }
-    updateVisibleBlocks();
   });
 
   // Handle new player joining
   socket.on("newPlayer", (playerData) => {
     console.log("New player joined:", playerData);
-    addOtherPlayer(playerData.id, playerData);
 
-    // Update player count
-    updatePlayerCount(Object.keys(otherPlayers).length + 1);
+    // Only add the player if they're on the same planet
+    if (playerData.currentPlanet === gameState.currentPlanet) {
+      addOtherPlayer(playerData.id, playerData);
 
-    showMessage("New player joined!", 2000);
+      // Update player count
+      updatePlayerCount(Object.keys(otherPlayers).length + 1);
+
+      showMessage("New player joined!", 2000);
+    }
   });
 
   // Handle players moving
@@ -308,17 +360,266 @@ export function initMultiplayer(isHost = false, options = {}) {
     }
   });
 
+  // Handle rocket purchase events
+  socket.on("rocketPurchased", (data) => {
+    console.log("Someone purchased a rocket!");
+
+    // Update game state to show rocket for everyone
+    gameState.hasRocket = true;
+    gameState.rocketPlaced = true;
+
+    // Set rocket position if provided
+    if (data.rocketX !== undefined && data.rocketY !== undefined) {
+      gameState.rocket.x = data.rocketX;
+      gameState.rocket.y = data.rocketY;
+      gameState.rocketX = data.rocketX / gameState.blockSize;
+      gameState.rocketY = data.rocketY / gameState.blockSize;
+    }
+
+    // Initialize the rocket element if needed
+    initializeRocket();
+
+    // Show message to other players
+    showMessage(
+      `Player ${data.playerId.substring(0, 3)} bought a rocket!`,
+      3000
+    );
+  });
+
+  // Handle rocket position updates from host
+  socket.on("rocketPositionUpdate", (data) => {
+    // Update rocket position
+    gameState.rocket.x = data.x;
+    gameState.rocket.y = data.y;
+    gameState.rocketX = data.x / gameState.blockSize;
+    gameState.rocketY = data.y / gameState.blockSize;
+
+    // Make sure rocket is visible
+    gameState.hasRocket = true;
+    gameState.rocketPlaced = true;
+
+    // Update rocket element position
+    updateRocketPosition();
+  });
+
+  // Handle planet change events
+  socket.on("planetChanged", (data) => {
+    // If we're not the player who triggered the change
+    if (data.playerId !== gameState.playerId) {
+      // If we can see this player, remove them from our view
+      if (otherPlayers[data.playerId]) {
+        console.log(
+          `Player ${data.playerId} moved to ${data.planet}, removing from view`
+        );
+        removeOtherPlayer(data.playerId);
+
+        // Update player count after removal
+        updatePlayerCount(Object.keys(otherPlayers).length + 1);
+
+        // Show message about player changing planets
+        showMessage(
+          `Player ${data.playerId.substring(0, 3)} traveled to the ${
+            data.planet
+          }`,
+          3000
+        );
+      }
+    } else {
+      // This is our own planet change
+
+      // Save current planet state first
+      if (gameState.currentPlanet === "earth" && data.planet === "moon") {
+        if (gameState.blockMap && gameState.blockMap.length > 0) {
+          gameState.earthBlockMap = JSON.parse(
+            JSON.stringify(gameState.blockMap)
+          );
+        }
+      } else if (
+        gameState.currentPlanet === "moon" &&
+        data.planet === "earth"
+      ) {
+        if (gameState.blockMap && gameState.blockMap.length > 0) {
+          gameState.moonBlockMap = JSON.parse(
+            JSON.stringify(gameState.blockMap)
+          );
+        }
+      }
+
+      // Update the current planet
+      gameState.currentPlanet = data.planet;
+
+      // Load the appropriate planet's block map
+      if (data.planet === "earth") {
+        if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
+          gameState.blockMap = JSON.parse(
+            JSON.stringify(gameState.earthBlockMap)
+          );
+          gameState.gravity = 0.5; // Standard gravity on Earth
+        }
+      } else if (data.planet === "moon") {
+        if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
+          gameState.blockMap = JSON.parse(
+            JSON.stringify(gameState.moonBlockMap)
+          );
+          gameState.gravity = 0.3; // Lower gravity on the Moon
+        }
+      }
+
+      // Clear other players since we changed planets
+      for (const id in otherPlayers) {
+        removeOtherPlayer(id);
+      }
+
+      // Update visible blocks
+      updateVisibleBlocks();
+
+      // Show message
+      showMessage(`You traveled to the ${data.planet}`, 3000);
+
+      // Request players on the new planet
+      requestPlayersOnCurrentPlanet();
+    }
+  });
+
+  socket.on("rocketLaunched", (data) => {
+    // Only process this event if WE are the player who launched the rocket
+    if (data.playerId === gameState.playerId) {
+      // Save current planet state first
+      if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
+        if (gameState.blockMap && gameState.blockMap.length > 0) {
+          gameState.earthBlockMap = JSON.parse(
+            JSON.stringify(gameState.blockMap)
+          );
+        }
+      } else if (
+        gameState.currentPlanet === "moon" &&
+        data.targetPlanet === "earth"
+      ) {
+        if (gameState.blockMap && gameState.blockMap.length > 0) {
+          gameState.moonBlockMap = JSON.parse(
+            JSON.stringify(gameState.blockMap)
+          );
+        }
+      }
+
+      // Update the current planet
+      gameState.currentPlanet = data.targetPlanet;
+
+      // Load the appropriate planet's block map
+      if (data.targetPlanet === "earth") {
+        if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
+          gameState.blockMap = JSON.parse(
+            JSON.stringify(gameState.earthBlockMap)
+          );
+          gameState.gravity = 0.5; // Standard gravity on Earth
+        }
+      } else if (data.targetPlanet === "moon") {
+        if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
+          gameState.blockMap = JSON.parse(
+            JSON.stringify(gameState.moonBlockMap)
+          );
+          gameState.gravity = 0.3; // Lower gravity on the Moon
+        }
+      }
+
+      // Clear other players since we changed planets
+      for (const id in otherPlayers) {
+        removeOtherPlayer(id);
+      }
+
+      // Update visible blocks
+      updateVisibleBlocks();
+
+      showMessage(
+        `Rocket launched! Traveling to the ${data.targetPlanet}...`,
+        3000
+      );
+
+      // Trigger rocket launch animations or effects
+      triggerRocketLaunchAnimation(data.targetPlanet);
+
+      // Request players on the new planet
+      requestPlayersOnCurrentPlanet();
+    } else {
+      // If another player launched their rocket, remove them from our view
+      if (otherPlayers[data.playerId]) {
+        console.log(
+          `Player ${data.playerId} launched to ${data.targetPlanet}, removing from view`
+        );
+        removeOtherPlayer(data.playerId);
+
+        // Update player count after removal
+        updatePlayerCount(Object.keys(otherPlayers).length + 1);
+
+        showMessage(
+          `Player ${data.playerId.substring(0, 3)} launched to the ${
+            data.targetPlanet
+          }`,
+          3000
+        );
+      }
+    }
+  });
+
+  socket.on("playersOnPlanet", (data) => {
+    console.log("Received players on current planet:", data);
+
+    // Add each player that isn't already visible
+    for (const id in data.players) {
+      if (id !== gameState.playerId && !otherPlayers[id]) {
+        addOtherPlayer(id, data.players[id]);
+      }
+    }
+
+    // Update player count
+    updatePlayerCount(Object.keys(otherPlayers).length + 1);
+  });
+
   // Add styles for other players if they don't exist yet
   addMultiplayerStyles();
+}
+
+/**
+ * Upload the host's world to the server after world generation
+ * This should be called once the world is fully generated
+ */
+export function uploadWorldToServer() {
+  if (isConnected && socket && gameState.needToUploadWorld) {
+    console.log("Uploading world data to server...");
+
+    // Create a more efficient representation of the world
+    // Only sending non-null blocks to reduce data size
+    const worldData = {};
+
+    for (let y = 0; y < gameState.blockMap.length; y++) {
+      if (!gameState.blockMap[y]) continue;
+
+      worldData[y] = {};
+
+      for (let x = 0; x < gameState.blockMap[y].length; x++) {
+        if (gameState.blockMap[y][x]) {
+          worldData[y][x] = gameState.blockMap[y][x];
+        }
+      }
+    }
+
+    // Send the world data to the server
+    socket.emit("uploadWorldData", {
+      worldBlocks: worldData,
+    });
+
+    console.log("World data uploaded");
+    gameState.needToUploadWorld = false;
+  }
 }
 
 /**
  * Adds necessary CSS styles for multiplayer players
  */
 function addMultiplayerStyles() {
-  if (!document.getElementById('multiplayer-player-styles')) {
-    const styleElement = document.createElement('style');
-    styleElement.id = 'multiplayer-player-styles';
+  if (!document.getElementById("multiplayer-player-styles")) {
+    const styleElement = document.createElement("style");
+    styleElement.id = "multiplayer-player-styles";
     styleElement.textContent = `
       /* Existing styles... */
       
@@ -631,65 +932,66 @@ function addOtherPlayer(id, playerData) {
   if (otherPlayers[id]) {
     return;
   }
-  
+
   // Create player element for the new player
   const newPlayerElement = document.createElement("div");
   newPlayerElement.className = "player other-player";
   newPlayerElement.dataset.playerId = id;
-  
+
   // Add name tag
   const nameTag = document.createElement("div");
   nameTag.className = "player-name";
   nameTag.textContent = `Player ${id.substring(0, 3)}`;
   newPlayerElement.appendChild(nameTag);
-  
+
   // Add tool container with proper structure
   const toolContainer = document.createElement("div");
   toolContainer.className = "player-tool-container";
-  
+
   // Use an actual SVG element instead of just an img for better animations
   toolContainer.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pickaxe">
       <use href="#pickaxe-basic-icon" />
     </svg>
   `;
-  
+
   newPlayerElement.appendChild(toolContainer);
-  
+
   // Position the player - adjust for camera immediately
   const adjustedX = playerData.x - gameState.camera.x;
   const adjustedY = playerData.y - gameState.camera.y;
-  
+
   newPlayerElement.style.left = `${adjustedX}px`;
   newPlayerElement.style.top = `${adjustedY}px`;
-  
+
   // Set initial direction
   if (playerData.direction === -1) {
     newPlayerElement.classList.add("facing-left");
   }
-  
+
   // Add to game world
   const gameWorld = document.getElementById("game-world");
   if (gameWorld) {
     gameWorld.appendChild(newPlayerElement);
-    
-    console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
-    
+
+    console.log(
+      `Added other player ${id} at position (${adjustedX}, ${adjustedY})`
+    );
+
     // Store reference with additional properties for mining and laser state
     otherPlayers[id] = {
       element: newPlayerElement,
       data: playerData,
       mining: {
-        active: false
+        active: false,
       },
       laser: {
         active: false,
-        angle: 0
-      }
+        angle: 0,
+      },
     };
   }
 }
-
 
 /**
  * Update position of another player
@@ -726,11 +1028,11 @@ function updateOtherPlayerTool(id, toolId) {
   if (otherPlayers[id]) {
     const playerElement = otherPlayers[id].element;
     const toolContainer = playerElement.querySelector(".player-tool-container");
-    
+
     // Determine tool type and image based on toolId
     let toolType = "pickaxe";
     let toolSrc = "imgs/pickaxe-basic.svg";
-    
+
     if (toolId && toolId.includes("drill")) {
       toolType = "drill";
       if (toolId.includes("ruby")) {
@@ -755,40 +1057,39 @@ function updateOtherPlayerTool(id, toolId) {
         toolSrc = "imgs/pickaxe-basic.svg";
       }
     }
-    
+
     // Fetch and load the SVG
     fetch(toolSrc)
-      .then(response => response.text())
-      .then(svgContent => {
+      .then((response) => response.text())
+      .then((svgContent) => {
         // Update tool container with the SVG content
         toolContainer.innerHTML = svgContent;
-        
+
         // Get the SVG element and add appropriate class
-        const svgElement = toolContainer.querySelector('svg');
+        const svgElement = toolContainer.querySelector("svg");
         if (svgElement) {
           // Remove existing tool classes
-          svgElement.classList.remove('pickaxe', 'drill', 'laser');
+          svgElement.classList.remove("pickaxe", "drill", "laser");
           // Add appropriate class
           svgElement.classList.add(toolType);
-          
+
           // Apply appropriate scaling
-          if (toolType === 'drill') {
-            svgElement.style.transform = 'scale(1.5)';
-          } else if (toolType === 'laser') {
-            svgElement.style.transform = 'scale(2.5)';
+          if (toolType === "drill") {
+            svgElement.style.transform = "scale(1.5)";
+          } else if (toolType === "laser") {
+            svgElement.style.transform = "scale(2.5)";
           }
         }
-        
+
         console.log(`Updated player ${id} tool to ${toolType} (${toolSrc})`);
       })
-      .catch(error => {
+      .catch((error) => {
         console.error(`Failed to load tool SVG for player ${id}:`, error);
         // Fallback to simple img tag
         toolContainer.innerHTML = `<img src="${toolSrc}" alt="Tool" width="24" height="24">`;
       });
   }
 }
-
 
 /**
  * Remove another player from the game
@@ -811,27 +1112,27 @@ function removeOtherPlayer(id) {
  */
 export function updateOtherPlayersForCamera() {
   if (!isConnected) return;
-  
+
   for (const id in otherPlayers) {
     const playerData = otherPlayers[id].data;
     const playerElement = otherPlayers[id].element;
-    
+
     // Adjust position based on camera
     const adjustedX = playerData.x - gameState.camera.x;
     const adjustedY = playerData.y - gameState.camera.y;
-    
+
     playerElement.style.left = `${adjustedX}px`;
     playerElement.style.top = `${adjustedY}px`;
-    
+
     // If this player is mining, update mining effect position
     if (otherPlayers[id].mining && otherPlayers[id].mining.active) {
       const blockX = otherPlayers[id].mining.x;
       const blockY = otherPlayers[id].mining.y;
-      
+
       const effectElement = document.querySelector(
         `.mining-effect[data-block-x="${blockX}"][data-block-y="${blockY}"]`
       );
-      
+
       if (effectElement) {
         const posX = blockX * gameState.blockSize - gameState.camera.x;
         const posY = blockY * gameState.blockSize - gameState.camera.y;
@@ -906,19 +1207,19 @@ export function sendLaserUpdate(angle) {
 // Helper functions for mining effects
 function addMiningEffectAtBlock(blockX, blockY) {
   // Create a mining effect element
-  const effectElement = document.createElement('div');
-  effectElement.className = 'mining-effect';
+  const effectElement = document.createElement("div");
+  effectElement.className = "mining-effect";
   effectElement.dataset.blockX = blockX;
   effectElement.dataset.blockY = blockY;
-  
+
   // Position it at the block location (adjusted for camera)
   const posX = blockX * gameState.blockSize - gameState.camera.x;
   const posY = blockY * gameState.blockSize - gameState.camera.y;
   effectElement.style.left = `${posX}px`;
   effectElement.style.top = `${posY}px`;
-  
+
   // Add to game world
-  const gameWorld = document.getElementById('game-world');
+  const gameWorld = document.getElementById("game-world");
   if (gameWorld) {
     gameWorld.appendChild(effectElement);
   }
@@ -926,8 +1227,82 @@ function addMiningEffectAtBlock(blockX, blockY) {
 
 function removeMiningEffectAtBlock(blockX, blockY) {
   // Find and remove the mining effect element for this block
-  const effectElement = document.querySelector(`.mining-effect[data-block-x="${blockX}"][data-block-y="${blockY}"]`);
+  const effectElement = document.querySelector(
+    `.mining-effect[data-block-x="${blockX}"][data-block-y="${blockY}"]`
+  );
   if (effectElement && effectElement.parentNode) {
     effectElement.parentNode.removeChild(effectElement);
+  }
+}
+
+// Send rocket purchase event to server
+export function sendRocketPurchased() {
+  if (isConnected && socket) {
+    socket.emit("rocketPurchased", {
+      rocketX: gameState.rocket.x,
+      rocketY: gameState.rocket.y,
+    });
+  }
+}
+
+// Send rocket position update to server
+export function sendRocketPosition() {
+  if (isConnected && socket && gameState.hasRocket) {
+    socket.emit("rocketPosition", {
+      x: gameState.rocket.x,
+      y: gameState.rocket.y,
+    });
+  }
+}
+
+// Send planet change event to server
+export function sendPlanetChanged(planet) {
+  if (isConnected && socket) {
+    socket.emit("planetChanged", {
+      planet: planet,
+    });
+  }
+}
+
+export function sendRocketLaunched(targetPlanet) {
+  if (isConnected && socket && gameState.hasRocket) {
+    socket.emit("rocketLaunched", {
+      targetPlanet: targetPlanet,
+    });
+  }
+}
+
+function triggerRocketLaunchAnimation(targetPlanet) {
+  // This is a simple example - you can expand this with more complex animations
+  const rocketElement = document.querySelector(".rocket");
+
+  if (rocketElement) {
+    // Add launch animation class
+    rocketElement.classList.add("launching");
+
+    // Play sound effect if available
+    const launchSound = document.getElementById("rocket-launch-sound");
+    if (launchSound) {
+      launchSound.play();
+    }
+
+    // Remove animation class after animation completes
+    setTimeout(() => {
+      rocketElement.classList.remove("launching");
+    }, 3000);
+  }
+}
+
+/**
+ * Request updated player list after changing planets
+ * This ensures we see players already on our new planet
+ */
+function requestPlayersOnCurrentPlanet() {
+  if (isConnected && socket) {
+    setTimeout(() => {
+      socket.emit("getPlayersOnPlanet", {
+        planet: gameState.currentPlanet,
+      });
+    }, 1000); // Slight delay to ensure server has processed planet change
   }
 }

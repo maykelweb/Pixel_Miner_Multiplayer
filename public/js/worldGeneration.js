@@ -1,6 +1,7 @@
 // worldGeneration.js
 import { gameState } from "./config.js";
 import { updateVisibleBlocks } from "./updates.js";
+import { uploadWorldToServer } from "./multiplayer.js";
 
 // Define the surface layer depth
 const SURFACE_LAYER_DEPTH = 2; // Number of dirt blocks below grass
@@ -42,14 +43,23 @@ export function generateWorld() {
   // Check if returning from moon (look for saved Earth map)
   if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
     console.log("Restoring Earth map from saved state");
-
     updateVisibleBlocks();
+    
+    // If we're the host, upload the world after restoration
+    if (gameState.needToUploadWorld) {
+      uploadWorldToServer();
+    }
     return;
   }
 
   // Check if world is already generated (but ensure we're not using a cached map if we just loaded)
   if (gameState.blockMap && gameState.blockMap.length > 0) {
     updateVisibleBlocks();
+    
+    // If we're the host, upload the world if it's already generated
+    if (gameState.needToUploadWorld) {
+      uploadWorldToServer();
+    }
     return;
   }
 
@@ -85,6 +95,11 @@ export function generateWorld() {
   gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
 
   updateVisibleBlocks();
+  
+  // If we're the host, upload the newly generated world to the server
+  if (gameState.needToUploadWorld) {
+    uploadWorldToServer();
+  }
 }
 
 export function transitionToEarth() {

@@ -10,7 +10,7 @@ export const gameState = {
     playerName: "Player",
     connectedPlayers: [],
   },
-  money: 0,
+  money: 1000,
   depth: 0,
   mouseHeld: false,
   pickaxeLevel: 1,
