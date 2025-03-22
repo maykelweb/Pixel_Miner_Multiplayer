@@ -94,47 +94,41 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle initial game state
   socket.on("gameState", (data) => {
     console.log("Received initial game state:", data);
-  
+
     // Set local player ID
     gameState.playerId = data.playerId;
-  
+
     // Clear any existing other players first
     for (const id in otherPlayers) {
       removeOtherPlayer(id);
     }
-  
+
     // Initialize other players (already filtered by planet on the server)
     for (const id in data.players) {
       if (id !== gameState.playerId) {
+        // First add the other player
         addOtherPlayer(id, data.players[id]);
-        
-        // Check if player has active jetpack and set it correctly
-        if (data.players[id].jetpackActive) {
+
+        // Now properly check for active jetpack and display it
+        if (data.players[id].jetpackActive === true) {
           const playerElement = otherPlayers[id].element;
-          
-          // Add jetpack flame element if it doesn't exist
-          let jetpackFlame = playerElement.querySelector(".jetpack-flame");
-          if (!jetpackFlame) {
-            jetpackFlame = document.createElement("div");
-            jetpackFlame.className = "jetpack-flame";
-            playerElement.appendChild(jetpackFlame);
+
+          // Find the jetpack flame element (should already exist from addOtherPlayer)
+          const jetpackFlame = playerElement.querySelector(".jetpack-flame");
+          if (jetpackFlame) {
+            // Make it visible
+            jetpackFlame.style.display = "block";
+
+            // Update the state in our local tracking object
+            otherPlayers[id].jetpackActive = true;
           }
-          
-          // Display the jetpack flame
-          jetpackFlame.style.display = "block";
-          
-          // Update jetpack state in our local representation
-          otherPlayers[id].jetpackActive = true;
         }
       }
     }
-  
+
     // Update player count
     updatePlayerCount(Object.keys(data.players).length);
-  
 
-    // If we're not the host, we should use the received world data
-    // and override our local world generation
     if (
       !isHost &&
       data.worldBlocks &&
@@ -381,6 +375,47 @@ export function initMultiplayer(isHost = false, options = {}) {
     }
   });
 
+  socket.on("playerJetpackActivated", (data) => {
+    console.log("here")
+    if (otherPlayers[data.id]) {
+      const playerElement = otherPlayers[data.id].element;
+      
+      // Find the jetpack flame element
+      const jetpackFlame = playerElement.querySelector(".jetpack-flame");
+      if (jetpackFlame) {
+        // Make it visible
+        jetpackFlame.style.display = "block";
+        
+        // Update state in our tracking object
+        otherPlayers[data.id].jetpackActive = true;
+      } else {
+        // If the flame element doesn't exist for some reason, create it
+        const newJetpackFlame = document.createElement("div");
+        newJetpackFlame.className = "jetpack-flame";
+        newJetpackFlame.style.display = "block";
+        playerElement.appendChild(newJetpackFlame);
+        
+        // Still update our tracking state
+        otherPlayers[data.id].jetpackActive = true;
+      }
+    }
+  });
+
+  socket.on("playerJetpackDeactivated", (data) => {
+    if (otherPlayers[data.id]) {
+      const playerElement = otherPlayers[data.id].element;
+
+      // Hide the flame
+      const jetpackFlame = playerElement.querySelector(".jetpack-flame");
+      if (jetpackFlame) {
+        jetpackFlame.style.display = "none";
+      }
+
+      // Update jetpack state
+      otherPlayers[data.id].jetpackActive = false;
+    }
+  });
+
   // Handle rocket purchase events
   socket.on("rocketPurchased", (data) => {
     console.log("Someone purchased a rocket!");
@@ -623,41 +658,6 @@ export function uploadWorldToServer() {
         }
       }
     }
-
-    socket.on("playerJetpackActivated", (data) => {
-      if (otherPlayers[data.id]) {
-        const playerElement = otherPlayers[data.id].element;
-
-        // Add jetpack flame if it doesn't exist
-        let jetpackFlame = playerElement.querySelector(".jetpack-flame");
-        if (!jetpackFlame) {
-          jetpackFlame = document.createElement("div");
-          jetpackFlame.className = "jetpack-flame";
-          playerElement.appendChild(jetpackFlame);
-        }
-
-        // Show the flame
-        jetpackFlame.style.display = "block";
-
-        // Store jetpack state
-        otherPlayers[data.id].jetpackActive = true;
-      }
-    });
-
-    socket.on("playerJetpackDeactivated", (data) => {
-      if (otherPlayers[data.id]) {
-        const playerElement = otherPlayers[data.id].element;
-
-        // Hide the flame
-        const jetpackFlame = playerElement.querySelector(".jetpack-flame");
-        if (jetpackFlame) {
-          jetpackFlame.style.display = "none";
-        }
-
-        // Update jetpack state
-        otherPlayers[data.id].jetpackActive = false;
-      }
-    });
 
     // Send the world data to the server
     socket.emit("uploadWorldData", {
@@ -1030,13 +1030,14 @@ function addOtherPlayer(id, playerData) {
   nameTag.textContent = `Player ${id.substring(0, 3)}`;
   newPlayerElement.appendChild(nameTag);
 
-  // Add jetpack flame element
+  // Add jetpack flame element - important to always create this
   const jetpackFlame = document.createElement("div");
   jetpackFlame.className = "jetpack-flame";
-  jetpackFlame.style.display = "none"; // Hidden by default
+  // Default to hidden, will be shown if active
+  jetpackFlame.style.display = "none";
   newPlayerElement.appendChild(jetpackFlame);
 
-  // Store reference with additional properties
+  // Initialize our tracking object
   otherPlayers[id] = {
     element: newPlayerElement,
     data: playerData,
@@ -1047,7 +1048,7 @@ function addOtherPlayer(id, playerData) {
       active: false,
       angle: 0,
     },
-    jetpackActive: false, // Add jetpack state
+    jetpackActive: playerData.jetpackActive === true, // Explicitly check for true
   };
 
   // Add tool container with proper structure
