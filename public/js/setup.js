@@ -584,6 +584,7 @@ export function setupMenuEventListeners() {
   });
 
   const resumeButton = document.getElementById("resume-button");
+if (resumeButton) {
   resumeButton.addEventListener("mouseenter", () => {
     playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
   });
@@ -591,6 +592,21 @@ export function setupMenuEventListeners() {
     playSFX(menuClickSound, ORIGINAL_VOLUMES.menuClickSound, false);
     closeMenu();
   });
+}
+
+  // Add handler for in-game options resume button
+  const inGameResumeButton = document.getElementById("in-game-resume-button");
+  if (inGameResumeButton) {
+    inGameResumeButton.addEventListener("mouseenter", () => {
+      playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
+    });
+    inGameResumeButton.addEventListener("click", () => {
+      playSFX(menuClickSound, ORIGINAL_VOLUMES.menuClickSound, false);
+      // Make sure to hide in-game options first, then close the menu
+      hideInGameOptions();
+      closeMenu();
+    });
+  }
 
   // Set up in-game options listeners
   setupInGameOptionsListeners();

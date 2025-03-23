@@ -141,17 +141,24 @@ function gameLoop(timestamp) {
  * Hides the main menu and starts a new game
  */
 export function startNewGame() {
-  const mainMenu = document.getElementById("main-menu");
+  console.log("startNewGame function called");
+  
+  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
+  const mainMenu = document.getElementById("main-menu-overlay");
   if (mainMenu) {
+    console.log("Found main menu element, checking for saved game");
+    
     // Check if there's an existing save
     const hasSavedGame = localStorage.getItem("pixelMinerSave") !== null;
 
     // If there's a save, show confirmation dialog before proceeding
     if (hasSavedGame) {
+      console.log("Found saved game, showing confirmation dialog");
       showConfirmDialog(
         "Starting a new game will delete your current save. Are you sure?",
         () => {
           // User confirmed, continue with starting a new game
+          console.log("User confirmed, hiding main menu");
           mainMenu.style.display = "none";
 
           // Clean up the menu background
@@ -167,10 +174,12 @@ export function startNewGame() {
         },
         () => {
           // User canceled, do nothing (stay on main menu)
+          console.log("User canceled new game start");
         }
       );
     } else {
       // No save exists, proceed directly
+      console.log("No save found, hiding main menu and starting new game");
       mainMenu.style.display = "none";
 
       // Clean up the menu background
@@ -181,6 +190,8 @@ export function startNewGame() {
 
       // Note: initGame() will be called after the story sequence completes
     }
+  } else {
+    console.error("Main menu element not found with ID 'main-menu-overlay'");
   }
 }
 
@@ -188,8 +199,12 @@ export function startNewGame() {
  * Loads an existing game from localStorage
  */
 export function loadExistingGame() {
-  const mainMenu = document.getElementById("main-menu");
+  console.log("loadExistingGame function called");
+  
+  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
+  const mainMenu = document.getElementById("main-menu-overlay");
   if (mainMenu) {
+    console.log("Found main menu element, hiding it");
     mainMenu.style.display = "none";
 
     // Clean up the menu background
@@ -203,6 +218,8 @@ export function loadExistingGame() {
 
     // Set music started flag since we've already handled music
     gameState.musicStarted = true;
+  } else {
+    console.error("Main menu element not found with ID 'main-menu-overlay'");
   }
 }
 
@@ -681,6 +698,38 @@ function setupDialogButtonListeners() {
       }
     });
   }
+}
+
+// Function to show a temporary message to the user
+function showMessage(message, duration = 2000) {
+  // Create a message element if it doesn't exist
+  let messageElement = document.getElementById("game-message");
+  if (!messageElement) {
+    messageElement = document.createElement("div");
+    messageElement.id = "game-message";
+    messageElement.style.position = "fixed";
+    messageElement.style.top = "20%";
+    messageElement.style.left = "50%";
+    messageElement.style.transform = "translate(-50%, -50%)";
+    messageElement.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+    messageElement.style.color = "white";
+    messageElement.style.padding = "15px";
+    messageElement.style.borderRadius = "5px";
+    messageElement.style.zIndex = "1001";
+    messageElement.style.textAlign = "center";
+    messageElement.style.opacity = "0";
+    messageElement.style.transition = "opacity 0.3s";
+    document.body.appendChild(messageElement);
+  }
+  
+  // Set the message and show it
+  messageElement.textContent = message;
+  messageElement.style.opacity = "1";
+  
+  // Hide the message after the duration
+  setTimeout(() => {
+    messageElement.style.opacity = "0";
+  }, duration);
 }
 
 // Modify the DOMContentLoaded listener to properly initialize multiplayer

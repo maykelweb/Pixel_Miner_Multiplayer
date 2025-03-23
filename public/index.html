@@ -230,34 +230,51 @@
 
       <!-- Main Menu Overlay -->
       <div id="main-menu-overlay" class="menu-container">
-        <div class="menu-header">
-          <div class="pixel-miner-title">PIXEL MINER</div>
-        </div>
-        <div class="menu-buttons">
-          <button id="start-new-game" class="main-menu-button">
-            Start New Game
-          </button>
-          <button id="load-game" class="main-menu-button">Continue</button>
-          <button id="host-game" class="main-menu-button">Host Game</button>
-          <button id="join-game" class="main-menu-button">Join Game</button>
-          <button id="game-options" class="main-menu-button">Options</button>
-        </div>
-        <div class="menu-footer">
-          <p>v1.0.0 &copy; 2025 - Your Studio Name</p>
+        <div class="main-menu-container">
+          <div class="menu-header">
+            <div class="pixel-miner-title">PIXEL MINER</div>
+            <p class="main-menu-subtitle"></p>
+          </div>
+          <div class="menu-buttons">
+            <button id="start-new-game" class="main-menu-button">
+              Start New Game
+            </button>
+            <button id="load-game" class="main-menu-button">Continue</button>
+            <button id="host-game" class="main-menu-button">Host Game</button>
+            <button id="join-game" class="main-menu-button">Join Game</button>
+            <button id="game-options" class="main-menu-button">Options</button>
+          </div>
+          <div class="main-menu-footer">
+            Use WASD or Arrow Keys to move. Mine with the mouse. Press E to
+            interact with objects and open inventory.
+          </div>
         </div>
       </div>
 
       <!-- Join Game Dialog -->
-      <div id="join-game-dialog" class="modal" style="display: none">
+      <div id="join-game-dialog" class="modal">
         <div class="modal-content">
+          <!-- Title with gold accent -->
           <h2>Join Game</h2>
-          <p>Enter the game code to join:</p>
+
+          <!-- Description -->
+          <p>Enter the game code to join a friend's world</p>
+
+          <!-- Game code input field -->
           <input
             type="text"
             id="game-code"
             placeholder="Enter game code"
             class="modal-input"
+            maxlength="6"
           />
+
+          <!-- Error message container (hidden by default) -->
+          <div id="join-error" class="join-error">
+            Invalid game code. Please try again.
+          </div>
+
+          <!-- Action buttons -->
           <div class="modal-buttons">
             <button id="join-game-submit" class="modal-button">Join</button>
             <button id="join-game-cancel" class="modal-button">Cancel</button>
@@ -265,10 +282,13 @@
         </div>
       </div>
 
-      <!-- Host Game Dialog -->
-      <div id="host-game-dialog" class="modal" style="display: none">
+      <!-- Enhanced Host Game Dialog -->
+      <div id="host-game-dialog" class="modal">
         <div class="modal-content">
+          <!-- Title with gold accent -->
           <h2>Host Game</h2>
+
+          <!-- Game setup form -->
           <div class="form-group">
             <label for="game-name">Game Name:</label>
             <input
@@ -278,6 +298,7 @@
               class="modal-input"
             />
           </div>
+
           <div class="form-group">
             <label for="max-players">Max Players:</label>
             <input
@@ -289,6 +310,7 @@
               class="modal-input"
             />
           </div>
+
           <div class="form-group">
             <p>World Selection:</p>
             <div class="radio-group">
@@ -300,6 +322,27 @@
               <label for="world-existing">Use Existing Save</label>
             </div>
           </div>
+
+          <!-- Optional settings section -->
+          <div class="form-group">
+            <div class="world-options">
+              <div class="checkbox-wrapper">
+                <input
+                  type="checkbox"
+                  id="enable-pvp"
+                  class="custom-checkbox"
+                />
+                <label for="enable-pvp">Enable PvP</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error message container (hidden by default) -->
+          <div id="host-error" class="host-error">
+            Please fill in all required fields.
+          </div>
+
+          <!-- Action buttons -->
           <div class="modal-buttons">
             <button id="host-game-submit" class="modal-button">
               Create Game

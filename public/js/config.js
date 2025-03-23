@@ -1,5 +1,6 @@
 // config.js
 import { updateUI } from "./updates.js";
+import { showMessage } from "./setup.js";
 
 export const gameState = {
   playerId: null, // Stores the socket ID for this player
@@ -392,11 +393,58 @@ export const gameState = {
       return false;
     }
 
-    // Original save logic
+    // Compress current blockMap: store ore name if block exists, or null otherwise
+    const compressedBlockMap = [];
+    if (this.blockMap && this.blockMap.length > 0) {
+      for (let y = 0; y < this.blockMap.length; y++) {
+        if (!this.blockMap[y]) continue;
+
+        const row = [];
+        for (let x = 0; x < this.blockMap[y].length; x++) {
+          row.push(this.blockMap[y][x] ? this.blockMap[y][x].name : null);
+        }
+        compressedBlockMap.push(row);
+      }
+    }
+
+    // Compress earthBlockMap if it exists
+    const compressedEarthBlockMap = [];
+    if (this.earthBlockMap && this.earthBlockMap.length > 0) {
+      for (let y = 0; y < this.earthBlockMap.length; y++) {
+        if (!this.earthBlockMap[y]) continue;
+
+        const row = [];
+        for (let x = 0; x < this.earthBlockMap[y].length; x++) {
+          row.push(
+            this.earthBlockMap[y][x] ? this.earthBlockMap[y][x].name : null
+          );
+        }
+        compressedEarthBlockMap.push(row);
+      }
+    }
+
+    // Compress moonBlockMap if it exists
+    const compressedMoonBlockMap = [];
+    if (this.moonBlockMap && this.moonBlockMap.length > 0) {
+      for (let y = 0; y < this.moonBlockMap.length; y++) {
+        if (!this.moonBlockMap[y]) continue;
+
+        const row = [];
+        for (let x = 0; x < this.moonBlockMap[y].length; x++) {
+          row.push(
+            this.moonBlockMap[y][x] ? this.moonBlockMap[y][x].name : null
+          );
+        }
+        compressedMoonBlockMap.push(row);
+      }
+    }
+
+    // Save the compressed data structure
     const gameData = {
       player: {
         health: this.player.health,
         maxHealth: this.player.maxHealth,
+        speed: this.player.speed, // Added player speed
         x: this.player.x,
         y: this.player.y,
       },
@@ -407,14 +455,22 @@ export const gameState = {
       hasJetpack: this.hasJetpack,
       bombCount: this.bombs,
       bagSize: this.bagSize,
-      blockMap: this.blockMap,
-      earthBlockMap: this.earthBlockMap,
-      moonBlockMap: this.moonBlockMap,
+      pickaxeLevel: this.pickaxeLevel, // Added pickaxe level
+      pickaxeSpeed: this.pickaxeSpeed,
+      activeBombs: this.activeBombs, // Added activeBombs
+      activeExplosions: this.activeExplosions, // Added activeExplosions
+      hasLaser: this.hasLaser, // Added laser equipment
+      hasMoonBoots: this.hasMoonBoots, // Added moon boots
+      hasRocket: this.hasRocket, // Added rocket property
+      rocketPlaced: this.rocketPlaced, // Added rocket placement state
+      rocket: this.rocket, // Added rocket details
+      compressedBlockMap: compressedBlockMap,
+      compressedEarthBlockMap: compressedEarthBlockMap,
+      compressedMoonBlockMap: compressedMoonBlockMap,
       worldWidth: this.worldWidth,
       worldHeight: this.worldHeight,
       skyRows: this.skyRows,
       blockMiningDuration: this.blockMiningDuration,
-      pickaxeSpeed: this.pickaxeSpeed,
       currentPlanet: this.currentPlanet,
       depth: this.depth,
       crafting: {
@@ -435,26 +491,28 @@ export const gameState = {
     }
   },
 
-  // Load game with multiplayer awareness
+  // Updated loadGame function that handles compressed block maps
   loadGame: function () {
     // In multiplayer mode as a client, don't load from localStorage
     if (this.multiplayer.active && !this.multiplayer.isHost) {
       return false;
     }
-
-    // Original load logic
+  
     const savedData = localStorage.getItem("pixelMinerSave");
     if (!savedData) return false;
-
+  
     try {
       const gameData = JSON.parse(savedData);
-
-      // Load player data
-      this.player.health = gameData.player.health || 100;
-      this.player.maxHealth = gameData.player.maxHealth || 100;
-      this.player.x = gameData.player.x || 100;
-      this.player.y = gameData.player.y || 100;
-
+  
+      // Load player data (including speed)
+      if (gameData.player) {
+        this.player.health = gameData.player.health || 100;
+        this.player.maxHealth = gameData.player.maxHealth || 100;
+        this.player.speed = gameData.player.speed || 6; // Restoring player speed
+        this.player.x = gameData.player.x || 100;
+        this.player.y = gameData.player.y || 100;
+      }
+  
       // Load inventory and resources
       this.inventory = gameData.inventory || {};
       this.money = gameData.money || 0;
@@ -463,32 +521,73 @@ export const gameState = {
       this.hasJetpack = gameData.hasJetpack || false;
       this.bombs = gameData.bombCount || 0;
       this.bagSize = gameData.bagSize || 20;
-
-      // Load world data
-      if (gameData.blockMap) {
-        this.blockMap = gameData.blockMap;
-      }
-
-      // Load planet-specific maps
-      if (gameData.earthBlockMap) {
-        this.earthBlockMap = gameData.earthBlockMap;
-      }
-
-      if (gameData.moonBlockMap) {
-        this.moonBlockMap = gameData.moonBlockMap;
-      }
-
+  
+      // Load additional properties
+      this.pickaxeLevel = gameData.pickaxeLevel || 1;
+      this.pickaxeSpeed = gameData.pickaxeSpeed || 1.0;
+      this.blockMiningDuration = gameData.blockMiningDuration || 1000;
+      this.activeBombs = gameData.activeBombs || [];
+      this.activeExplosions = gameData.activeExplosions || [];
+      this.hasLaser = gameData.hasLaser || false;
+      this.hasMoonBoots = gameData.hasMoonBoots || false;
+      this.hasRocket = gameData.hasRocket || false;
+      this.rocketPlaced = gameData.rocketPlaced || false;
+      this.rocket = gameData.rocket || { x: 1200, y: 300, width: 300, height: 300 };
+  
+      // Load world dimensions
       this.worldWidth = gameData.worldWidth || 100;
       this.worldHeight = gameData.worldHeight || 300;
       this.skyRows = gameData.skyRows || 10;
-
-      // Load game mechanics
-      this.blockMiningDuration = gameData.blockMiningDuration || 1000;
-      this.pickaxeSpeed = gameData.pickaxeSpeed || 1.0;
-
-      // Load planet
       this.currentPlanet = gameData.currentPlanet || "earth";
       this.depth = gameData.depth || 0;
+
+      // Function to expand compressed map back into full ore objects
+      const expandCompressedMap = (compressedMap) => {
+        if (!compressedMap || compressedMap.length === 0) return [];
+
+        const expandedMap = [];
+        for (let y = 0; y < compressedMap.length; y++) {
+          expandedMap[y] = [];
+          for (let x = 0; x < compressedMap[y].length; x++) {
+            const oreName = compressedMap[y][x];
+            if (oreName === null) {
+              expandedMap[y][x] = null;
+            } else {
+              // Find the matching ore object by name
+              const ore = this.ores.find((ore) => ore.name === oreName);
+              expandedMap[y][x] = ore || null; // Use null as fallback if ore not found
+            }
+          }
+        }
+        return expandedMap;
+      };
+
+      // Check if we have the new compressed format or old format
+      if (gameData.compressedBlockMap) {
+        // New compressed format
+        this.blockMap = expandCompressedMap(gameData.compressedBlockMap);
+      } else if (gameData.blockMap) {
+        // Old uncompressed format - keep for backward compatibility
+        this.blockMap = gameData.blockMap;
+      }
+
+      // Handle earth block map
+      if (gameData.compressedEarthBlockMap) {
+        this.earthBlockMap = expandCompressedMap(
+          gameData.compressedEarthBlockMap
+        );
+      } else if (gameData.earthBlockMap) {
+        this.earthBlockMap = gameData.earthBlockMap;
+      }
+
+      // Handle moon block map
+      if (gameData.compressedMoonBlockMap) {
+        this.moonBlockMap = expandCompressedMap(
+          gameData.compressedMoonBlockMap
+        );
+      } else if (gameData.moonBlockMap) {
+        this.moonBlockMap = gameData.moonBlockMap;
+      }
 
       // Load crafting state
       if (gameData.crafting) {
@@ -498,6 +597,11 @@ export const gameState = {
           gameData.crafting.currentToolType || "pickaxe";
       }
 
+      console.log(
+        "Game loaded successfully with " +
+          (gameData.compressedBlockMap ? "compressed" : "legacy") +
+          " map format"
+      );
       return true;
     } catch (error) {
       console.error("Failed to load game:", error);
