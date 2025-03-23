@@ -1,7 +1,7 @@
 // worldGeneration.js
 import { gameState } from "./config.js";
 import { updateVisibleBlocks } from "./updates.js";
-import { uploadWorldToServer } from "./multiplayer.js";
+import { uploadWorldToServer, requestWorldData } from "./multiplayer.js";
 
 // Define the surface layer depth
 const SURFACE_LAYER_DEPTH = 2; // Number of dirt blocks below grass
@@ -46,7 +46,18 @@ export function generateWorld() {
   // Check if we're joining multiplayer - if so, don't generate or load a world
   if (gameState.isJoiningMultiplayer) {
     console.log("Joining multiplayer - waiting for host's world data");
+    
+    // Initialize an empty blockMap to prepare for receiving world data
+    gameState.blockMap = [];
+    
+    // Still update visible blocks to ensure UI is ready
     updateVisibleBlocks();
+    
+    // Request world data from the server
+    if (typeof requestWorldData === "function") {
+      console.log("Requesting world data from host");
+      requestWorldData();
+    }
     return;
   }
 
@@ -59,7 +70,6 @@ export function generateWorld() {
     console.log("Using existing blockMap from save");
     updateVisibleBlocks();
     
-    console.log(gameState.needToUploadWorld)
     // If we're the host, upload the world
     if (gameState.needToUploadWorld) {
       uploadWorldToServer();
@@ -96,6 +106,7 @@ export function generateWorld() {
 
   // FIXED: Add log to indicate if we're regenerating because of forceNewWorld
   if (gameState.forceNewWorld) {
+    console.log("Force generating new world due to forceNewWorld flag");
     if (gameState.player) {
       gameState.player.x = 280;
       gameState.player.y = 550;
@@ -139,7 +150,6 @@ export function generateWorld() {
   updateVisibleBlocks();
 
   // If we're the host, upload the newly generated world to the server
-  console.log(gameState.needToUploadWorld)
   if (gameState.needToUploadWorld) {
     console.log("Host is uploading newly generated world to server");
     uploadWorldToServer();

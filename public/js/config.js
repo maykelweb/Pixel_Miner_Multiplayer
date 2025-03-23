@@ -388,7 +388,6 @@ export const gameState = {
   },
 
   // Save game with multiplayer awareness
-  // Save game with multiplayer awareness and improved synchronization
   saveGame: function () {
     // Don't save if in multiplayer mode and not the host
     if (this.multiplayer.active && !this.multiplayer.isHost) {
