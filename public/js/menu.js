@@ -1,4 +1,3 @@
-// menu.js
 import {
   gameMusic,
   menuClickSound,
@@ -10,7 +9,12 @@ import {
   storyMusic,
 } from "./setup.js";
 import { gameState } from "./config.js";
-import { startNewGame, loadExistingGame, joinMultiplayerGame, hostMultiplayerGame } from "./main.js";
+import {
+  startNewGame,
+  loadExistingGame,
+  joinMultiplayerGame,
+  hostMultiplayerGame,
+} from "./main.js";
 import { initializeMenuBackground } from "./menuBackground.js";
 
 /**
@@ -18,12 +22,11 @@ import { initializeMenuBackground } from "./menuBackground.js";
  */
 export function showMainMenu() {
   console.log("Showing main menu");
-  
+
   // Initialize the menu background first
   initializeMenuBackground();
-  
-  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
-  const mainMenu = document.getElementById("main-menu-overlay");
+
+  const mainMenu = document.getElementById("main-menu");
   if (mainMenu) {
     mainMenu.style.display = "flex";
 
@@ -66,7 +69,7 @@ export function showMainMenu() {
           button.style.opacity = "1";
           button.style.transition = "opacity 0.5s ease";
         }, 500 + index * 200);
-        
+
         // Add hover and click sound events to all buttons
         button.addEventListener("mouseenter", () => {
           playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
@@ -79,8 +82,6 @@ export function showMainMenu() {
 
     // Attach event listeners for menu buttons
     attachMenuEventListeners(hasSavedGame);
-  } else {
-    console.error("Main menu element not found!");
   }
 }
 
@@ -94,33 +95,33 @@ function removeExistingEventListeners() {
   const hostGameBtn = document.getElementById("host-game");
   const gameOptionsBtn = document.getElementById("game-options");
   const backBtn = document.getElementById("back-to-menu");
-  
+
   // Clone and replace buttons to remove all event listeners
   if (startNewGameBtn) {
     const newBtn = startNewGameBtn.cloneNode(true);
     startNewGameBtn.parentNode.replaceChild(newBtn, startNewGameBtn);
   }
-  
+
   if (loadGameBtn) {
     const newBtn = loadGameBtn.cloneNode(true);
     loadGameBtn.parentNode.replaceChild(newBtn, loadGameBtn);
   }
-  
+
   if (joinGameBtn) {
     const newBtn = joinGameBtn.cloneNode(true);
     joinGameBtn.parentNode.replaceChild(newBtn, joinGameBtn);
   }
-  
+
   if (hostGameBtn) {
     const newBtn = hostGameBtn.cloneNode(true);
     hostGameBtn.parentNode.replaceChild(newBtn, hostGameBtn);
   }
-  
+
   if (gameOptionsBtn) {
     const newBtn = gameOptionsBtn.cloneNode(true);
     gameOptionsBtn.parentNode.replaceChild(newBtn, gameOptionsBtn);
   }
-  
+
   if (backBtn) {
     const newBtn = backBtn.cloneNode(true);
     backBtn.parentNode.replaceChild(newBtn, backBtn);
@@ -133,7 +134,7 @@ function removeExistingEventListeners() {
 function ensureMultiplayerButtons() {
   const menuButtons = document.querySelector(".menu-buttons");
   if (!menuButtons) return;
-  
+
   // Check if join game button exists
   let joinGameBtn = document.getElementById("join-game");
   if (!joinGameBtn) {
@@ -141,7 +142,7 @@ function ensureMultiplayerButtons() {
     joinGameBtn.id = "join-game";
     joinGameBtn.className = "main-menu-button";
     joinGameBtn.textContent = "Join Game";
-    
+
     // Insert before options button
     const optionsBtn = document.getElementById("game-options");
     if (optionsBtn) {
@@ -150,7 +151,7 @@ function ensureMultiplayerButtons() {
       menuButtons.appendChild(joinGameBtn);
     }
   }
-  
+
   // Check if host game button exists
   let hostGameBtn = document.getElementById("host-game");
   if (!hostGameBtn) {
@@ -158,7 +159,7 @@ function ensureMultiplayerButtons() {
     hostGameBtn.id = "host-game";
     hostGameBtn.className = "main-menu-button";
     hostGameBtn.textContent = "Host Game";
-    
+
     // Insert before join game button
     menuButtons.insertBefore(hostGameBtn, joinGameBtn);
   }
@@ -169,7 +170,7 @@ function ensureMultiplayerButtons() {
  */
 function attachMenuEventListeners(hasSavedGame) {
   console.log("Attaching menu event listeners");
-  
+
   // Attach event listeners for main menu buttons
   const startNewGameBtn = document.getElementById("start-new-game");
   if (startNewGameBtn) {
@@ -177,8 +178,6 @@ function attachMenuEventListeners(hasSavedGame) {
       console.log("Start new game clicked");
       startNewGame();
     });
-  } else {
-    console.error("Start new game button not found!");
   }
 
   // Only add event listener if the button is visible
@@ -189,8 +188,6 @@ function attachMenuEventListeners(hasSavedGame) {
         console.log("Load game clicked");
         loadExistingGame();
       });
-    } else {
-      console.error("Load game button exists but not found in DOM!");
     }
   }
 
@@ -234,17 +231,72 @@ function attachMenuEventListeners(hasSavedGame) {
 }
 
 /**
+ * Show join game dialog
+ */
+function showJoinGameDialog() {
+  const joinDialog = document.getElementById("join-game-dialog");
+  if (joinDialog) {
+    joinDialog.style.display = "flex";
+
+    // Attach button listeners
+    const joinSubmitBtn = document.getElementById("join-game-submit");
+    const joinCancelBtn = document.getElementById("join-game-cancel");
+
+    if (joinSubmitBtn) {
+      joinSubmitBtn.onclick = () => {
+        joinDialog.style.display = "none";
+        joinMultiplayerGame();
+      };
+    }
+
+    if (joinCancelBtn) {
+      joinCancelBtn.onclick = () => {
+        joinDialog.style.display = "none";
+      };
+    }
+  }
+}
+
+/**
+ * Show host game dialog
+ */
+function showHostGameDialog() {
+  const hostDialog = document.getElementById("host-game-dialog");
+  if (hostDialog) {
+    hostDialog.style.display = "flex";
+
+    // Attach button listeners
+    const hostSubmitBtn = document.getElementById("host-game-submit");
+    const hostCancelBtn = document.getElementById("host-game-cancel");
+
+    if (hostSubmitBtn) {
+      hostSubmitBtn.onclick = () => {
+        hostDialog.style.display = "none";
+        hostMultiplayerGame();
+      };
+    }
+
+    if (hostCancelBtn) {
+      hostCancelBtn.onclick = () => {
+        hostDialog.style.display = "none";
+      };
+    }
+  }
+}
+
+/**
  * Shows the options menu
  */
 function showOptions() {
   console.log("Showing options");
-  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
-  document.getElementById("main-menu-overlay").style.display = "none";
+  document.getElementById("main-menu").style.display = "none";
   document.getElementById("options-modal").style.display = "flex";
 
   // Add hover and click sound events to all option controls
-  const optionControls = document.querySelectorAll("#options-modal button, #options-modal input");
-  optionControls.forEach(control => {
+  const optionControls = document.querySelectorAll(
+    "#options-modal button, #options-modal input"
+  );
+  optionControls.forEach((control) => {
     if (control.tagName === "BUTTON") {
       control.addEventListener("mouseenter", () => {
         playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
@@ -276,64 +328,7 @@ function hideOptions() {
   saveAudioSettings();
 
   document.getElementById("options-modal").style.display = "none";
-  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
-  document.getElementById("main-menu-overlay").style.display = "flex";
-}
-
-/**
- * Show join game dialog
- */
-function showJoinGameDialog() {
-  
-  const joinDialog = document.getElementById("join-game-dialog");
-  if (joinDialog) {
-    joinDialog.style.display = "flex";
-    
-    // Attach button listeners
-    const joinSubmitBtn = document.getElementById("join-game-submit");
-    const joinCancelBtn = document.getElementById("join-game-cancel");
-    
-    if (joinSubmitBtn) {
-      joinSubmitBtn.onclick = () => {
-        joinDialog.style.display = "none";
-        joinMultiplayerGame();
-      };
-    }
-    
-    if (joinCancelBtn) {
-      joinCancelBtn.onclick = () => {
-        joinDialog.style.display = "none";
-      };
-    }
-  }
-}
-
-/**
- * Show host game dialog
- */
-function showHostGameDialog() {
-
-  const hostDialog = document.getElementById("host-game-dialog");
-  if (hostDialog) {
-    hostDialog.style.display = "flex";
-    
-    // Attach button listeners
-    const hostSubmitBtn = document.getElementById("host-game-submit");
-    const hostCancelBtn = document.getElementById("host-game-cancel");
-    
-    if (hostSubmitBtn) {
-      hostSubmitBtn.onclick = () => {
-        hostDialog.style.display = "none";
-        hostMultiplayerGame();
-      };
-    }
-    
-    if (hostCancelBtn) {
-      hostCancelBtn.onclick = () => {
-        hostDialog.style.display = "none";
-      };
-    }
-  }
+  document.getElementById("main-menu").style.display = "flex";
 }
 
 /**
@@ -377,7 +372,7 @@ export function loadAudioSettings() {
   if (muteCheckbox) {
     muteCheckbox.checked = muteAll;
   }
-  
+
   // Store mute state in gameState for easy access
   gameState.muteAll = muteAll;
 
@@ -495,7 +490,7 @@ export function applyMuteSetting(muted) {
     // Unmute using the current slider values
     const musicVolumeSlider = document.getElementById("music-volume");
     const sfxVolumeSlider = document.getElementById("sfx-volume");
-    
+
     if (musicVolumeSlider && sfxVolumeSlider) {
       const musicVolume = musicVolumeSlider.value / 100;
       const sfxVolume = sfxVolumeSlider.value / 100;
@@ -511,7 +506,7 @@ export function saveAudioSettings() {
   const musicVolumeSlider = document.getElementById("music-volume");
   const sfxVolumeSlider = document.getElementById("sfx-volume");
   const muteCheckbox = document.getElementById("mute-all");
-  
+
   if (musicVolumeSlider && sfxVolumeSlider && muteCheckbox) {
     const musicVolume = musicVolumeSlider.value / 100;
     const sfxVolume = sfxVolumeSlider.value / 100;
