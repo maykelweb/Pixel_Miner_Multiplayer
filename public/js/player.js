@@ -1058,6 +1058,7 @@ export function updateLaserTargetDuringMovement() {
 
     laserElement.style.width = `${length - gameState.blockSize / 2}px`;
     laserElement.style.transform = `rotate(${adjustedAngle}rad)`;
+    sendLaserUpdate(adjustedAngle); // Send rotation to multiplayer
   }
 }
 
@@ -1179,13 +1180,6 @@ export function deactivateLaser() {
 
   // Send laser deactivation to server for multiplayer sync
   sendLaserDeactivated();
-}
-
-function sendLaserAngleUpdate() {
-  if (_isLaserActive) {
-    const angle = gameState.player.toolRotation || 0;
-    sendLaserUpdate(angle);
-  }
 }
 
 export function updateCharacterAppearance() {
@@ -1442,11 +1436,6 @@ export function updateToolRotation() {
         // and ignore the player's direction flipping.
         degrees += 180;
         scale = 2.5;
-
-        // Send laser angle updates for multiplayer
-        if (_isLaserActive) {
-          sendLaserUpdate(degrees);
-        }
       }
 
       // For the drill, use the existing logic that accounts for player direction.

@@ -419,21 +419,7 @@ export function initMultiplayer(isHost = false, options = {}) {
           ".other-player-laser"
         );
         if (laserBeam) {
-          // Get the player's facing direction
-          const playerDirection = otherPlayers[data.id].data.direction || 1;
-
-          // Apply appropriate transform based on direction
-          // FIXED: Corrected the transform logic to match player direction properly
-          if (playerDirection === -1) {
-            // When facing LEFT, we flip the beam AND negate the angle
-            laserBeam.style.transform = `scaleX(-1) rotate(${data.angle}deg)`;
-          } else {
-            // When facing RIGHT, no horizontal flip needed
-            laserBeam.style.transform = `rotate(${-data.angle}deg)`;
-          }
-
-          // Set transform origin to match local player
-          laserBeam.style.transformOrigin = "left center";
+          laserBeam.style.transform = `rotate(${data.angle}rad)`;
         }
       }
     }
