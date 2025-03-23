@@ -593,6 +593,7 @@ export const gameState = {
       if (gameData.crafting) {
         this.crafting.availableTools = gameData.crafting.availableTools || [];
         this.crafting.equippedTools = gameData.crafting.equippedTools || {};
+        console.log("here: " + this.crafting.equippedTools)
         this.crafting.currentToolType =
           gameData.crafting.currentToolType || "pickaxe";
       }

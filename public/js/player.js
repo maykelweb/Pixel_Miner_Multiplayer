@@ -28,7 +28,7 @@ import {
   showCrackingAnimation,
   clearCrackingAnimations,
 } from "./animations.js";
-import { getCurrentTool, hasMoonBootsEquipped } from "./crafting.js";
+import { getCurrentTool, hasMoonBootsEquipped, TOOL_TYPES } from "./crafting.js";
 import { playerInRocket } from "./rocket.js";
 import {
   sendPlayerUpdate,
@@ -41,7 +41,8 @@ import {
   sendLaserUpdate,
   sendJetpackActivated, 
   sendJetpackDeactivated, 
-  sendToolRotationUpdate 
+  sendToolRotationUpdate,
+  sendInitialToolInfo
 } from "./multiplayer.js";
 
 // Get DOM elements
@@ -1232,25 +1233,29 @@ export function loadEquippedTool() {
       );
 
       if (toolToEquip) {
+        console.log(toolToEquip)
         // Just update the visual appearance without changing game state
         updateToolVisuals(toolToEquip.type);
+        sendInitialToolInfo(); // Already here
         console.log(`Loaded visual for ${toolToEquip.name} (${currentToolId})`);
         return true;
       }
     }
 
     // Default to basic pickaxe visuals if no valid tool info
-    // First set the default equipped tool to basic_pickaxe to ensure correct loading
+    // First set the default equipped tool to pickaxe-basic to ensure correct loading
     if (gameState.crafting && gameState.crafting.equippedTools) {
-      gameState.crafting.equippedTools[TOOL_TYPES.PICKAXE] = "basic_pickaxe";
+      gameState.crafting.equippedTools[TOOL_TYPES.PICKAXE] = "pickaxe-basic";
       gameState.crafting.currentToolType = TOOL_TYPES.PICKAXE;
     }
     updateToolVisuals("pickaxe");
+    sendInitialToolInfo(); // Add this line to send tool info even when defaulting to basic pickaxe
     console.log("Loading default basic pickaxe");
     return false;
   } catch (error) {
     console.error("Error loading equipped tool:", error);
     updateToolVisuals("pickaxe"); // Fallback
+    sendInitialToolInfo(); // Add this line to send tool info even in error cases
     return false;
   }
 }
