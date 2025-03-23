@@ -44,6 +44,7 @@ export function renderPlayer() {
 }
 
 // Update visible blocks with efficient DOM operations
+// Update visible blocks with efficient DOM operations
 export function updateVisibleBlocks() {
   const minBlockX = Math.max(
     0,
@@ -72,6 +73,11 @@ export function updateVisibleBlocks() {
   // Add or update visible blocks
   for (let y = minBlockY; y <= maxBlockY; y++) {
     for (let x = minBlockX; x <= maxBlockX; x++) {
+      // Add safety check to ensure the row exists
+      if (!gameState.blockMap[y]) {
+        continue;
+      }
+      
       const block = gameState.blockMap[y][x];
       const key = `${x},${y}`;
 
@@ -480,14 +486,16 @@ export function updateUI() {
 }
 
 // Check if a block is valid
+// Check if a block is valid
 export function isValidBlock(x, y) {
   return (
     x >= 0 &&
     y >= 0 &&
     x < gameState.worldWidth &&
     y < gameState.worldHeight &&
-    gameState.blockMap[y] &&
-    gameState.blockMap[y][x]
+    gameState.blockMap[y] !== undefined && // Ensure the row exists
+    gameState.blockMap[y][x] !== undefined && // Ensure the block exists
+    gameState.blockMap[y][x] !== null // Ensure the block is not null
   );
 }
 

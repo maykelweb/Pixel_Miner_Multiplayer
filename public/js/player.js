@@ -681,6 +681,7 @@ function hasPlayerMoved() {
 }
 
 // Check vertical collisions
+// Check vertical collisions
 export function checkVerticalCollisions() {
   const playerLeft = gameState.player.x;
   const playerRight = gameState.player.x + gameState.player.width;
@@ -692,13 +693,16 @@ export function checkVerticalCollisions() {
   if (gameState.player.velocityY >= 0) {
     const blockY = Math.floor(playerBottom / gameState.blockSize);
     for (let x = startX; x <= endX; x++) {
+      // Safe check for valid indices
       if (
         blockY < 0 ||
         blockY >= gameState.worldHeight ||
         x < 0 ||
-        x >= gameState.worldWidth
+        x >= gameState.worldWidth ||
+        !gameState.blockMap[blockY] // Add this check to ensure row exists
       )
         continue;
+        
       if (gameState.blockMap[blockY][x]) {
         // Check for fall damage before stopping the fall
         if (gameState.player.velocityY > gameState.player.fallDamageThreshold) {
@@ -740,17 +744,20 @@ export function checkVerticalCollisions() {
     }
   }
 
-  // [Keep existing upward collision code]
+  // Upward collision code
   if (gameState.player.velocityY < 0) {
     const blockY = Math.floor(playerTop / gameState.blockSize);
     for (let x = startX; x <= endX; x++) {
+      // Safe check for valid indices, including checking if blockMap[blockY] exists
       if (
         blockY < 0 ||
         blockY >= gameState.worldHeight ||
         x < 0 ||
-        x >= gameState.worldWidth
+        x >= gameState.worldWidth ||
+        !gameState.blockMap[blockY] // Add this check to ensure row exists
       )
         continue;
+        
       if (gameState.blockMap[blockY][x]) {
         gameState.player.y = (blockY + 1) * gameState.blockSize;
         gameState.player.velocityY = 0;

@@ -23,7 +23,6 @@ export let multiplayerInitialized = false;
  * Shows the main menu at game startup - Completely fixed version with proper button opacity
  */
 export function showMainMenu() {
-  console.log("Showing main menu");
 
   // Initialize the menu background first
   initializeMenuBackground();
@@ -172,13 +171,11 @@ function ensureMultiplayerButtons() {
  * Attach event listeners to all menu buttons
  */
 function attachMenuEventListeners(hasSavedGame) {
-  console.log("Attaching menu event listeners");
 
   // Attach event listeners for main menu buttons
   const startNewGameBtn = document.getElementById("start-new-game");
   if (startNewGameBtn) {
     startNewGameBtn.addEventListener("click", () => {
-      console.log("Start new game clicked");
       startNewGame();
     });
   }
@@ -188,7 +185,6 @@ function attachMenuEventListeners(hasSavedGame) {
     const loadGameBtn = document.getElementById("load-game");
     if (loadGameBtn) {
       loadGameBtn.addEventListener("click", () => {
-        console.log("Load game clicked");
         loadExistingGame();
       });
     }
@@ -197,7 +193,6 @@ function attachMenuEventListeners(hasSavedGame) {
   const gameOptionsBtn = document.getElementById("game-options");
   if (gameOptionsBtn) {
     gameOptionsBtn.addEventListener("click", () => {
-      console.log("Options clicked");
       showOptions();
     });
   }
@@ -280,7 +275,6 @@ function showHostGameDialog() {
  * Shows the options menu
  */
 function showOptions() {
-  console.log("Showing options");
   // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
   document.getElementById("main-menu-overlay").style.display = "none";
   document.getElementById("options-modal").style.display = "flex";

@@ -65,6 +65,9 @@ export const gameState = {
   currentPlanet: "earth",
   earthBlockMap: [], // Store Earth blockMap separately
   moonBlockMap: [], // Store Moon blockMap separately
+  isJoiningMultiplayer: false, // Flag to indicate we're joining someone else's game
+  needToUploadWorld: false, // Flag for hosts to upload world data
+  playerId: null, // Will be set when connected to server
   ores: [
     {
       name: "grass",
@@ -497,13 +500,13 @@ export const gameState = {
     if (this.multiplayer.active && !this.multiplayer.isHost) {
       return false;
     }
-  
+
     const savedData = localStorage.getItem("pixelMinerSave");
     if (!savedData) return false;
-  
+
     try {
       const gameData = JSON.parse(savedData);
-  
+
       // Load player data (including speed)
       if (gameData.player) {
         this.player.health = gameData.player.health || 100;
@@ -512,7 +515,7 @@ export const gameState = {
         this.player.x = gameData.player.x || 100;
         this.player.y = gameData.player.y || 100;
       }
-  
+
       // Load inventory and resources
       this.inventory = gameData.inventory || {};
       this.money = gameData.money || 0;
@@ -521,7 +524,7 @@ export const gameState = {
       this.hasJetpack = gameData.hasJetpack || false;
       this.bombs = gameData.bombCount || 0;
       this.bagSize = gameData.bagSize || 20;
-  
+
       // Load additional properties
       this.pickaxeLevel = gameData.pickaxeLevel || 1;
       this.pickaxeSpeed = gameData.pickaxeSpeed || 1.0;
@@ -532,8 +535,13 @@ export const gameState = {
       this.hasMoonBoots = gameData.hasMoonBoots || false;
       this.hasRocket = gameData.hasRocket || false;
       this.rocketPlaced = gameData.rocketPlaced || false;
-      this.rocket = gameData.rocket || { x: 1200, y: 300, width: 300, height: 300 };
-  
+      this.rocket = gameData.rocket || {
+        x: 1200,
+        y: 300,
+        width: 300,
+        height: 300,
+      };
+
       // Load world dimensions
       this.worldWidth = gameData.worldWidth || 100;
       this.worldHeight = gameData.worldHeight || 300;
@@ -593,7 +601,7 @@ export const gameState = {
       if (gameData.crafting) {
         this.crafting.availableTools = gameData.crafting.availableTools || [];
         this.crafting.equippedTools = gameData.crafting.equippedTools || {};
-        console.log("here: " + this.crafting.equippedTools)
+        console.log("here: " + this.crafting.equippedTools);
         this.crafting.currentToolType =
           gameData.crafting.currentToolType || "pickaxe";
       }

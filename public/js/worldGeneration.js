@@ -28,6 +28,9 @@ function getOres() {
   return cachedOres;
 }
 
+/**
+ * Generate or load the game world
+ */
 export function generateWorld() {
   // Initialize clouds and background
   if (typeof initializeClouds === "function") {
@@ -39,10 +42,18 @@ export function generateWorld() {
 
   // Update the current planet
   gameState.currentPlanet = "earth";
+  
+  // Check if we're joining multiplayer - if so, don't generate or load a world
+  if (gameState.isJoiningMultiplayer) {
+    console.log("Joining multiplayer - waiting for host's world data");
+    updateVisibleBlocks();
+    return;
+  }
 
   // Check if returning from moon (look for saved Earth map)
   if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
     console.log("Restoring Earth map from saved state");
+    gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
     updateVisibleBlocks();
     
     // If we're the host, upload the world after restoration

@@ -20,10 +20,10 @@ let hasShownGameCode = false;
 export function initMultiplayer(isHost = false, options = {}) {
   // Connect to the server
   socket = io(); // Assumes Socket.IO is loaded in the HTML
+  isConnected = true;
 
   // Handle successful connection
   socket.on("connect", () => {
-    isConnected = true;
     console.log("Connected to server with ID:", socket.id);
 
     // If hosting, send host information to server
@@ -741,30 +741,75 @@ export function initMultiplayer(isHost = false, options = {}) {
  */
 export function uploadWorldToServer() {
   if (isConnected && socket && gameState.needToUploadWorld) {
-    console.log("Uploading world data to server...");
-
+    console.log("Preparing to upload world data to server...");
+    
+    // Ensure blockMap exists and has data
+    if (!gameState.blockMap || gameState.blockMap.length === 0) {
+      console.error("Error: blockMap is empty or null, cannot upload world");
+      return; // Don't proceed with upload
+    }
+    
     // Create a more efficient representation of the world
     // Only sending non-null blocks to reduce data size
     const worldData = {};
+    let blockCount = 0;
 
     for (let y = 0; y < gameState.blockMap.length; y++) {
       if (!gameState.blockMap[y]) continue;
 
-      worldData[y] = {};
-
+      // Create row object and check for data in this row
+      let rowData = {};
+      let hasDataInRow = false;
+      
       for (let x = 0; x < gameState.blockMap[y].length; x++) {
         if (gameState.blockMap[y][x]) {
-          worldData[y][x] = gameState.blockMap[y][x];
+          // For ore objects, only send necessary data to reduce size
+          if (typeof gameState.blockMap[y][x] === 'object') {
+            rowData[x] = {
+              name: gameState.blockMap[y][x].name,
+              color: gameState.blockMap[y][x].color,
+              // Include minimum required properties
+              value: gameState.blockMap[y][x].value || 0
+            };
+          } else {
+            rowData[x] = gameState.blockMap[y][x];
+          }
+          
+          hasDataInRow = true;
+          blockCount++;
         }
       }
+      
+      // Only add the row if it contains data
+      if (hasDataInRow) {
+        worldData[y] = rowData;
+      }
     }
+
+    // Check if we have any data to send
+    if (blockCount === 0 || Object.keys(worldData).length === 0) {
+      console.error("Error: No blocks found to upload, world generation may be incomplete");
+      
+      // Retry after a short delay instead of giving up
+      setTimeout(() => {
+        console.log("Retrying world upload...");
+        gameState.needToUploadWorld = true; // Re-enable upload flag
+        uploadWorldToServer();
+      }, 1000);
+      
+      return;
+    }
+
+    console.log(`Uploading world data with ${blockCount} blocks across ${Object.keys(worldData).length} rows...`);
 
     // Send the world data to the server
     socket.emit("uploadWorldData", {
       worldBlocks: worldData,
+      blockCount: blockCount,
+      planetType: gameState.currentPlanet // Include planet type for server-side validation
     });
 
-    console.log("World data uploaded");
+    console.log("World data upload request sent");
     gameState.needToUploadWorld = false;
   }
 }

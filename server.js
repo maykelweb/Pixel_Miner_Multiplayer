@@ -101,25 +101,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Add a new event handler to receive the world data from the host
-  socket.on("uploadWorldData", (data) => {
-    const gameCode = playerGameMap[socket.id];
-
-    if (gameCode && games[gameCode] && socket.id === games[gameCode].host) {
-      console.log(`Received world data from host for game ${gameCode}`);
-
-      // Store the complete world data
-      games[gameCode].worldBlocks = data.worldBlocks;
-      games[gameCode].worldGenerated = true;
-
-      console.log("World data stored successfully");
-    }
-  });
-
   // Handle joining an existing game
   socket.on("joinGame", (data) => {
     const gameCode = data.gameCode;
-
+  
     // Check if game exists
     if (!games[gameCode]) {
       socket.emit("joinResponse", {
@@ -128,7 +113,7 @@ io.on("connection", (socket) => {
       });
       return;
     }
-
+  
     // Check if game is full
     if (games[gameCode].currentPlayers >= games[gameCode].maxPlayers) {
       socket.emit("joinResponse", {
@@ -137,12 +122,12 @@ io.on("connection", (socket) => {
       });
       return;
     }
-
+  
     // Make sure players object exists
     if (!games[gameCode].players) {
       games[gameCode].players = {};
     }
-
+  
     // Add player to the game
     games[gameCode].players[socket.id] = {
       id: socket.id,
@@ -159,22 +144,22 @@ io.on("connection", (socket) => {
       jetpackActive: false, // Add the jetpack state property
     };
     games[gameCode].currentPlayers++;
-
+  
     // Map player to game
     playerGameMap[socket.id] = gameCode;
-
+  
     // Join the socket room for this game
     socket.join(gameCode);
-
+  
     // Send success response
     socket.emit("joinResponse", {
       success: true,
       gameCode: gameCode,
     });
-
-    // FIX: Use the player's actual current planet instead of hardcoding "earth"
+  
+    // Use the player's actual current planet instead of hardcoding "earth"
     const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
-
+  
     // Create a filtered version of players on the same planet
     const playersOnSamePlanet = {};
     for (const playerId in games[gameCode].players) {
@@ -183,21 +168,71 @@ io.on("connection", (socket) => {
         playersOnSamePlanet[playerId] = games[gameCode].players[playerId];
       }
     }
+  
+    // Check if world has been generated before sending to client
+    const worldData = games[gameCode].worldGenerated 
+      ? games[gameCode].worldBlocks 
+      : {};
 
+      console.log(worldData)
+      
+    // Log world data size to help with debugging
+    const worldSize = Object.keys(worldData).length;
+    console.log(`Sending world data to joining player (${worldSize} rows)`);
+  
     // Send game state to the new player
     socket.emit("gameState", {
       playerId: socket.id,
       players: playersOnSamePlanet,
-      worldBlocks: games[gameCode].worldBlocks,
+      worldBlocks: worldData,
       hasRocket: games[gameCode].hasRocket,
       rocketPosition: games[gameCode].rocketPosition,
       currentPlanet: currentPlanet, // FIXED: Use player's current planet instead of hardcoding
     });
-
+  
     // Broadcast new player to others in the same game
     socket.to(gameCode).emit("newPlayer", games[gameCode].players[socket.id]);
-
+  
     console.log(`Player ${socket.id} joined game: ${gameCode}`);
+  });
+
+  // Handle world data upload from the host player
+  socket.on("uploadWorldData", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    // Verify this is a valid game and the sender is the host
+    if (!gameCode || !games[gameCode] || games[gameCode].host !== socket.id) {
+      console.error(`Player ${socket.id} tried to upload world data but is not a host`);
+      socket.emit("serverError", {
+        event: "uploadWorldData",
+        message: "Only the host can upload world data",
+      });
+      return;
+    }
+
+    console.log(`Receiving world data for game ${gameCode} from host ${socket.id}`);
+    console.log(`World data contains ${data.blockCount} blocks across ${Object.keys(data.worldBlocks).length} rows`);
+
+    // Save the world data to the game instance
+    games[gameCode].worldBlocks = data.worldBlocks;
+    games[gameCode].worldGenerated = true;
+    
+    // Associate the world data with the correct planet
+    const planetType = data.planetType || "earth";
+    if (planetType === "earth") {
+      games[gameCode].earthWorldBlocks = data.worldBlocks;
+    } else if (planetType === "moon") {
+      games[gameCode].moonWorldBlocks = data.worldBlocks;
+    }
+
+    // Confirm receipt to the host
+    socket.emit("worldDataUploaded", {
+      success: true,
+      blockCount: data.blockCount,
+      planetType: planetType
+    });
+
+    console.log(`Successfully stored world data for game ${gameCode} on planet ${planetType}`);
   });
 
   // Handle player movement
@@ -285,10 +320,6 @@ io.on("connection", (socket) => {
           });
         }
       });
-
-      console.log(
-        `Player ${socket.id} started mining at (${data.x}, ${data.y}) with ${data.tool}`
-      );
     }
   });
 
@@ -321,8 +352,6 @@ io.on("connection", (socket) => {
           });
         }
       });
-
-      console.log(`Player ${socket.id} stopped mining`);
     }
   });
 
@@ -389,8 +418,6 @@ io.on("connection", (socket) => {
         rocketX: data.rocketX,
         rocketY: data.rocketY,
       });
-
-      console.log(`Player ${socket.id} purchased a rocket in game ${gameCode}`);
     }
   });
 
