@@ -508,6 +508,39 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle tool rotation updates
+  socket.on("toolRotation", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
+      // Store the tool rotation data in the player object
+      if (!games[gameCode].players[socket.id].toolRotation) {
+        games[gameCode].players[socket.id].toolRotation = {};
+      }
+
+      games[gameCode].players[socket.id].toolRotation.angle = data.angle;
+      games[gameCode].players[socket.id].toolRotation.direction =
+        data.direction;
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerToolRotation", {
+            id: socket.id,
+            angle: data.angle,
+            direction: data.direction,
+          });
+        }
+      });
+    }
+  });
+
   // Handle laser activation
   socket.on("laserActivated", () => {
     const gameCode = playerGameMap[socket.id];

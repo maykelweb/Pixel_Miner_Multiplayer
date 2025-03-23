@@ -39,8 +39,9 @@ import {
   sendLaserActivated,
   sendLaserDeactivated,
   sendLaserUpdate,
-  sendJetpackActivated, // Add this new import
-  sendJetpackDeactivated, // Add this new import
+  sendJetpackActivated, 
+  sendJetpackDeactivated, 
+  sendToolRotationUpdate 
 } from "./multiplayer.js";
 
 // Get DOM elements
@@ -1466,6 +1467,10 @@ export function updateToolRotation() {
           svgElement.style.transform = `scaleX(${scale}) scaleY(${scale}) rotate(${degrees}deg)`;
         }
       }
+
+      // NEW: Send tool rotation update to server
+      // Send this for all tools (drill and laser), not just when laser is active
+      sendToolRotationUpdate();
     }
   }
 }

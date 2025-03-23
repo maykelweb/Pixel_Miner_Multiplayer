@@ -3,6 +3,7 @@ import { gameState } from "./config.js";
 import { playerElement, showMessage } from "./setup.js";
 import { updateVisibleBlocks } from "./updates.js";
 import { createBreakingAnimation } from "./animations.js";
+import { getCurrentTool } from "./crafting.js";
 
 // Socket.io client
 let socket;
@@ -328,6 +329,20 @@ export function initMultiplayer(isHost = false, options = {}) {
     }
   });
 
+  socket.on("playerToolRotation", (data) => {
+    if (otherPlayers[data.id]) {
+      // Store the rotation angle in our player tracking object
+      if (!otherPlayers[data.id].toolRotation) {
+        otherPlayers[data.id].toolRotation = {};
+      }
+      otherPlayers[data.id].toolRotation.angle = data.angle;
+      otherPlayers[data.id].toolRotation.direction = data.direction;
+
+      // Update the visual rotation of the tool
+      updateOtherPlayerToolRotation(data.id);
+    }
+  });
+
   // Handle laser activation from other players
   socket.on("playerLaserActivated", (data) => {
     console.log("Player laser activated:", data.id);
@@ -388,7 +403,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   // Handle laser updates (angle) from other players
-  // Fix 1: Update the playerLaserUpdate handler to match the local player transform
   socket.on("playerLaserUpdate", (data) => {
     console.log("Laser update for player:", data.id, "angle:", data.angle);
     if (otherPlayers[data.id]) {
@@ -405,8 +419,19 @@ export function initMultiplayer(isHost = false, options = {}) {
           ".other-player-laser"
         );
         if (laserBeam) {
-          // Match the transform style used in player.js, using scale and rotation
-          laserBeam.style.transform = `rotate(${data.angle}deg)`;
+          // Get the player's facing direction
+          const playerDirection = otherPlayers[data.id].data.direction || 1;
+
+          // Apply appropriate transform based on direction
+          // FIXED: Corrected the transform logic to match player direction properly
+          if (playerDirection === -1) {
+            // When facing LEFT, we flip the beam AND negate the angle
+            laserBeam.style.transform = `scaleX(-1) rotate(${data.angle}deg)`;
+          } else {
+            // When facing RIGHT, no horizontal flip needed
+            laserBeam.style.transform = `rotate(${-data.angle}deg)`;
+          }
+
           // Set transform origin to match local player
           laserBeam.style.transformOrigin = "left center";
         }
@@ -1036,6 +1061,13 @@ function addOtherPlayer(id, playerData) {
       angle: playerData.laserAngle || 0,
     },
     jetpackActive: playerData.jetpackActive === true,
+    // NEW: Initialize toolRotation if it exists in the playerData
+    toolRotation: playerData.toolRotation
+      ? {
+          angle: playerData.toolRotation.angle || 0,
+          direction: playerData.toolRotation.direction || 1,
+        }
+      : null,
   };
 
   // Add tool container with proper structure
@@ -1074,6 +1106,11 @@ function addOtherPlayer(id, playerData) {
     if (otherPlayers[id].laser.angle) {
       laserBeam.style.transform = `rotate(${otherPlayers[id].laser.angle}deg)`;
     }
+  }
+
+  // NEW: Apply initial tool rotation if available
+  if (otherPlayers[id].toolRotation) {
+    updateOtherPlayerToolRotation(id);
   }
 
   // Add to game world
@@ -1151,6 +1188,9 @@ function updateOtherPlayerTool(id, toolId) {
       }
     }
 
+    // Store the current tool type in the player data
+    otherPlayers[id].data.currentTool = toolId;
+
     // Fetch and load the SVG
     fetch(toolSrc)
       .then((response) => response.text())
@@ -1166,11 +1206,16 @@ function updateOtherPlayerTool(id, toolId) {
           // Add appropriate class
           svgElement.classList.add(toolType);
 
-          // Apply appropriate scaling
-          if (toolType === "drill") {
-            svgElement.style.transform = "scale(1.5)";
-          } else if (toolType === "laser") {
-            svgElement.style.transform = "scale(2.5)";
+          // Apply appropriate scaling and rotation based on tool type
+          if (toolType === "drill" || toolType === "laser") {
+            // If we have stored rotation data, apply it
+            if (otherPlayers[id].toolRotation) {
+              updateOtherPlayerToolRotation(id);
+            } else {
+              // Default scaling if no rotation data
+              const scale = toolType === "laser" ? 2.5 : 1.5;
+              svgElement.style.transform = `scale(${scale})`;
+            }
           }
         }
 
@@ -1216,6 +1261,11 @@ export function updateOtherPlayersForCamera() {
 
     playerElement.style.left = `${adjustedX}px`;
     playerElement.style.top = `${adjustedY}px`;
+
+    // NEW: Update tool rotation if needed
+    if (otherPlayers[id].toolRotation) {
+      updateOtherPlayerToolRotation(id);
+    }
 
     // If this player is mining, update mining effect position
     if (otherPlayers[id].mining && otherPlayers[id].mining.active) {
@@ -1425,5 +1475,57 @@ export function sendJetpackActivated() {
 export function sendJetpackDeactivated() {
   if (isConnected && socket) {
     socket.emit("jetpackDeactivated", {});
+  }
+}
+
+// Function to update the visual rotation of another player's tool
+function updateOtherPlayerToolRotation(playerId) {
+  if (!otherPlayers[playerId] || !otherPlayers[playerId].toolRotation) return;
+
+  const playerElement = otherPlayers[playerId].element;
+  const toolContainer = playerElement.querySelector(".player-tool-container");
+  const svgElement = toolContainer?.querySelector("svg");
+
+  if (svgElement) {
+    const rotation = otherPlayers[playerId].toolRotation.angle;
+    const playerDirection = otherPlayers[playerId].toolRotation.direction;
+
+    // Get the current tool type to determine appropriate scale
+    const currentTool = otherPlayers[playerId].data.currentTool || "";
+    const isLaser = currentTool.includes("laser");
+    const isDrill = currentTool.includes("drill");
+
+    // Only rotate drills and lasers
+    if (isDrill || isLaser) {
+      let scale = isDrill ? 1.5 : 2.5;
+
+      // Set rotation based on direction
+      if (playerDirection === -1) {
+        svgElement.style.transform = `scaleX(-${scale}) scaleY(${scale}) rotate(${rotation}deg)`;
+      } else {
+        svgElement.style.transform = `scaleX(${scale}) scaleY(${scale}) rotate(${rotation}deg)`;
+      }
+
+      // Store the rotation as a CSS property too (used for animations)
+      svgElement.style.setProperty("--rotation", `${rotation}deg`);
+    }
+  }
+}
+
+// Add a function to send tool rotation updates to the server
+export function sendToolRotationUpdate() {
+  if (isConnected && socket && gameState.player) {
+    const currentTool = getCurrentTool();
+
+    // Only send updates for drill and laser tools
+    if (
+      currentTool &&
+      (currentTool.type === "drill" || currentTool.type === "laser")
+    ) {
+      socket.emit("toolRotation", {
+        angle: gameState.player.toolRotation || 0,
+        direction: gameState.player.direction,
+      });
+    }
   }
 }
