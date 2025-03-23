@@ -12,7 +12,6 @@ let otherPlayers = {}; // Store references to other player elements
 let currentGameCode = ""; // Store the current game code
 let hasShownGameCode = false;
 
-
 /**
  * Initialize connection to multiplayer server
  * @param {boolean} isHost - Whether this client is hosting the game
@@ -101,39 +100,39 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle initial game state
   socket.on("gameState", (data) => {
     console.log("Received initial game state:", data);
-
+  
     // Set local player ID
     gameState.playerId = data.playerId;
-
+  
     // Clear any existing other players first
     for (const id in otherPlayers) {
       removeOtherPlayer(id);
     }
-
+  
     // Initialize other players (already filtered by planet on the server)
     for (const id in data.players) {
       if (id !== gameState.playerId) {
         // First add the other player
         addOtherPlayer(id, data.players[id]);
-
+  
         // Check for active tools and states
         const playerData = data.players[id];
-
+  
         if (playerData.currentTool) {
           updateOtherPlayerTool(id, playerData.currentTool);
         } else if (playerData.toolId) {
           // Alternative property name that might be used
           updateOtherPlayerTool(id, playerData.toolId);
         }
-
+  
         // Check if player has active laser and display it
         if (playerData.laserActive) {
           const playerElement = otherPlayers[id].element;
           const laserBeam = playerElement.querySelector(".other-player-laser");
-
+  
           if (laserBeam) {
             laserBeam.style.display = "block";
-
+  
             // Set angle if available
             if (playerData.laserAngle !== undefined) {
               laserBeam.style.transform = `rotate(${playerData.laserAngle}deg)`;
@@ -141,74 +140,96 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-
+  
         // Now properly check for active jetpack and display it
         if (data.players[id].jetpackActive === true) {
           const playerElement = otherPlayers[id].element;
-
+  
           // Find the jetpack flame element (should already exist from addOtherPlayer)
           const jetpackFlame = playerElement.querySelector(".jetpack-flame");
           if (jetpackFlame) {
             // Make it visible
             jetpackFlame.style.display = "block";
-
+  
             // Update the state in our local tracking object
             otherPlayers[id].jetpackActive = true;
           }
         }
       }
     }
-
+  
     // Update player count
     updatePlayerCount(Object.keys(data.players).length);
-
+  
     if (
       !isHost &&
       data.worldBlocks &&
       Object.keys(data.worldBlocks).length > 0
     ) {
       console.log("Using host's world data");
-
-      // Clear any existing block map to prevent mixing
-      gameState.blockMap = [];
-
-      // Handle world block sync by fully replacing the blockMap
-      // We need to recreate the full 2D array structure
-      const maxY = Math.max(...Object.keys(data.worldBlocks).map(Number));
-
-      // Create a new blockMap with the right dimensions
-      for (let y = 0; y <= maxY; y++) {
-        if (!gameState.blockMap[y]) {
-          gameState.blockMap[y] = [];
+  
+      try {
+        // Clear any existing block map to prevent mixing
+        gameState.blockMap = [];
+  
+        // Find the maximum Y value in the received data
+        const maxY = Math.max(...Object.keys(data.worldBlocks).map(Number));
+        
+        // Calculate the maximum X value by checking all rows
+        let maxX = 0;
+        for (const y in data.worldBlocks) {
+          if (data.worldBlocks[y]) {
+            const xKeys = Object.keys(data.worldBlocks[y]).map(Number);
+            if (xKeys.length > 0) {
+              maxX = Math.max(maxX, Math.max(...xKeys));
+            }
+          }
         }
-
-        // If we have data for this row, process it
-        if (data.worldBlocks[y]) {
+        
+        console.log(`Reconstructing world with dimensions up to [${maxX}, ${maxY}]`);
+  
+        // Initialize the entire blockMap with proper dimensions first
+        for (let y = 0; y <= maxY; y++) {
+          gameState.blockMap[y] = [];
+          
+          // Pre-fill the row with nulls to ensure we have a complete array
+          for (let x = 0; x <= maxX; x++) {
+            gameState.blockMap[y][x] = null;
+          }
+        }
+  
+        // Now fill in the actual block data
+        for (const y in data.worldBlocks) {
+          const yNum = Number(y);
           for (const x in data.worldBlocks[y]) {
-            // IMPORTANT: Fix ore references by looking up the proper ore object
+            const xNum = Number(x);
             const blockData = data.worldBlocks[y][x];
-
+  
             if (blockData === null) {
-              gameState.blockMap[y][x] = null;
+              gameState.blockMap[yNum][xNum] = null;
             } else if (blockData && blockData.name) {
               // Find the matching ore in our local ores array
               const matchingOre = gameState.ores.find(
                 (ore) => ore.name === blockData.name
               );
               if (matchingOre) {
-                gameState.blockMap[y][x] = matchingOre;
+                gameState.blockMap[yNum][xNum] = matchingOre;
               } else {
                 console.warn(`Unknown ore received: ${blockData.name}`);
-                gameState.blockMap[y][x] = blockData;
+                gameState.blockMap[yNum][xNum] = blockData;
               }
             } else {
-              gameState.blockMap[y][x] = blockData;
+              gameState.blockMap[yNum][xNum] = blockData;
             }
           }
         }
+  
+        console.log("World synchronized from host data");
+      } catch (error) {
+        console.error("Error processing world data:", error);
       }
-
-      console.log("World synchronized from host data");
+      
+      // After everything is set up, update visible blocks
       updateVisibleBlocks();
     }
   });
@@ -305,7 +326,7 @@ export function initMultiplayer(isHost = false, options = {}) {
         tool: data.tool,
       };
 
-      // Add mining animation based on tool type
+      // Add mining animation based on tool type - CALL THE FUNCTION HERE
       applyMiningAnimation(data.id);
 
       // Add the mining visual effects at the target block location
@@ -318,25 +339,42 @@ export function initMultiplayer(isHost = false, options = {}) {
     if (otherPlayers[data.id]) {
       const playerElement = otherPlayers[data.id].element;
 
-      // Remove mining animation from the SVG, not the container
+      // Find the tool container first
       const toolContainer = playerElement.querySelector(
         ".player-tool-container"
       );
+
+      // Then find the SVG within the container
       const svgElement = toolContainer?.querySelector("svg");
 
       if (svgElement) {
+        // Remove animation classes
         svgElement.classList.remove("drilling");
         svgElement.classList.remove("mining");
+
+        // Clear animation style
+        svgElement.style.animation = "";
+
+        // Restore default transform origin if needed
+        if (svgElement.classList.contains("pickaxe")) {
+          svgElement.style.transformOrigin = "";
+        }
       }
 
       // Clear mining data
       if (otherPlayers[data.id].mining) {
         // Remove any mining effects at the target block
-        removeMiningEffectAtBlock(
-          otherPlayers[data.id].mining.x,
-          otherPlayers[data.id].mining.y
-        );
+        if (
+          otherPlayers[data.id].mining.x !== undefined &&
+          otherPlayers[data.id].mining.y !== undefined
+        ) {
+          removeMiningEffectAtBlock(
+            otherPlayers[data.id].mining.x,
+            otherPlayers[data.id].mining.y
+          );
+        }
 
+        // Reset mining state but maintain tool information
         otherPlayers[data.id].mining = {
           active: false,
         };
@@ -1010,6 +1048,22 @@ function addOtherPlayer(id, playerData) {
       : null,
   };
 
+  // Check if player mining
+  if (playerData.mining && playerData.mining.active) {
+    otherPlayers[id].mining = {
+      active: true,
+      x: playerData.mining.x,
+      y: playerData.mining.y,
+      tool: playerData.mining.tool || playerData.toolType,
+    };
+
+    // Apply mining animation immediately
+    applyMiningAnimation(id);
+
+    // Add mining effect at the target block
+    addMiningEffectAtBlock(playerData.mining.x, playerData.mining.y);
+  }
+
   // Add tool container with proper structure
   const toolContainer = document.createElement("div");
   toolContainer.className = "player-tool-container";
@@ -1201,20 +1255,45 @@ function applyMiningAnimation(playerId) {
 
   if (!svgElement) return;
 
-  console.log("here");
-
   // Get tool type from the mining info or from player data
-  const tool =
-    otherPlayers[playerId].mining.tool ||
-    (otherPlayers[playerId].data
-      ? otherPlayers[playerId].data.toolType
-      : "pickaxe");
+  let tool = "pickaxe"; // Default tool type
+
+  // Try to get the most specific tool information available
+  if (otherPlayers[playerId].mining.tool) {
+    tool = otherPlayers[playerId].mining.tool;
+  } else if (
+    otherPlayers[playerId].data &&
+    otherPlayers[playerId].data.toolType
+  ) {
+    tool = otherPlayers[playerId].data.toolType;
+  } else if (
+    otherPlayers[playerId].data &&
+    otherPlayers[playerId].data.currentTool
+  ) {
+    // Infer tool type from the tool ID
+    const toolId = otherPlayers[playerId].data.currentTool;
+    if (toolId.includes("drill")) {
+      tool = "drill";
+    } else if (toolId.includes("laser")) {
+      tool = "laser";
+    }
+  }
+
+  console.log(
+    `Applying mining animation for player ${playerId} with tool: ${tool}`
+  );
 
   // Apply the appropriate animation class to the SVG element (not the container)
-  if (tool === "drill") {
+  if (tool === "drill" || tool.includes("drill")) {
     svgElement.classList.add("drilling");
     svgElement.classList.remove("mining");
-  } else if (tool === "pickaxe") {
+
+    // Ensure proper CSS variables for drill rotation
+    if (otherPlayers[playerId].toolRotation) {
+      const rotation = otherPlayers[playerId].toolRotation.angle || 0;
+      svgElement.style.setProperty("--rotation", `${rotation}deg`);
+    }
+  } else if (tool === "pickaxe" || tool.includes("pickaxe")) {
     svgElement.classList.add("mining");
     svgElement.classList.remove("drilling");
   }

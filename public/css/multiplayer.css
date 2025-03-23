@@ -79,19 +79,9 @@
 
 /* Tool animations for other players */
 .other-player .player-tool-container svg.mining {
-  animation: pickaxe-swing 0.5s infinite;
+  animation: pickaxe-swing 0.3s infinite;
 }
 
 .other-player .player-tool-container svg.drilling {
-  animation: drill-spin 0.2s infinite linear;
-}
-
-
-@keyframes drill-spin {
-  0% {
-    transform: rotate(0deg) scale(1.5);
-  }
-  100% {
-    transform: rotate(360deg) scale(1.5);
-  }
+  animation: drill-vibration 0.2s infinite linear;
 }

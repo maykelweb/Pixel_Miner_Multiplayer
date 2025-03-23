@@ -142,7 +142,7 @@ io.on("connection", (socket) => {
     if (!games[gameCode].players) {
       games[gameCode].players = {};
     }
-    
+
     // Add player to the game
     games[gameCode].players[socket.id] = {
       id: socket.id,
@@ -159,22 +159,22 @@ io.on("connection", (socket) => {
       jetpackActive: false, // Add the jetpack state property
     };
     games[gameCode].currentPlayers++;
-    
+
     // Map player to game
     playerGameMap[socket.id] = gameCode;
-    
+
     // Join the socket room for this game
     socket.join(gameCode);
-    
+
     // Send success response
     socket.emit("joinResponse", {
       success: true,
       gameCode: gameCode,
     });
-    
+
     // FIX: Use the player's actual current planet instead of hardcoding "earth"
     const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
-    
+
     // Create a filtered version of players on the same planet
     const playersOnSamePlanet = {};
     for (const playerId in games[gameCode].players) {
@@ -183,7 +183,7 @@ io.on("connection", (socket) => {
         playersOnSamePlanet[playerId] = games[gameCode].players[playerId];
       }
     }
-    
+
     // Send game state to the new player
     socket.emit("gameState", {
       playerId: socket.id,
@@ -203,7 +203,7 @@ io.on("connection", (socket) => {
   // Handle player movement
   socket.on("playerMove", (data) => {
     const gameCode = playerGameMap[socket.id];
-  
+
     if (
       gameCode &&
       games[gameCode] &&
@@ -218,15 +218,15 @@ io.on("connection", (socket) => {
       games[gameCode].players[socket.id].velocityY = data.velocityY;
       games[gameCode].players[socket.id].onGround = data.onGround;
       games[gameCode].players[socket.id].depth = data.depth;
-      
+
       // Update current planet if provided
       if (data.currentPlanet) {
         games[gameCode].players[socket.id].currentPlanet = data.currentPlanet;
       }
-  
+
       // Get current player's planet
       const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
-  
+
       // Safely broadcast to other players
       for (const playerId in games[gameCode].players) {
         if (
@@ -239,6 +239,90 @@ io.on("connection", (socket) => {
           });
         }
       }
+    }
+  });
+
+  // Handle mining start event
+  socket.on("miningStart", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (
+      gameCode &&
+      games[gameCode] &&
+      games[gameCode].players &&
+      games[gameCode].players[socket.id]
+    ) {
+      // Store mining state in the player object
+      if (!games[gameCode].players[socket.id].mining) {
+        games[gameCode].players[socket.id].mining = {};
+      }
+
+      games[gameCode].players[socket.id].mining = {
+        active: true,
+        x: data.x,
+        y: data.y,
+        tool: data.tool,
+        toolId: data.toolId, // Store tool ID if provided
+        startTime: Date.now(),
+      };
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerMiningStart", {
+            id: socket.id,
+            x: data.x,
+            y: data.y,
+            tool: data.tool,
+            toolId: data.toolId,
+            direction: games[gameCode].players[socket.id].direction,
+          });
+        }
+      });
+
+      console.log(
+        `Player ${socket.id} started mining at (${data.x}, ${data.y}) with ${data.tool}`
+      );
+    }
+  });
+
+  // Handle mining stop event
+  socket.on("miningStop", () => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (
+      gameCode &&
+      games[gameCode] &&
+      games[gameCode].players &&
+      games[gameCode].players[socket.id]
+    ) {
+      // Update mining state
+      if (games[gameCode].players[socket.id].mining) {
+        games[gameCode].players[socket.id].mining.active = false;
+      }
+
+      // Get current player's planet
+      const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+
+      // Broadcast to players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("playerMiningStop", {
+            id: socket.id,
+          });
+        }
+      });
+
+      console.log(`Player ${socket.id} stopped mining`);
     }
   });
 
@@ -418,7 +502,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle getting players on a specific planet (REMOVE DUPLICATE)
+  // Handle getting players on a specific planet
   socket.on("getPlayersOnPlanet", (data) => {
     const gameCode = playerGameMap[socket.id];
 
@@ -434,7 +518,14 @@ io.on("connection", (socket) => {
         if (
           games[gameCode].players[playerId].currentPlanet === requestedPlanet
         ) {
-          playersOnPlanet[playerId] = games[gameCode].players[playerId];
+          // Make sure we include all necessary state, including mining status
+          playersOnPlanet[playerId] = {
+            ...games[gameCode].players[playerId],
+            // Ensure mining data is included if it exists
+            mining: games[gameCode].players[playerId].mining || {
+              active: false,
+            },
+          };
         }
       }
 
