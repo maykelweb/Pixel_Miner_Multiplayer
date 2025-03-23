@@ -1486,16 +1486,35 @@ export function sendToolRotationUpdate() {
   }
 }
 
+
 /**
  * Refreshes player visibility by requesting current players and sending our position
  * Call this if you suspect players might not be seeing each other
  */
 export function refreshPlayerVisibility() {
+  console.log("Refreshing player visibility...");
+  
   // First, request all players on our current planet
   requestPlayersOnCurrentPlanet();
 
-  // Then, send our own position to make sure others can see us
+  // Then, send our own position repeatedly to ensure visibility
+  sendPlayerUpdate();
+  
+  // Send additional updates with short delays for reliability
   setTimeout(() => {
     sendPlayerUpdate();
-  }, 500); // Small delay to allow server to process the first request
+    console.log("Sending additional player update (1)");
+  }, 500);
+  
+  setTimeout(() => {
+    sendPlayerUpdate();
+    console.log("Sending additional player update (2)");
+  }, 1500);
+  
+  // Log current state
+  setTimeout(() => {
+    console.log("Player visibility refresh complete");
+    console.log(`Current planet: ${gameState.currentPlanet}`);
+    console.log(`Visible players: ${Object.keys(otherPlayers).length}`);
+  }, 2000);
 }

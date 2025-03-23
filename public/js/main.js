@@ -46,7 +46,7 @@ import {
   checkRocketInteraction,
 } from "./rocket.js";
 import { generateMoonWorld } from "./moonGeneration.js";
-import { loadAudioSettings, showMainMenu } from "./menu.js";
+import { loadAudioSettings, showMainMenu, multiplayerInitialized } from "./menu.js";
 // Import the story sequence functions
 import { showStorySequence } from "./story.js";
 import { cleanupMenuBackground } from "./menuBackground.js";
@@ -442,6 +442,12 @@ export function joinMultiplayerGame() {
 export function setupMultiplayer() {
   console.log("Setting up multiplayer systems");
   
+  // Check if multiplayer is already initialized and avoid duplicate setup
+  if (multiplayerInitialized) {
+    console.log("Multiplayer already initialized, skipping setup");
+    return;
+  }
+  
   // Set up event listeners for main menu multiplayer buttons
   const joinGameBtn = document.getElementById("join-game");
   if (joinGameBtn) {
@@ -485,7 +491,11 @@ export function setupMultiplayer() {
   
   // Set up event listeners for the dialog buttons
   setupDialogButtonListeners();
+  
+  // Mark multiplayer as initialized
+  window.multiplayerInitialized = true;
 }
+
 
 // Set up event listeners for dialog buttons
 function setupDialogButtonListeners() {
@@ -593,11 +603,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load audio settings first, before any music plays
   loadAudioSettings();
 
-  // Setup multiplayer with the consolidated setup function
-  setupMultiplayer();
-
-  // Show the main menu
+  // Show the main menu which sets up basic UI elements
   showMainMenu();
+  
+  // IMPORTANT: Setup multiplayer AFTER the main menu is shown
+  // This ensures the multiplayer buttons exist before we attach listeners
+  setupMultiplayer();
   
   console.log("Initialization complete");
 });

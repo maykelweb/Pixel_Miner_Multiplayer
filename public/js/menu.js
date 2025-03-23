@@ -16,9 +16,11 @@ import {
   hostMultiplayerGame,
 } from "./main.js";
 import { initializeMenuBackground } from "./menuBackground.js";
+// Add this at the top of menu.js, after the imports
+export let multiplayerInitialized = false;
 
 /**
- * Shows the main menu at game startup
+ * Shows the main menu at game startup - Completely fixed version with proper button opacity
  */
 export function showMainMenu() {
   console.log("Showing main menu");
@@ -26,7 +28,8 @@ export function showMainMenu() {
   // Initialize the menu background first
   initializeMenuBackground();
 
-  const mainMenu = document.getElementById("main-menu");
+  // Get main menu reference
+  const mainMenu = document.getElementById("main-menu-overlay");
   if (mainMenu) {
     mainMenu.style.display = "flex";
 
@@ -57,20 +60,23 @@ export function showMainMenu() {
     // Ensure multiplayer buttons exist and are visible
     ensureMultiplayerButtons();
 
-    // Remove any existing event listeners to prevent duplicates
-    removeExistingEventListeners();
+    // Only remove and re-attach event listeners if multiplayer isn't initialized yet
+    if (!multiplayerInitialized) {
+      removeExistingEventListeners();
+      attachMenuEventListeners(hasSavedGame);
+    } else {
+      console.log("Multiplayer already initialized, skipping event listener setup");
+    }
 
-    // Start button fade in animation
+    // FIXED: Make all buttons immediately visible
     const buttons = mainMenu.querySelectorAll(".main-menu-button");
-    buttons.forEach((button, index) => {
-      if (button.style.display !== "none") {
-        button.style.opacity = "0";
-        setTimeout(() => {
-          button.style.opacity = "1";
-          button.style.transition = "opacity 0.5s ease";
-        }, 500 + index * 200);
-
-        // Add hover and click sound events to all buttons
+    buttons.forEach(button => {
+      // Set opacity to 1 immediately with no transition
+      button.style.opacity = "1";
+      button.style.transition = "none";
+      
+      // Only add sound events if not already initialized
+      if (!multiplayerInitialized) {
         button.addEventListener("mouseenter", () => {
           playSFX(menuHoverSound, ORIGINAL_VOLUMES.menuHoverSound, false);
         });
@@ -79,9 +85,6 @@ export function showMainMenu() {
         });
       }
     });
-
-    // Attach event listeners for menu buttons
-    attachMenuEventListeners(hasSavedGame);
   }
 }
 
@@ -199,23 +202,8 @@ function attachMenuEventListeners(hasSavedGame) {
     });
   }
 
-  // Add join game button listener
-  const joinGameBtn = document.getElementById("join-game");
-  if (joinGameBtn) {
-    joinGameBtn.addEventListener("click", () => {
-      console.log("Join game clicked");
-      showJoinGameDialog();
-    });
-  }
-
-  // Add host game button listener
-  const hostGameBtn = document.getElementById("host-game");
-  if (hostGameBtn) {
-    hostGameBtn.addEventListener("click", () => {
-      console.log("Host game clicked");
-      showHostGameDialog();
-    });
-  }
+  // DO NOT attach multiplayer button handlers here
+  // We'll let main.js handle these exclusively through setupMultiplayer()
 
   // Add back button listener for options
   const backBtn = document.getElementById("back-to-menu");
@@ -228,6 +216,9 @@ function attachMenuEventListeners(hasSavedGame) {
       hideOptions();
     });
   }
+  
+  // Mark that we've initialized the basic menu functionality
+  // but NOT the multiplayer buttons - that will be done in main.js
 }
 
 /**
@@ -284,12 +275,14 @@ function showHostGameDialog() {
   }
 }
 
+
 /**
  * Shows the options menu
  */
 function showOptions() {
   console.log("Showing options");
-  document.getElementById("main-menu").style.display = "none";
+  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
+  document.getElementById("main-menu-overlay").style.display = "none";
   document.getElementById("options-modal").style.display = "flex";
 
   // Add hover and click sound events to all option controls
@@ -320,6 +313,7 @@ function showOptions() {
   loadAudioSettings();
 }
 
+
 /**
  * Hides the options menu and shows the main menu
  */
@@ -328,8 +322,10 @@ function hideOptions() {
   saveAudioSettings();
 
   document.getElementById("options-modal").style.display = "none";
-  document.getElementById("main-menu").style.display = "flex";
+  // FIXED: Changed from "main-menu" to "main-menu-overlay" to match the HTML ID
+  document.getElementById("main-menu-overlay").style.display = "flex";
 }
+
 
 /**
  * Initializes audio controls with saved values or defaults

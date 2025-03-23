@@ -35,7 +35,7 @@ export function initializeMenuBackground() {
     
     // Create the menu background container
     // Find the menu element to see where we should add our background
-    const mainMenu = document.getElementById("main-menu");
+    const mainMenu = document.getElementById("main-menu-overlay");
     let parentElement = document.body;
     
     // If the menu exists, use its parent instead of body
@@ -476,7 +476,7 @@ function updateMenuBackground(timestamp) {
     }
     
     // Skip if menu is not visible
-    const mainMenu = document.getElementById("main-menu");
+    const mainMenu = document.getElementById("main-menu-overlay");
     if (!mainMenu || mainMenu.style.display !== "flex") {
         menuBackgroundAnimationId = requestAnimationFrame(updateMenuBackground);
         return;
