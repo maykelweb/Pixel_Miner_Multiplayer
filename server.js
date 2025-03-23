@@ -34,7 +34,6 @@ io.on("connection", (socket) => {
       // Create a new game instance with all required properties
       games[gameCode] = {
         host: socket.id,
-        name: options.gameName || "Pixel Miner Game",
         maxPlayers: options.maxPlayers || 4,
         players: {}, // Initialize empty players object
         worldBlocks: {},
@@ -143,7 +142,7 @@ io.on("connection", (socket) => {
     if (!games[gameCode].players) {
       games[gameCode].players = {};
     }
-
+    
     // Add player to the game
     games[gameCode].players[socket.id] = {
       id: socket.id,
@@ -158,32 +157,33 @@ io.on("connection", (socket) => {
       depth: 0,
       currentPlanet: "earth", // Default to earth
       jetpackActive: false, // Add the jetpack state property
-      currentPlanet: "earth", // Added planet property
-      jetpackActive: false, // Add the jetpack state property
     };
     games[gameCode].currentPlayers++;
-
+    
     // Map player to game
     playerGameMap[socket.id] = gameCode;
-
+    
     // Join the socket room for this game
     socket.join(gameCode);
-
+    
     // Send success response
     socket.emit("joinResponse", {
       success: true,
       gameCode: gameCode,
-      gameName: games[gameCode].name,
     });
-
+    
+    // FIX: Use the player's actual current planet instead of hardcoding "earth"
+    const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+    
     // Create a filtered version of players on the same planet
     const playersOnSamePlanet = {};
     for (const playerId in games[gameCode].players) {
-      if (games[gameCode].players[playerId].currentPlanet === "earth") {
+      // FIXED: Use currentPlanet variable instead of hardcoded "earth"
+      if (games[gameCode].players[playerId].currentPlanet === currentPlanet) {
         playersOnSamePlanet[playerId] = games[gameCode].players[playerId];
       }
     }
-
+    
     // Send game state to the new player
     socket.emit("gameState", {
       playerId: socket.id,
@@ -191,7 +191,7 @@ io.on("connection", (socket) => {
       worldBlocks: games[gameCode].worldBlocks,
       hasRocket: games[gameCode].hasRocket,
       rocketPosition: games[gameCode].rocketPosition,
-      currentPlanet: "earth",
+      currentPlanet: currentPlanet, // FIXED: Use player's current planet instead of hardcoding
     });
 
     // Broadcast new player to others in the same game
@@ -203,7 +203,7 @@ io.on("connection", (socket) => {
   // Handle player movement
   socket.on("playerMove", (data) => {
     const gameCode = playerGameMap[socket.id];
-
+  
     if (
       gameCode &&
       games[gameCode] &&
@@ -218,10 +218,15 @@ io.on("connection", (socket) => {
       games[gameCode].players[socket.id].velocityY = data.velocityY;
       games[gameCode].players[socket.id].onGround = data.onGround;
       games[gameCode].players[socket.id].depth = data.depth;
-
+      
+      // Update current planet if provided
+      if (data.currentPlanet) {
+        games[gameCode].players[socket.id].currentPlanet = data.currentPlanet;
+      }
+  
       // Get current player's planet
       const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
-
+  
       // Safely broadcast to other players
       for (const playerId in games[gameCode].players) {
         if (

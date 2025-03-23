@@ -1330,3 +1330,188 @@
 .host-error.visible {
   opacity: 1;
 }
+
+/* Game Code Modal Styling */
+.game-code-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.game-code-modal-content {
+  background: linear-gradient(to bottom, #2a2a3a, var(--dark-bg));
+  width: 90%;
+  max-width: 400px;
+  border: 3px solid var(--accent-color);
+  border-radius: var(--border-radius);
+  padding: 30px;
+  box-shadow: var(--shadow), 0 0 20px rgba(255, 215, 0, 0.2);
+  transform: translateY(20px);
+  animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative gold accent line at top */
+.game-code-modal-content::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--accent-gradient);
+}
+
+/* Modal Title */
+.game-code-modal-content h2 {
+  color: var(--accent-color);
+  margin: 0 0 20px 0;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2);
+  position: relative;
+  padding-bottom: 15px;
+}
+
+.game-code-modal-content h2::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: var(--accent-gradient);
+  border-radius: 3px;
+}
+
+/* Modal Description */
+.game-code-modal-content p {
+  color: var(--light-text);
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Game Code Display */
+.game-code {
+  background: rgba(30, 30, 45, 0.7);
+  color: var(--accent-color);
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  padding: 15px;
+  margin-bottom: 25px;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--small-radius);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+  letter-spacing: 2px;
+  user-select: all;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.game-code:hover {
+  background: rgba(40, 40, 55, 0.8);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* Button Container */
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+/* Modal Buttons */
+.modal-button {
+  flex: 1;
+  padding: 14px;
+  background: var(--button-gradient);
+  color: var(--light-text);
+  border: 2px solid rgba(100, 100, 120, 0.5);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.modal-button:hover {
+  background: var(--button-hover);
+  border-color: rgba(255, 215, 0, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.modal-button:active {
+  background: var(--button-active);
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Copy Button (Primary Action) */
+.copy-button {
+  background: linear-gradient(to bottom, #4a90e2, #3672b5);
+  border-color: rgba(74, 144, 226, 0.5);
+}
+
+.copy-button:hover {
+  background: linear-gradient(to bottom, #3672b5, #2a5a8e);
+  border-color: rgba(74, 144, 226, 0.7);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3), 0 0 15px rgba(74, 144, 226, 0.3);
+}
+
+.copy-button:active {
+  background: linear-gradient(to bottom, #2a5a8e, #1f4370);
+}
+
+/* Button shine effect */
+.modal-button::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -100%;
+  width: 100%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  pointer-events: none;
+  z-index: 10;
+  transition: left 0.5s ease;
+}
+
+.modal-button:hover::after {
+  left: 100%;
+}
+
+/* Copy Success Message */
+.copy-success {
+  color: #5cb85c;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 15px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.copy-success.visible {
+  opacity: 1;
+}

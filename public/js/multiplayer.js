@@ -29,7 +29,6 @@ export function initMultiplayer(isHost = false, options = {}) {
     // If hosting, send host information to server
     if (isHost) {
       socket.emit("hostGame", {
-        gameName: options.gameName || "Pixel Miner Game",
         maxPlayers: options.maxPlayers || 4,
       });
       showMessage("Hosting a new game!", 3000);
@@ -204,6 +203,15 @@ export function initMultiplayer(isHost = false, options = {}) {
   socket.on("newPlayer", (playerData) => {
     console.log("New player joined:", playerData);
 
+    // Make sure the player doesn't already exist in our list
+    if (otherPlayers[playerData.id]) {
+      console.log(
+        `Player ${playerData.id} already exists, updating instead of adding`
+      );
+      updateOtherPlayerPosition(playerData.id, playerData);
+      return;
+    }
+
     // Only add the player if they're on the same planet
     if (playerData.currentPlanet === gameState.currentPlanet) {
       addOtherPlayer(playerData.id, playerData);
@@ -212,6 +220,10 @@ export function initMultiplayer(isHost = false, options = {}) {
       updatePlayerCount(Object.keys(otherPlayers).length + 1);
 
       showMessage("New player joined!", 2000);
+    } else {
+      console.log(
+        `New player is on ${playerData.currentPlanet}, we are on ${gameState.currentPlanet}, not adding to view`
+      );
     }
   });
 
@@ -846,84 +858,16 @@ export function showGameCode(gameCode) {
 
   document.body.appendChild(modal);
 
-  // Add the modal styles if they don't exist yet
-  if (!document.getElementById("game-code-modal-styles")) {
-    const styleElement = document.createElement("style");
-    styleElement.id = "game-code-modal-styles";
-    styleElement.textContent = `
-      .game-code-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-      }
-      
-      .game-code-modal-content {
-        background-color: #1a1a1a;
-        border: 2px solid #444;
-        border-radius: 8px;
-        padding: 20px;
-        width: 350px;
-        text-align: center;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-      }
-      
-      .game-code-modal h2 {
-        color: #fff;
-        margin-top: 0;
-        font-size: 24px;
-      }
-      
-      .game-code-modal p {
-        color: #ccc;
-        margin-bottom: 20px;
-      }
-      
-      .game-code {
-        background-color: #333;
-        color: #4caf50;
-        font-family: monospace;
-        font-size: 28px;
-        padding: 15px;
-        margin: 20px 0;
-        border-radius: 4px;
-        user-select: all;
-        border: 1px dashed #666;
-        letter-spacing: 2px;
-      }
-      
-      .button-container {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-      }
-      
-      .copy-success {
-        color: #4caf50;
-        font-size: 14px;
-        margin-top: 10px;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-      
-      .copy-success.visible {
-        opacity: 1;
-      }
-    `;
-    document.head.appendChild(styleElement);
-  }
-
   // Add event listener to close button
   const closeButton = document.getElementById("close-code-modal");
   if (closeButton) {
     closeButton.addEventListener("click", () => {
-      document.body.removeChild(modal);
+      modal.classList.add("fade-out");
+      setTimeout(() => {
+        if (modal && modal.parentNode) {
+          document.body.removeChild(modal);
+        }
+      }, 300);
     });
   }
 
@@ -932,6 +876,30 @@ export function showGameCode(gameCode) {
   if (copyButton) {
     copyButton.addEventListener("click", () => {
       // Copy the game code to clipboard
+      navigator.clipboard
+        .writeText(gameCode)
+        .then(() => {
+          // Show success message
+          const successMessage = document.getElementById("copy-success");
+          if (successMessage) {
+            successMessage.classList.add("visible");
+
+            // Hide the success message after 3 seconds
+            setTimeout(() => {
+              successMessage.classList.remove("visible");
+            }, 3000);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to copy text: ", err);
+        });
+    });
+  }
+
+  // Make game code text directly clickable to copy as well
+  const gameCodeElement = modal.querySelector(".game-code");
+  if (gameCodeElement) {
+    gameCodeElement.addEventListener("click", () => {
       navigator.clipboard
         .writeText(gameCode)
         .then(() => {
@@ -975,6 +943,8 @@ export function sendPlayerUpdate() {
       onGround: gameState.player.onGround,
       health: gameState.player.health,
       depth: gameState.depth,
+      // Add current planet to ensure consistent planet tracking
+      currentPlanet: gameState.currentPlanet,
     });
   }
 }
@@ -1514,4 +1484,18 @@ export function sendToolRotationUpdate() {
       });
     }
   }
+}
+
+/**
+ * Refreshes player visibility by requesting current players and sending our position
+ * Call this if you suspect players might not be seeing each other
+ */
+export function refreshPlayerVisibility() {
+  // First, request all players on our current planet
+  requestPlayersOnCurrentPlanet();
+
+  // Then, send our own position to make sure others can see us
+  setTimeout(() => {
+    sendPlayerUpdate();
+  }, 500); // Small delay to allow server to process the first request
 }

@@ -56,6 +56,7 @@ import {
   updateOtherPlayersForCamera,
   sendPlayerUpdate,
   showGameCode,
+  refreshPlayerVisibility
 } from "./multiplayer.js";
 
 // Get DOM elements
@@ -262,16 +263,13 @@ export function initGame() {
   updateUI();
   requestAnimationFrame(gameLoop);
 }
-
 /**
  * Handles hosting a multiplayer game
  */
 export function hostMultiplayerGame() {
   console.log("Starting host multiplayer game process");
   
-  // Get game name and player count
-  const gameName = 
-    document.getElementById("game-name").value || "Pixel Miner Game";
+  // Get player count
   const maxPlayers = 
     parseInt(document.getElementById("max-players").value) || 4;
   const useExistingSave = document.getElementById("world-existing").checked;
@@ -310,7 +308,6 @@ export function hostMultiplayerGame() {
   // This ensures multiplayer is ready to sync world data
   console.log("Initializing multiplayer as host");
   initMultiplayer(true, {
-    gameName: gameName,
     maxPlayers: maxPlayers,
   });
 
@@ -356,6 +353,7 @@ export function hostMultiplayerGame() {
   // Initialize game systems AFTER both multiplayer and world are set up
   console.log("Initializing game");
   initGame();
+  sendPlayerUpdate();
   
   console.log("Host game setup complete");
 }
@@ -428,6 +426,10 @@ export function joinMultiplayerGame() {
   console.log("Initializing game");
   initGame();
 
+  setTimeout(() => {
+    refreshPlayerVisibility();
+  }, 2000);
+
   // Transition from menu music to game music
   console.log("Transitioning music");
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
@@ -439,9 +441,6 @@ export function joinMultiplayerGame() {
 // Called once during initialization to ensure proper setup
 export function setupMultiplayer() {
   console.log("Setting up multiplayer systems");
-  
-  // Create necessary dialog elements if they don't exist
-  createMultiplayerDialogs();
   
   // Set up event listeners for main menu multiplayer buttons
   const joinGameBtn = document.getElementById("join-game");
@@ -486,151 +485,6 @@ export function setupMultiplayer() {
   
   // Set up event listeners for the dialog buttons
   setupDialogButtonListeners();
-}
-
-// Create multiplayer dialog elements
-function createMultiplayerDialogs() {
-  // Create join game dialog if it doesn't exist
-  if (!document.getElementById("join-game-dialog")) {
-    const joinDialog = document.createElement("div");
-    joinDialog.id = "join-game-dialog";
-    joinDialog.className = "modal";
-    joinDialog.style.display = "none";
-
-    joinDialog.innerHTML = `
-      <div class="modal-content">
-        <h2>Join Game</h2>
-        <p>Enter the game code to join:</p>
-        <input type="text" id="game-code" placeholder="Enter game code" class="modal-input">
-        <div class="modal-buttons">
-          <button id="join-game-submit" class="modal-button">Join</button>
-          <button id="join-game-cancel" class="modal-button">Cancel</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(joinDialog);
-  }
-
-  // Create host game dialog if it doesn't exist
-  if (!document.getElementById("host-game-dialog")) {
-    const hostDialog = document.createElement("div");
-    hostDialog.id = "host-game-dialog";
-    hostDialog.className = "modal";
-    hostDialog.style.display = "none";
-
-    hostDialog.innerHTML = `
-      <div class="modal-content">
-        <h2>Host Game</h2>
-        <div class="form-group">
-          <label for="game-name">Game Name:</label>
-          <input type="text" id="game-name" placeholder="My Pixel Miner Game" class="modal-input">
-        </div>
-        <div class="form-group">
-          <label for="max-players">Max Players:</label>
-          <input type="number" id="max-players" min="2" max="8" value="4" class="modal-input">
-        </div>
-        <div class="form-group">
-          <p>World Selection:</p>
-          <div class="radio-group">
-            <input type="radio" id="world-new" name="world-type" checked>
-            <label for="world-new">New World</label>
-          </div>
-          <div class="radio-group">
-            <input type="radio" id="world-existing" name="world-type">
-            <label for="world-existing">Use Existing Save</label>
-          </div>
-        </div>
-        <div class="modal-buttons">
-          <button id="host-game-submit" class="modal-button">Create Game</button>
-          <button id="host-game-cancel" class="modal-button">Cancel</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(hostDialog);
-  }
-
-  // Add CSS for modals if needed
-  if (!document.getElementById("multiplayer-styles")) {
-    const styleElement = document.createElement("style");
-    styleElement.id = "multiplayer-styles";
-    styleElement.textContent = `
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .modal-content {
-        background-color: #1a1a1a;
-        border: 2px solid #555;
-        border-radius: 8px;
-        padding: 20px;
-        width: 90%;
-        max-width: 400px;
-        color: #fff;
-      }
-      
-      .modal-input {
-        width: 100%;
-        padding: 10px;
-        margin: 10px 0;
-        background-color: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        color: #fff;
-      }
-      
-      .modal-buttons {
-        display: flex;
-        justify-content: space-around;
-        margin-top: 20px;
-      }
-      
-      .modal-button {
-        padding: 10px 20px;
-        background-color: #4a6da7;
-        border: none;
-        border-radius: 4px;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.3s;
-      }
-      
-      .modal-button:hover {
-        background-color: #5a7db7;
-      }
-      
-      .form-group {
-        margin-bottom: 15px;
-      }
-      
-      .radio-group {
-        margin: 5px 0;
-      }
-      
-      .game-code {
-        font-size: 24px;
-        text-align: center;
-        padding: 10px;
-        margin: 10px 0;
-        background-color: #333;
-        border-radius: 4px;
-        letter-spacing: 3px;
-        font-weight: bold;
-      }
-    `;
-
-    document.head.appendChild(styleElement);
-  }
 }
 
 // Set up event listeners for dialog buttons
