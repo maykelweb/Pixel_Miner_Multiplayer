@@ -510,7 +510,6 @@ io.on("connection", (socket) => {
 
   // Handle laser activation
   socket.on("laserActivated", () => {
-    console.log("here");
     const gameCode = playerGameMap[socket.id];
 
     if (gameCode && games[gameCode] && games[gameCode].players[socket.id]) {
@@ -531,8 +530,6 @@ io.on("connection", (socket) => {
           });
         }
       });
-
-      console.log(`Player ${socket.id} activated laser in game ${gameCode}`);
     }
   });
 

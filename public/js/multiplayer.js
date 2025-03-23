@@ -108,19 +108,18 @@ export function initMultiplayer(isHost = false, options = {}) {
       if (id !== gameState.playerId) {
         // First add the other player
         addOtherPlayer(id, data.players[id]);
-        
+
         // Check for active tools and states
         const playerData = data.players[id];
-        
+
         // Check if player has active laser and display it
         if (playerData.laserActive) {
           const playerElement = otherPlayers[id].element;
           const laserBeam = playerElement.querySelector(".other-player-laser");
-          
+
           if (laserBeam) {
             laserBeam.style.display = "block";
-            playerElement.classList.add("laser-active");
-            
+
             // Set angle if available
             if (playerData.laserAngle !== undefined) {
               laserBeam.style.transform = `rotate(${playerData.laserAngle}deg)`;
@@ -334,7 +333,7 @@ export function initMultiplayer(isHost = false, options = {}) {
     console.log("Player laser activated:", data.id);
     if (otherPlayers[data.id]) {
       const playerElement = otherPlayers[data.id].element;
-  
+
       // Add laser beam element if it doesn't exist
       let laserBeam = playerElement.querySelector(".other-player-laser");
       if (!laserBeam) {
@@ -342,17 +341,27 @@ export function initMultiplayer(isHost = false, options = {}) {
         laserBeam.className = "other-player-laser";
         playerElement.appendChild(laserBeam);
       }
-  
+
       // Show the laser beam
       laserBeam.style.display = "block";
-  
+
       // Store laser state
       otherPlayers[data.id].laser = {
         active: true,
-        angle: otherPlayers[data.id].laser ? (otherPlayers[data.id].laser.angle || 0) : 0
+        angle: otherPlayers[data.id].laser
+          ? otherPlayers[data.id].laser.angle || 0
+          : 0,
       };
-  
-      // Add laser active class to the player element (not to the laser itself)
+
+      // Set initial transform with the current angle
+      if (otherPlayers[data.id].laser.angle) {
+        laserBeam.style.transform = `rotate(${
+          otherPlayers[data.id].laser.angle
+        }deg)`;
+        laserBeam.style.transformOrigin = "left center";
+      }
+
+      // Add laser active class to the player element
       playerElement.classList.add("laser-active");
     }
   });
@@ -379,6 +388,7 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   // Handle laser updates (angle) from other players
+  // Fix 1: Update the playerLaserUpdate handler to match the local player transform
   socket.on("playerLaserUpdate", (data) => {
     console.log("Laser update for player:", data.id, "angle:", data.angle);
     if (otherPlayers[data.id]) {
@@ -388,29 +398,33 @@ export function initMultiplayer(isHost = false, options = {}) {
       } else {
         otherPlayers[data.id].laser.angle = data.angle;
       }
-  
+
       // Only update DOM if the laser is active
       if (otherPlayers[data.id].laser.active) {
-        const laserBeam = otherPlayers[data.id].element.querySelector(".other-player-laser");
+        const laserBeam = otherPlayers[data.id].element.querySelector(
+          ".other-player-laser"
+        );
         if (laserBeam) {
+          // Match the transform style used in player.js, using scale and rotation
           laserBeam.style.transform = `rotate(${data.angle}deg)`;
+          // Set transform origin to match local player
+          laserBeam.style.transformOrigin = "left center";
         }
       }
     }
   });
-  
 
   socket.on("playerJetpackActivated", (data) => {
-    console.log("here")
+    console.log("here");
     if (otherPlayers[data.id]) {
       const playerElement = otherPlayers[data.id].element;
-      
+
       // Find the jetpack flame element
       const jetpackFlame = playerElement.querySelector(".jetpack-flame");
       if (jetpackFlame) {
         // Make it visible
         jetpackFlame.style.display = "block";
-        
+
         // Update state in our tracking object
         otherPlayers[data.id].jetpackActive = true;
       } else {
@@ -419,7 +433,7 @@ export function initMultiplayer(isHost = false, options = {}) {
         newJetpackFlame.className = "jetpack-flame";
         newJetpackFlame.style.display = "block";
         playerElement.appendChild(newJetpackFlame);
-        
+
         // Still update our tracking state
         otherPlayers[data.id].jetpackActive = true;
       }
@@ -703,47 +717,7 @@ function addMultiplayerStyles() {
     styleElement.id = "multiplayer-player-styles";
     styleElement.textContent = `
       /* Existing styles... */
-      /* Jetpack flame for other players */
-      .other-player .jetpack-flame {
-        position: absolute;
-        width: 10px;
-        height: 15px;
-        bottom: -5px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(to bottom, #ff9900, #ff0000);
-        border-radius: 50% 50% 20% 20%;
-        opacity: 0.8;
-        animation: flame-flicker 0.1s infinite alternate;
-        z-index: 15;
-        display: none;
-      }
       
-      @keyframes flame-flicker {
-        0% { height: 15px; opacity: 0.7; }
-        100% { height: 20px; opacity: 0.9; }
-      }
-      
-      /* Mining animation styles */
-      .mining-animation {
-        animation: mining-anim 0.5s infinite alternate;
-      }
-      
-      @keyframes mining-anim {
-        0% { transform: rotate(60deg) scale(1.5); }
-        100% { transform: rotate(80deg) scale(1.5); }
-      }
-      
-      .drilling-animation {
-        animation: drill-spin 0.2s infinite linear;
-      }
-      
-      @keyframes drill-spin {
-        0% { transform: rotate(0deg) scale(1.5); }
-        100% { transform: rotate(360deg) scale(1.5); }
-      }
-      
-      /* Mining effect at blocks */
       .mining-effect {
         position: absolute;
         width: ${gameState.blockSize}px;
@@ -752,33 +726,6 @@ function addMultiplayerStyles() {
         background-size: cover;
         pointer-events: none;
         z-index: 40;
-      }
-      
-      
-      
-      /* Laser beam - improved visibility */
-      .other-player-laser {
-        position: absolute;
-        width: 100px;
-        height: 4px;
-        background: linear-gradient(to right, rgba(255,0,0,0.7), rgba(255,0,0,0.9));
-        top: 50%;
-        left: 50%;
-        transform-origin: left center;
-        border-radius: 2px;
-        box-shadow: 0 0 10px rgba(255,0,0,0.7);
-        z-index: 20;
-        /* Let display be controlled via JavaScript */
-      }
-      
-      /* Ensure this selector works properly */
-      .player.other-player.laser-active .other-player-laser {
-        display: block !important;
-      }
-      
-      /* Add a glow effect to players using lasers */
-      .laser-active {
-        box-shadow: 0 0 8px rgba(255,0,0,0.5);
       }
     `;
     document.head.appendChild(styleElement);
@@ -1074,6 +1021,7 @@ function addOtherPlayer(id, playerData) {
   const laserBeam = document.createElement("div");
   laserBeam.className = "other-player-laser";
   laserBeam.style.display = "none"; // Hidden by default
+  laserBeam.style.transformOrigin = "left center"; // Match local player setting
   newPlayerElement.appendChild(laserBeam);
 
   // Create and store the player object with all states properly initialized
@@ -1084,7 +1032,7 @@ function addOtherPlayer(id, playerData) {
       active: false,
     },
     laser: {
-      active: playerData.laserActive === true, // Check for laser state from server
+      active: playerData.laserActive === true,
       angle: playerData.laserAngle || 0,
     },
     jetpackActive: playerData.jetpackActive === true,
@@ -1121,7 +1069,7 @@ function addOtherPlayer(id, playerData) {
     laserBeam.style.display = "block";
     // Add appropriate class
     newPlayerElement.classList.add("laser-active");
-    
+
     // Set angle if available
     if (otherPlayers[id].laser.angle) {
       laserBeam.style.transform = `rotate(${otherPlayers[id].laser.angle}deg)`;
@@ -1132,7 +1080,9 @@ function addOtherPlayer(id, playerData) {
   const gameWorld = document.getElementById("game-world");
   if (gameWorld) {
     gameWorld.appendChild(newPlayerElement);
-    console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
+    console.log(
+      `Added other player ${id} at position (${adjustedX}, ${adjustedY})`
+    );
   }
 }
 
