@@ -1252,20 +1252,7 @@ body {
   z-index: -1;
 }
 
-
-
 /* Join Server Code Styles */
-.game-code-display {
-  display: flex;
-  align-items: center;
-  background-color: rgba(0, 0, 0, 0.6);
-  border: 1px solid #555;
-  border-radius: 4px;
-  padding: 5px 10px;
-  margin-top: 10px;
-  font-size: 14px;
-}
-
 .code-label {
   font-weight: bold;
   margin-right: 8px;
@@ -1293,21 +1280,6 @@ body {
 }
 
 .code-copy-btn:hover {
-  color: #fff;
-}
-
-/* Improve the initial modal display as well */
-.game-code {
-  font-size: 28px;
-  font-family: monospace;
-  text-align: center;
-  padding: 15px;
-  margin: 15px 0;
-  background-color: #333;
-  border-radius: 6px;
-  letter-spacing: 4px;
-  font-weight: bold;
-  border: 1px solid #555;
   color: #fff;
 }
 
@@ -1419,12 +1391,6 @@ body {
   align-items: center;
 }
 
-.game-code-label {
-  color: #ccc;
-  font-size: 14px;
-  margin-right: 10px;
-}
-
 .copy-code-btn {
   background-color: #2a2a2a;
   border: 1px solid #555;
@@ -1442,14 +1408,57 @@ body {
   border-color: #777;
 }
 
-/* Adjust menu content for code display */
-.menu-content {
+/* Game code display in the pause menu */
+.menu-content .game-code-display {
+  background-color: transparent;
+  border: none;
+  margin-top: 20px;
+  padding: 0;
+  display: block;
+  text-align: left;
+  width: 100%;
+  /* Add a border-top to separate from other menu items */
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 15px;
 }
 
-.game-menu h2 {
-  margin-top: 0;
-  margin-bottom: 15px;
+.menu-content .menu-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+}
+
+.menu-content .game-code-label {
+  font-weight: bold;
+  color: var(--light-text, #f3f4f6);
+}
+
+#pause-menu-code-value {
+  font-family: monospace;
+  color: var(--accent-color, #ff7700);
+  margin: 0 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+.menu-content .copy-code-btn.menu-button {
+  background-color: var(--primary-color, #3498db);
+  color: white;
+  border: none;
+  border-radius: var(--small-radius, 6px);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9em;
+  max-width: 100px;
+}
+
+.menu-content .copy-code-btn.menu-button:hover {
+  background-color: rgba(52, 152, 219, 0.8);
 }
 
 /* Jetpack flame for other players */
@@ -1543,3 +1552,4 @@ body {
   height: 100%;
   position: absolute;
 }
+

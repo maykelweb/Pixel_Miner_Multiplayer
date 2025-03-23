@@ -755,6 +755,7 @@ function addMultiplayerStyles() {
   }
 }
 
+
 /**
  * Updates the game code display in the pause menu
  * @param {string} gameCode - The game code to display
@@ -770,19 +771,19 @@ function updatePauseMenuGameCode(gameCode) {
     // Create the game code display element
     gameCodeDisplay = document.createElement("div");
     gameCodeDisplay.id = "pause-menu-game-code";
-    gameCodeDisplay.className = "game-code-display";
+    gameCodeDisplay.className = "game-code-display menu-item";
 
-    // Add content to the game code display
+    // Add content to the game code display with styling that matches menu items
     gameCodeDisplay.innerHTML = `
-      <span class="game-code-label">Game Code:</span>
-      <span id="pause-menu-code-value">${gameCode}</span>
-      <button id="copy-pause-menu-code" class="copy-code-btn">Copy</button>
+      <div class="menu-item-content">
+        <span class="game-code-label">Game Code:</span>
+        <span id="pause-menu-code-value">${gameCode}</span>
+        <button id="copy-pause-menu-code" class="copy-code-btn menu-button">Copy</button>
+      </div>
     `;
 
-    // Insert at the top of the menu content
-    if (menuContent && menuContent.firstChild) {
-      menuContent.insertBefore(gameCodeDisplay, menuContent.firstChild);
-    } else if (menuContent) {
+    // Insert at the bottom of the menu content instead of the top
+    if (menuContent) {
       menuContent.appendChild(gameCodeDisplay);
     }
 
