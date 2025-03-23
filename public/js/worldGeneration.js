@@ -32,12 +32,13 @@ function getOres() {
  * Generate or load the game world
  */
 export function generateWorld() {
-  // Initialize clouds and background
-  if (typeof initializeClouds === "function") {
-    initializeClouds();
-  }
+  // Initialize clouds and background - ALWAYS do this regardless of multiplayer status
   if (typeof setupBackground === "function") {
     setupBackground();
+  }
+
+  if (typeof initializeClouds === "function") {
+    initializeClouds();
   }
 
   // Update the current planet
@@ -46,13 +47,13 @@ export function generateWorld() {
   // Check if we're joining multiplayer - if so, don't generate or load a world
   if (gameState.isJoiningMultiplayer) {
     console.log("Joining multiplayer - waiting for host's world data");
-    
+
     // Initialize an empty blockMap to prepare for receiving world data
     gameState.blockMap = [];
-    
+
     // Still update visible blocks to ensure UI is ready
     updateVisibleBlocks();
-    
+
     // Request world data from the server
     if (typeof requestWorldData === "function") {
       console.log("Requesting world data from host");
@@ -61,6 +62,7 @@ export function generateWorld() {
     return;
   }
 
+  // Rest of the function remains unchanged
   // FIXED: Check for forceNewWorld flag before using existing blockMap
   if (
     gameState.blockMap &&
@@ -69,7 +71,7 @@ export function generateWorld() {
   ) {
     console.log("Using existing blockMap from save");
     updateVisibleBlocks();
-    
+
     // If we're the host, upload the world
     if (gameState.needToUploadWorld) {
       uploadWorldToServer();
@@ -545,7 +547,8 @@ function shuffleArray(array) {
   return array;
 }
 // Function to update the background variables and position
-function setupBackground() {
+export function setupBackground() {
+  console.log("settingup background")
   const background = document.getElementById("fixed-background");
 
   // Set the background dimensions to match your world size
@@ -686,7 +689,7 @@ function createCloud() {
 }
 
 // Initialize the first set of clouds
-function initializeClouds() {
+export function initializeClouds() {
   // Create 5-8 initial clouds at different positions
   const cloudCount = 5 + Math.floor(Math.random() * 4);
   const worldWidth = gameState.worldWidth * gameState.blockSize;

@@ -5,6 +5,8 @@ import {
   generateWorld,
   updateClouds,
   manageClouds,
+  initializeClouds,
+  setupBackground,
 } from "./worldGeneration.js";
 import { updateBombs, renderBombs } from "./bombs.js";
 import { initializeShop } from "./shop.js";
@@ -282,6 +284,9 @@ export function initGame() {
     // For joining players, initialize an empty world structure
     // that will be filled with the host's data
     gameState.blockMap = [];
+    // Since we're not generating a world, setup the background here
+    setupBackground() 
+    initializeClouds();
   }
 
   setupEventListeners();
@@ -442,10 +447,6 @@ export function joinMultiplayerGame() {
 
   // Initialize game - world generation will be overridden with host data
   initGame();
-
-  setTimeout(() => {
-    refreshPlayerVisibility();
-  }, 2000);
 
   // Transition from menu music to game music
   crossFadeAudio(menuMusic, gameMusic, 1000, true);

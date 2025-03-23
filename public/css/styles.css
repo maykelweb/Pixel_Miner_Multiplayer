@@ -179,15 +179,6 @@ h1 {
 }
 
 /* Background styling */
-#fixed-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 900px;
-  height: 1000px;
-  z-index: -1;
-  pointer-events: none;
-}
 
 /* Ensure the game world has a transparent background */
 #game-container {
