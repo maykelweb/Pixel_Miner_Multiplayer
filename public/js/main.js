@@ -277,7 +277,6 @@ export function initGame() {
  * Handles hosting a multiplayer game
  */
 export function hostMultiplayerGame() {
-  console.log("Starting host multiplayer game process");
 
   // Get player count
   const maxPlayers =
@@ -312,7 +311,6 @@ export function hostMultiplayerGame() {
 
   // First initialize multiplayer systems as host BEFORE generating the world
   // This ensures multiplayer is ready to sync world data
-  console.log("Initializing multiplayer as host");
   initMultiplayer(true, {
     maxPlayers: maxPlayers,
   });
@@ -320,9 +318,6 @@ export function hostMultiplayerGame() {
   // Transition from menu music to game music
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
-
-  // Flag that we're the host and need to share world data
-  gameState.needToUploadWorld = true;
 
   // Initialize the world based on chosen option
   if (useExistingSave) {
@@ -339,7 +334,6 @@ export function hostMultiplayerGame() {
     }
   } else {
     // Create new world
-    console.log("Generating new world");
     generateWorld();
     // World will be uploaded after generation
   }
@@ -437,11 +431,8 @@ export function joinMultiplayerGame() {
 
 // Called once during initialization to ensure proper setup
 export function setupMultiplayer() {
-  console.log("Setting up multiplayer systems");
-
   // Check if multiplayer is already initialized and avoid duplicate setup
   if (multiplayerInitialized) {
-    console.log("Multiplayer already initialized, skipping setup");
     return;
   }
 

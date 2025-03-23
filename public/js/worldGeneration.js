@@ -58,7 +58,16 @@ export function generateWorld() {
     
     // If we're the host, upload the world after restoration
     if (gameState.needToUploadWorld) {
+      console.log("Host is uploading restored Earth map to server");
       uploadWorldToServer();
+      
+      // ADDED: Add a retry mechanism to ensure world is uploaded
+      setTimeout(() => {
+        if (gameState.needToUploadWorld) {
+          console.log("Retrying world data upload...");
+          uploadWorldToServer();
+        }
+      }, 3000);
     }
     return;
   }
@@ -109,7 +118,16 @@ export function generateWorld() {
   
   // If we're the host, upload the newly generated world to the server
   if (gameState.needToUploadWorld) {
+    console.log("Host is uploading newly generated world to server");
     uploadWorldToServer();
+    
+    // ADDED: Add a retry mechanism to ensure world is uploaded
+    setTimeout(() => {
+      if (gameState.needToUploadWorld) {
+        console.log("Retrying world data upload...");
+        uploadWorldToServer();
+      }
+    }, 3000);
   }
 }
 

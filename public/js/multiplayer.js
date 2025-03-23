@@ -236,12 +236,16 @@ export function initMultiplayer(isHost = false, options = {}) {
 
       // After everything is set up, update visible blocks
       updateVisibleBlocks();
-    } else if (!isHost && worldDataExpected && !hasWorldData) {
-      // World data is expected but not received - request it explicitly
+    } else if (!isHost && !hasWorldData) {
+      // MODIFIED: Always request world data if we're not the host and no data was received
+      // This handles the case where a player joins before the host uploads the world
       console.log(
-        "World data expected but not received. Requesting world data..."
+        "No world data received. Requesting world data from server..."
       );
       requestWorldData();
+
+      // For better user experience, show a message
+      showMessage("Connecting to game world...", 3000);
     }
   });
 
@@ -915,7 +919,7 @@ export function uploadWorldToServer() {
 
       // Send the world data
       socket.emit("uploadWorldData", {
-        worldBlocks: worldData,
+        worldBlocks: "worldData",
         blockCount: blockCount,
         planetType: gameState.currentPlanet,
       });
@@ -1553,7 +1557,16 @@ export function sendMiningStart(blockX, blockY, toolType) {
  */
 export function sendMiningStop() {
   if (isConnected && socket) {
-    socket.emit("miningStop", {});
+    try {
+      // Only send if socket is in OPEN state
+      if (socket.connected) {
+        socket.emit("miningStop", {});
+      } else {
+        console.log("Socket not connected, skipping miningStop event");
+      }
+    } catch (error) {
+      console.error("Error sending mining stop:", error);
+    }
   }
 }
 

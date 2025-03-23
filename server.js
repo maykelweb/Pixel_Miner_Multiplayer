@@ -177,6 +177,14 @@ io.on("connection", (socket) => {
       games[gameCode].worldBlocks = {};
     }
 
+    if (!games[gameCode].worldGenerated) {
+      if (!games[gameCode].pendingWorldDataRequests) {
+        games[gameCode].pendingWorldDataRequests = [];
+      }
+      console.log(`Adding player ${socket.id} to pending world data requests`);
+      games[gameCode].pendingWorldDataRequests.push(socket.id);
+    }
+    
     // Check if we need to send world data
     const worldGenerated = games[gameCode].worldGenerated === true;
 
@@ -340,6 +348,37 @@ io.on("connection", (socket) => {
       console.log(
         `World data with ${rowCount} rows successfully stored for game ${gameCode}`
       );
+
+      games[gameCode].worldBlocks = worldCopy;
+      games[gameCode].worldGenerated = true;
+
+      // Log successful storage
+      console.log(
+        `World data with ${rowCount} rows successfully stored for game ${gameCode}`
+      );
+
+      // ADDED: Keep track of players who joined before world was generated
+      if (
+        games[gameCode].pendingWorldDataRequests &&
+        games[gameCode].pendingWorldDataRequests.length > 0
+      ) {
+        console.log(
+          `Sending world data to ${games[gameCode].pendingWorldDataRequests.length} players who joined early`
+        );
+
+        games[gameCode].pendingWorldDataRequests.forEach((playerId) => {
+          io.to(playerId).emit("worldDataResponse", {
+            success: true,
+            worldBlocks: worldCopy,
+            gameCode: gameCode,
+            hasRocket: games[gameCode].hasRocket,
+            rocketPosition: games[gameCode].rocketPosition,
+            message: `World data with ${rowCount} rows sent successfully`,
+          });
+        });
+        // Clear the pending list after sending
+        games[gameCode].pendingWorldDataRequests = [];
+      }
 
       // Send acknowledgment to client
       socket.emit("worldDataReceived", {
