@@ -12,6 +12,7 @@ let otherPlayers = {}; // Store references to other player elements
 let currentGameCode = ""; // Store the current game code
 let hasShownGameCode = false;
 
+
 /**
  * Initialize connection to multiplayer server
  * @param {boolean} isHost - Whether this client is hosting the game
@@ -53,6 +54,12 @@ export function initMultiplayer(isHost = false, options = {}) {
     playerCountDisplay.innerHTML =
       '<span class="player-icon">👥</span><span id="player-count-value">1</span>';
     infoPanel.appendChild(playerCountDisplay);
+
+    // Important: After successful connection, immediately send our tool information
+    // This ensures other players can see our tool correctly from the start
+    setTimeout(() => {
+      sendInitialToolInfo();
+    }, 1000); // Small delay to ensure game state is fully loaded
   });
 
   // Handle hosting response
@@ -209,7 +216,7 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle new player joining
   socket.on("newPlayer", (playerData) => {
     console.log("New player joined:", playerData);
-  
+
     // Make sure the player doesn't already exist in our list
     if (otherPlayers[playerData.id]) {
       console.log(
@@ -218,16 +225,16 @@ export function initMultiplayer(isHost = false, options = {}) {
       updateOtherPlayerPosition(playerData.id, playerData);
       return;
     }
-  
+
     // Only add the player if they're on the same planet
     if (playerData.currentPlanet === gameState.currentPlanet) {
       addOtherPlayer(playerData.id, playerData);
-  
+
       // Update player count
       updatePlayerCount(Object.keys(otherPlayers).length + 1);
-  
+
       showMessage("New player joined!", 2000);
-      
+
       // Send our current tool information to make sure the new player sees it correctly
       sendInitialToolInfo();
     } else {
@@ -688,9 +695,6 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Update player count
     updatePlayerCount(Object.keys(otherPlayers).length + 1);
   });
-
-  // Add styles for other players if they don't exist yet
-  addMultiplayerStyles();
 }
 
 /**
@@ -724,69 +728,6 @@ export function uploadWorldToServer() {
 
     console.log("World data uploaded");
     gameState.needToUploadWorld = false;
-  }
-}
-
-/**
- * Adds necessary CSS styles for multiplayer players
- */
-function addMultiplayerStyles() {
-  if (!document.getElementById("multiplayer-player-styles")) {
-    const styleElement = document.createElement("style");
-    styleElement.id = "multiplayer-player-styles";
-    styleElement.textContent = `
-      /* Mining effect for blocks */
-      .mining-effect {
-        position: absolute;
-        width: ${gameState.blockSize}px;
-        height: ${gameState.blockSize}px;
-        background-image: url('imgs/crack-overlay.png');
-        background-size: cover;
-        pointer-events: none;
-        z-index: 40;
-      }
-      
-      /* Tool animations for other players */
-      .other-player .player-tool-container svg.mining {
-        animation: pickaxe-swing 0.5s infinite;
-      }
-
-      .other-player .player-tool-container svg.drilling {
-        animation: drill-spin 0.2s infinite linear;
-      }
-
-      @keyframes pickaxe-swing {
-        0% { transform: rotate(60deg) scale(1.5); }
-        50% { transform: rotate(120deg) scale(1.5); }
-        100% { transform: rotate(60deg) scale(1.5); }
-      }
-      
-      @keyframes drill-spin {
-        0% { transform: rotate(0deg) scale(1.5); }
-        100% { transform: rotate(360deg) scale(1.5); }
-      }
-      
-      /* Handle flipped state for players facing left */
-      .other-player.facing-left .player-tool-container svg.mining {
-        animation: pickaxe-swing-flipped 0.5s infinite;
-      }
-      
-      .other-player.facing-left .player-tool-container svg.drilling {
-        animation: drill-spin-flipped 0.2s infinite linear;
-      }
-      
-      @keyframes pickaxe-swing-flipped {
-        0% { transform: rotate(60deg) scale(1.5) scaleX(-1); }
-        50% { transform: rotate(120deg) scale(1.5) scaleX(-1); }
-        100% { transform: rotate(60deg) scale(1.5) scaleX(-1); }
-      }
-      
-      @keyframes drill-spin-flipped {
-        0% { transform: rotate(0deg) scale(1.5) scaleX(-1); }
-        100% { transform: rotate(360deg) scale(1.5) scaleX(-1); }
-      }
-    `;
-    document.head.appendChild(styleElement);
   }
 }
 
@@ -984,8 +925,10 @@ export function sendPlayerUpdate() {
       depth: gameState.depth,
       // Add current planet to ensure consistent planet tracking
       currentPlanet: gameState.currentPlanet,
-      // NEW: Include tool information in regular updates
-      currentTool: currentToolId
+      // Include tool information in regular updates
+      currentTool: currentToolId,
+      // Also include tool type to ensure consistency
+      toolType: currentToolType,
     });
   }
 }
@@ -1071,7 +1014,7 @@ function addOtherPlayer(id, playerData) {
   const toolContainer = document.createElement("div");
   toolContainer.className = "player-tool-container";
 
-  // Use an actual SVG element instead of just an img for better animations
+  // Use an actual SVG element instead of just an img tag for better animations
   toolContainer.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pickaxe">
       <use href="#pickaxe-basic-icon" />
@@ -1114,9 +1057,12 @@ function addOtherPlayer(id, playerData) {
   const gameWorld = document.getElementById("game-world");
   if (gameWorld) {
     gameWorld.appendChild(newPlayerElement);
-    console.log(`Added other player ${id} at position (${adjustedX}, ${adjustedY})`);
-    
-    // NEW: Initialize with tool information if available
+    console.log(
+      `Added other player ${id} at position (${adjustedX}, ${adjustedY})`
+    );
+
+    // Check for tool information in a consistent way
+    // This is the key part that needs fixing - properly check all possible tool properties
     if (playerData.currentTool) {
       updateOtherPlayerTool(id, playerData.currentTool);
     } else if (playerData.toolId) {
@@ -1253,9 +1199,9 @@ function applyMiningAnimation(playerId) {
   const toolContainer = playerElement.querySelector(".player-tool-container");
   const svgElement = toolContainer?.querySelector("svg");
 
-  if (!svgElement) return;  
+  if (!svgElement) return;
 
-  console.log("here")
+  console.log("here");
 
   // Get tool type from the mining info or from player data
   const tool =
@@ -1607,13 +1553,12 @@ export function refreshPlayerVisibility() {
   }, 2000);
 }
 
-
 export function sendInitialToolInfo() {
   // Should be called after the player's tools are loaded
   if (isConnected && socket) {
     const currentToolType = gameState.crafting.currentToolType;
     const currentToolId = gameState.crafting.equippedTools[currentToolType];
-    
+
     if (currentToolType && currentToolId) {
       // Send explicit tool changed event to ensure other players see our tool
       sendToolChanged(currentToolId);
