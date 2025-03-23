@@ -68,6 +68,7 @@ export const gameState = {
   isJoiningMultiplayer: false, // Flag to indicate we're joining someone else's game
   needToUploadWorld: false, // Flag for hosts to upload world data
   playerId: null, // Will be set when connected to server
+  forceNewWorld: false, // Flag to force new world generation for hosting
   ores: [
     {
       name: "grass",
@@ -380,21 +381,23 @@ export const gameState = {
     if (this.currentPlanet === "earth" && this.blockMap) {
       // Deep clone to avoid reference issues
       this.earthBlockMap = JSON.parse(JSON.stringify(this.blockMap));
-      console.log("Synced current map to Earth map");
     } else if (this.currentPlanet === "moon" && this.blockMap) {
       // Deep clone to avoid reference issues
       this.moonBlockMap = JSON.parse(JSON.stringify(this.blockMap));
-      console.log("Synced current map to Moon map");
     }
   },
 
   // Save game with multiplayer awareness
+  // Save game with multiplayer awareness and improved synchronization
   saveGame: function () {
     // Don't save if in multiplayer mode and not the host
     if (this.multiplayer.active && !this.multiplayer.isHost) {
       showMessage("Only the host can save in multiplayer mode", 3000);
       return false;
     }
+
+    // Sync current blockMap to appropriate planet map before saving
+    this.syncCurrentMapToPlanet();
 
     // Compress current blockMap: store ore name if block exists, or null otherwise
     const compressedBlockMap = [];
@@ -484,11 +487,18 @@ export const gameState = {
     };
 
     try {
-      localStorage.setItem("pixelMinerSave", JSON.stringify(gameData));
+      // Log the size of the save data for debugging
+      const saveString = JSON.stringify(gameData);
+      
+      // Attempt to save
+      localStorage.setItem("pixelMinerSave", saveString);
+
       showMessage("Game Saved!", 2000);
       return true;
     } catch (error) {
       console.error("Failed to save game:", error);
+      console.error("Error details:", error.message);
+      console.error("Stack trace:", error.stack);
       showMessage("Failed to save game!", 2000);
       return false;
     }
@@ -502,7 +512,9 @@ export const gameState = {
     }
 
     const savedData = localStorage.getItem("pixelMinerSave");
-    if (!savedData) return false;
+    if (!savedData) {
+      return false;
+    }
 
     try {
       const gameData = JSON.parse(savedData);
@@ -512,8 +524,8 @@ export const gameState = {
         this.player.health = gameData.player.health || 100;
         this.player.maxHealth = gameData.player.maxHealth || 100;
         this.player.speed = gameData.player.speed || 6; // Restoring player speed
-        this.player.x = gameData.player.x || 100;
-        this.player.y = gameData.player.y || 100;
+        this.player.x = gameData.player.x || 280;
+        this.player.y = gameData.player.y || 550;
       }
 
       // Load inventory and resources
@@ -543,15 +555,17 @@ export const gameState = {
       };
 
       // Load world dimensions
-      this.worldWidth = gameData.worldWidth || 100;
-      this.worldHeight = gameData.worldHeight || 300;
+      this.worldWidth = gameData.worldWidth || 50;
+      this.worldHeight = gameData.worldHeight || 1000;
       this.skyRows = gameData.skyRows || 10;
       this.currentPlanet = gameData.currentPlanet || "earth";
       this.depth = gameData.depth || 0;
 
       // Function to expand compressed map back into full ore objects
       const expandCompressedMap = (compressedMap) => {
-        if (!compressedMap || compressedMap.length === 0) return [];
+        if (!compressedMap || compressedMap.length === 0) {
+          return [];
+        }
 
         const expandedMap = [];
         for (let y = 0; y < compressedMap.length; y++) {
@@ -570,50 +584,65 @@ export const gameState = {
         return expandedMap;
       };
 
+      // IMPORTANT: Check if we have any map data - log extensive debugging info
+      let mapLoaded = false;
+
       // Check if we have the new compressed format or old format
-      if (gameData.compressedBlockMap) {
+      if (
+        gameData.compressedBlockMap &&
+        gameData.compressedBlockMap.length > 0
+      ) {
         // New compressed format
         this.blockMap = expandCompressedMap(gameData.compressedBlockMap);
-      } else if (gameData.blockMap) {
+        mapLoaded = true;
+      } else if (gameData.blockMap && gameData.blockMap.length > 0) {
         // Old uncompressed format - keep for backward compatibility
         this.blockMap = gameData.blockMap;
+        mapLoaded = true;
+      } else {
+        console.warn("No blockMap data found in save!");
       }
 
       // Handle earth block map
-      if (gameData.compressedEarthBlockMap) {
+      if (
+        gameData.compressedEarthBlockMap &&
+        gameData.compressedEarthBlockMap.length > 0
+      ) {
         this.earthBlockMap = expandCompressedMap(
           gameData.compressedEarthBlockMap
         );
-      } else if (gameData.earthBlockMap) {
+      } else if (gameData.earthBlockMap && gameData.earthBlockMap.length > 0) {
         this.earthBlockMap = gameData.earthBlockMap;
+      } else {
       }
 
       // Handle moon block map
-      if (gameData.compressedMoonBlockMap) {
+      if (
+        gameData.compressedMoonBlockMap &&
+        gameData.compressedMoonBlockMap.length > 0
+      ) {
         this.moonBlockMap = expandCompressedMap(
           gameData.compressedMoonBlockMap
         );
-      } else if (gameData.moonBlockMap) {
+      } else if (gameData.moonBlockMap && gameData.moonBlockMap.length > 0) {
         this.moonBlockMap = gameData.moonBlockMap;
+      } else {
       }
 
       // Load crafting state
       if (gameData.crafting) {
         this.crafting.availableTools = gameData.crafting.availableTools || [];
         this.crafting.equippedTools = gameData.crafting.equippedTools || {};
-        console.log("here: " + this.crafting.equippedTools);
         this.crafting.currentToolType =
           gameData.crafting.currentToolType || "pickaxe";
       }
 
-      console.log(
-        "Game loaded successfully with " +
-          (gameData.compressedBlockMap ? "compressed" : "legacy") +
-          " map format"
-      );
       return true;
     } catch (error) {
       console.error("Failed to load game:", error);
+      // If there's an error, provide more detailed information
+      console.error("Error details:", error.message);
+      console.error("Stack trace:", error.stack);
       return false;
     }
   },

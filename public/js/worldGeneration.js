@@ -42,7 +42,7 @@ export function generateWorld() {
 
   // Update the current planet
   gameState.currentPlanet = "earth";
-  
+
   // Check if we're joining multiplayer - if so, don't generate or load a world
   if (gameState.isJoiningMultiplayer) {
     console.log("Joining multiplayer - waiting for host's world data");
@@ -50,18 +50,40 @@ export function generateWorld() {
     return;
   }
 
+  // FIXED: Check for forceNewWorld flag before using existing blockMap
+  if (
+    gameState.blockMap &&
+    gameState.blockMap.length > 0 &&
+    !gameState.forceNewWorld
+  ) {
+    console.log("Using existing blockMap from save");
+    updateVisibleBlocks();
+    
+    console.log(gameState.needToUploadWorld)
+    // If we're the host, upload the world
+    if (gameState.needToUploadWorld) {
+      uploadWorldToServer();
+    }
+    return;
+  }
+
   // Check if returning from moon (look for saved Earth map)
-  if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
+  // FIXED: Also consider forceNewWorld flag here
+  if (
+    gameState.earthBlockMap &&
+    gameState.earthBlockMap.length > 0 &&
+    !gameState.forceNewWorld
+  ) {
     console.log("Restoring Earth map from saved state");
     gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
     updateVisibleBlocks();
-    
+
     // If we're the host, upload the world after restoration
     if (gameState.needToUploadWorld) {
       console.log("Host is uploading restored Earth map to server");
       uploadWorldToServer();
-      
-      // ADDED: Add a retry mechanism to ensure world is uploaded
+
+      // Add a retry mechanism to ensure world is uploaded
       setTimeout(() => {
         if (gameState.needToUploadWorld) {
           console.log("Retrying world data upload...");
@@ -72,18 +94,18 @@ export function generateWorld() {
     return;
   }
 
-  // Check if world is already generated (but ensure we're not using a cached map if we just loaded)
-  if (gameState.blockMap && gameState.blockMap.length > 0) {
-    updateVisibleBlocks();
-    
-    // If we're the host, upload the world if it's already generated
-    if (gameState.needToUploadWorld) {
-      uploadWorldToServer();
+  // FIXED: Add log to indicate if we're regenerating because of forceNewWorld
+  if (gameState.forceNewWorld) {
+    if (gameState.player) {
+      gameState.player.x = 280;
+      gameState.player.y = 550;
     }
-    return;
-  }
 
-  console.log("Generating new Earth world");
+    // Reset the flag after we've used it
+    gameState.forceNewWorld = false;
+  } else {
+    console.log("Generating new Earth world");
+  }
 
   // Reset the ore cache to ensure we're using fresh data
   cachedOres = null;
@@ -115,13 +137,14 @@ export function generateWorld() {
   gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
 
   updateVisibleBlocks();
-  
+
   // If we're the host, upload the newly generated world to the server
+  console.log(gameState.needToUploadWorld)
   if (gameState.needToUploadWorld) {
     console.log("Host is uploading newly generated world to server");
     uploadWorldToServer();
-    
-    // ADDED: Add a retry mechanism to ensure world is uploaded
+
+    // Add a retry mechanism to ensure world is uploaded
     setTimeout(() => {
       if (gameState.needToUploadWorld) {
         console.log("Retrying world data upload...");
@@ -137,21 +160,24 @@ export function transitionToEarth() {
 
   // Use deep copy to avoid reference issues
   gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
-  
+
   // Set the current planet
   gameState.currentPlanet = "earth";
-  
+
   // IMPORTANT: We need to keep multiplayer connection alive
   // The flag handling is different for hosts and non-hosts
   if (gameState.isHost) {
     // For hosts, leave the flag as-is and let uploadWorldToServer handle it
-    console.log("Host transitioning to Earth, maintaining upload flag:", gameState.needToUploadWorld);
+    console.log(
+      "Host transitioning to Earth, maintaining upload flag:",
+      gameState.needToUploadWorld
+    );
   }
   // Do not modify the flag for non-hosts at all
-  
+
   // Remove stars and earth planet
   removeSpaceBackgroundElements();
-  
+
   // Small delay before requesting player list to ensure server processes planet change first
   setTimeout(() => {
     if (typeof requestPlayersOnCurrentPlanet === "function") {
@@ -280,13 +306,13 @@ function addOreVeins() {
     if (ore.name === "dirt" || ore.name === "stone" || ore.name === "grass") {
       return;
     }
-    
+
     // FIXED: Skip moon-only ores when on Earth
     if (gameState.currentPlanet === "earth" && ore.moonOnly) {
       //console.log(`Skipping moon-only ore ${ore.name} on Earth`);
       return;
     }
-    
+
     // Skip earth-only ores when on Moon
     if (gameState.currentPlanet === "moon" && ore.earthOnly) {
       //console.log(`Skipping earth-only ore ${ore.name} on Moon`);

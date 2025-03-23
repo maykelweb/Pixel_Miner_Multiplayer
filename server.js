@@ -102,7 +102,6 @@ io.on("connection", (socket) => {
   });
 
   // Handle joining an existing game
-  // Replace the joinGame event handler in server.js with this improved version
   socket.on("joinGame", (data) => {
     const gameCode = data.gameCode;
 

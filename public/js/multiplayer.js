@@ -99,7 +99,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle initial game state
   socket.on("gameState", (data) => {
-    console.log("Received initial game state:", data);
 
     // Set local player ID
     gameState.playerId = data.playerId;
@@ -858,6 +857,7 @@ export function initMultiplayer(isHost = false, options = {}) {
 }
 
 export function uploadWorldToServer() {
+  console.log("here");
   // Only upload if we're connected, the socket exists, AND we have received a game code
   if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
     console.log(
@@ -1562,7 +1562,6 @@ export function sendMiningStop() {
       if (socket.connected) {
         socket.emit("miningStop", {});
       } else {
-        console.log("Socket not connected, skipping miningStop event");
       }
     } catch (error) {
       console.error("Error sending mining stop:", error);
@@ -1831,7 +1830,6 @@ export function sendInitialToolInfo() {
     if (currentToolType && currentToolId) {
       // Send explicit tool changed event to ensure other players see our tool
       sendToolChanged(currentToolId);
-      console.log(`Sent initial tool info: ${currentToolId}`);
     }
   }
 }

@@ -39,7 +39,6 @@ export function initializeRocket() {
     rocketElement.style.position = "absolute"; // Ensure absolute positioning
     document.getElementById("game-world").appendChild(rocketElement);
 
-    console.log(gameState.hasRocket + " : " + gameState.rocketPlaced)
     // Immediately hide the rocket if the player doesn't have one or it's not placed
     if (!gameState.hasRocket || !gameState.rocketPlaced) {
       rocketElement.style.display = "none";

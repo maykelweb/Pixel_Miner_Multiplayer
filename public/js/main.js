@@ -192,6 +192,7 @@ export function startNewGame() {
   }
 }
 
+
 /**
  * Loads an existing game from localStorage
  */
@@ -206,8 +207,27 @@ export function loadExistingGame() {
     // Clean up the menu background
     cleanupMenuBackground();
 
+    // Set flag to ensure we're not joining multiplayer
+    gameState.isJoiningMultiplayer = false;
+    
+    // IMPORTANT: Explicitly set flag to ensure we're NOT in a new game state
+    gameState.newGame = false;
+    
     // Transition from menu music to game music
     crossFadeAudio(menuMusic, gameMusic, 1000, true);
+    
+    // Check and load save before initializing game
+    try {
+      const saveExists = localStorage.getItem("pixelMinerSave") !== null;
+      if (saveExists) {
+        console.log("Found existing save, will load it during initialization");
+      } else {
+        console.warn("No save found but loadExistingGame was called");
+        // Continue anyway, initGame will handle the absence of save data
+      }
+    } catch (error) {
+      console.error("Error checking for save:", error);
+    }
 
     // Initialize and load the game
     initGame();
@@ -220,21 +240,31 @@ export function loadExistingGame() {
 }
 
 /**
- * Initialize the game
+ * Initialize the game - with improved save handling
  */
 export function initGame() {
   // Only attempt to load saved game if not joining a multiplayer game
-  if (!gameState.isJoiningMultiplayer) {
+  // and not explicitly creating a new game
+  if (!gameState.isJoiningMultiplayer && !gameState.newGame) {
     try {
-      const loadedGame = gameState.loadGame();
-      if (loadedGame) {
-        console.info("Game loaded from save");
+      const saveData = localStorage.getItem("pixelMinerSave");
+      if (saveData) {
+        const loaded = gameState.loadGame();
+        if (loaded) {
+          console.info("Game loaded from save successfully");
+        } else {
+          console.error("Failed to parse saved game data");
+        }
+      } else {
+        console.info("No saved game found to load");
       }
     } catch (error) {
       console.error("Failed to load game:", error);
     }
-  } else {
+  } else if (gameState.isJoiningMultiplayer) {
     console.info("Joining multiplayer game - skipping local save load");
+  } else {
+    console.info("Creating new game - skipping local save load");
   }
 
   // Load audio settings
@@ -277,7 +307,6 @@ export function initGame() {
  * Handles hosting a multiplayer game
  */
 export function hostMultiplayerGame() {
-
   // Get player count
   const maxPlayers =
     parseInt(document.getElementById("max-players").value) || 4;
@@ -309,6 +338,9 @@ export function hostMultiplayerGame() {
   // Clean up menu background
   cleanupMenuBackground();
 
+  // Set upload world to server
+  gameState.needToUploadWorld = true;
+
   // First initialize multiplayer systems as host BEFORE generating the world
   // This ensures multiplayer is ready to sync world data
   initMultiplayer(true, {
@@ -319,24 +351,17 @@ export function hostMultiplayerGame() {
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
 
-  // Initialize the world based on chosen option
-  if (useExistingSave) {
-    try {
-      console.log("Loading existing game save");
-      gameState.loadGame();
-      // World will be uploaded after loading in the generateWorld function
-    } catch (error) {
-      console.error("Failed to load existing save:", error);
-      // Fall back to new world
-      console.log("Falling back to new world generation");
-      generateWorld();
-      // World will be uploaded after generation
-    }
+  // FIXED: Don't remove save data, just set a flag to indicate if we should use it
+  if (!useExistingSave) {
+    console.log("Creating new world - but keeping save data intact");
+    // Instead of removing save data, set a flag to generate a new world
+    gameState.forceNewWorld = true;
   } else {
-    // Create new world
-    generateWorld();
-    // World will be uploaded after generation
+    gameState.forceNewWorld = false;
   }
+
+  // Initialize the game - this will load the save or create a new world
+  initGame();
 
   // Show game UI elements
   const infoPanel = document.getElementById("info-panel");
@@ -349,8 +374,6 @@ export function hostMultiplayerGame() {
   const playerElement = document.getElementById("player");
   if (playerElement) playerElement.style.display = "block";
 
-  // Initialize game systems AFTER both multiplayer and world are set up
-  initGame();
   sendPlayerUpdate();
 }
 

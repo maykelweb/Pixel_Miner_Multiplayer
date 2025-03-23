@@ -1240,11 +1240,9 @@ export function loadEquippedTool() {
       );
 
       if (toolToEquip) {
-        console.log(toolToEquip)
         // Just update the visual appearance without changing game state
         updateToolVisuals(toolToEquip.type);
         sendInitialToolInfo(); // Already here
-        console.log(`Loaded visual for ${toolToEquip.name} (${currentToolId})`);
         return true;
       }
     }
@@ -1257,7 +1255,6 @@ export function loadEquippedTool() {
     }
     updateToolVisuals("pickaxe");
     sendInitialToolInfo(); // Add this line to send tool info even when defaulting to basic pickaxe
-    console.log("Loading default basic pickaxe");
     return false;
   } catch (error) {
     console.error("Error loading equipped tool:", error);
