@@ -102,9 +102,10 @@ io.on("connection", (socket) => {
   });
 
   // Handle joining an existing game
+  // Replace the joinGame event handler in server.js with this improved version
   socket.on("joinGame", (data) => {
     const gameCode = data.gameCode;
-  
+
     // Check if game exists
     if (!games[gameCode]) {
       socket.emit("joinResponse", {
@@ -113,7 +114,7 @@ io.on("connection", (socket) => {
       });
       return;
     }
-  
+
     // Check if game is full
     if (games[gameCode].currentPlayers >= games[gameCode].maxPlayers) {
       socket.emit("joinResponse", {
@@ -122,12 +123,12 @@ io.on("connection", (socket) => {
       });
       return;
     }
-  
+
     // Make sure players object exists
     if (!games[gameCode].players) {
       games[gameCode].players = {};
     }
-  
+
     // Add player to the game
     games[gameCode].players[socket.id] = {
       id: socket.id,
@@ -144,42 +145,55 @@ io.on("connection", (socket) => {
       jetpackActive: false, // Add the jetpack state property
     };
     games[gameCode].currentPlayers++;
-  
+
     // Map player to game
     playerGameMap[socket.id] = gameCode;
-  
+
     // Join the socket room for this game
     socket.join(gameCode);
-  
+
     // Send success response
     socket.emit("joinResponse", {
       success: true,
       gameCode: gameCode,
     });
-  
+
     // Use the player's actual current planet instead of hardcoding "earth"
     const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
-  
+
     // Create a filtered version of players on the same planet
     const playersOnSamePlanet = {};
     for (const playerId in games[gameCode].players) {
-      // FIXED: Use currentPlanet variable instead of hardcoded "earth"
       if (games[gameCode].players[playerId].currentPlanet === currentPlanet) {
         playersOnSamePlanet[playerId] = games[gameCode].players[playerId];
       }
     }
-  
-    // Check if world has been generated before sending to client
-    const worldData = games[gameCode].worldGenerated 
-      ? games[gameCode].worldBlocks 
-      : {};
 
-      console.log(worldData)
-      
-    // Log world data size to help with debugging
+    // Get the appropriate world data for the planet the player is joining
+    let worldData = {};
+
+    // Make sure worldBlocks exists
+    if (!games[gameCode].worldBlocks) {
+      games[gameCode].worldBlocks = {};
+    }
+
+    // Check if we need to send world data
+    const worldGenerated = games[gameCode].worldGenerated === true;
+
+    if (worldGenerated) {
+      worldData = games[gameCode].worldBlocks;
+    }
+
+    // Log what we're sending
     const worldSize = Object.keys(worldData).length;
     console.log(`Sending world data to joining player (${worldSize} rows)`);
-  
+
+    if (worldSize === 0 && worldGenerated) {
+      console.log(
+        "Warning: World is marked as generated but contains 0 rows. This may indicate a problem."
+      );
+    }
+
     // Send game state to the new player
     socket.emit("gameState", {
       playerId: socket.id,
@@ -187,52 +201,163 @@ io.on("connection", (socket) => {
       worldBlocks: worldData,
       hasRocket: games[gameCode].hasRocket,
       rocketPosition: games[gameCode].rocketPosition,
-      currentPlanet: currentPlanet, // FIXED: Use player's current planet instead of hardcoding
+      currentPlanet: currentPlanet,
+      worldGenerated: worldGenerated, // Add this flag so client knows if world data should be expected
     });
-  
+
     // Broadcast new player to others in the same game
     socket.to(gameCode).emit("newPlayer", games[gameCode].players[socket.id]);
-  
+
     console.log(`Player ${socket.id} joined game: ${gameCode}`);
   });
 
-  // Handle world data upload from the host player
-  socket.on("uploadWorldData", (data) => {
+  socket.on("requestWorldData", (data) => {
     const gameCode = playerGameMap[socket.id];
 
-    // Verify this is a valid game and the sender is the host
-    if (!gameCode || !games[gameCode] || games[gameCode].host !== socket.id) {
-      console.error(`Player ${socket.id} tried to upload world data but is not a host`);
-      socket.emit("serverError", {
-        event: "uploadWorldData",
-        message: "Only the host can upload world data",
+    if (!gameCode) {
+      console.log(
+        `Player ${socket.id} requested world data but is not in a game yet`
+      );
+      socket.emit("worldDataResponse", {
+        success: false,
+        message: "You are not in a game yet",
       });
       return;
     }
 
-    console.log(`Receiving world data for game ${gameCode} from host ${socket.id}`);
-    console.log(`World data contains ${data.blockCount} blocks across ${Object.keys(data.worldBlocks).length} rows`);
-
-    // Save the world data to the game instance
-    games[gameCode].worldBlocks = data.worldBlocks;
-    games[gameCode].worldGenerated = true;
-    
-    // Associate the world data with the correct planet
-    const planetType = data.planetType || "earth";
-    if (planetType === "earth") {
-      games[gameCode].earthWorldBlocks = data.worldBlocks;
-    } else if (planetType === "moon") {
-      games[gameCode].moonWorldBlocks = data.worldBlocks;
+    if (!games[gameCode]) {
+      console.log(
+        `Player ${socket.id} requested world data but game ${gameCode} doesn't exist`
+      );
+      socket.emit("worldDataResponse", {
+        success: false,
+        message: "Game not found",
+      });
+      return;
     }
 
-    // Confirm receipt to the host
-    socket.emit("worldDataUploaded", {
-      success: true,
-      blockCount: data.blockCount,
-      planetType: planetType
-    });
+    // Check if world data exists
+    if (!games[gameCode].worldGenerated) {
+      console.log(
+        `Player ${socket.id} requested world data but world not generated in game ${gameCode} yet`
+      );
+      socket.emit("worldDataResponse", {
+        success: false,
+        message: "World not generated yet",
+        gameCode: gameCode,
+      });
+      return;
+    }
 
-    console.log(`Successfully stored world data for game ${gameCode} on planet ${planetType}`);
+    // Get the world data
+    const worldData = games[gameCode].worldBlocks || {};
+    const worldSize = Object.keys(worldData).length;
+
+    console.log(
+      `Sending requested world data to player ${socket.id} (${worldSize} rows)`
+    );
+
+    // Send the world data response
+    socket.emit("worldDataResponse", {
+      success: true,
+      worldBlocks: worldData,
+      gameCode: gameCode,
+      hasRocket: games[gameCode].hasRocket,
+      rocketPosition: games[gameCode].rocketPosition,
+      message: `World data with ${worldSize} rows sent successfully`,
+    });
+  });
+
+  // Add a new event handler to receive the world data from the host
+  socket.on("uploadWorldData", (data) => {
+    const gameCode = playerGameMap[socket.id];
+    console.log(
+      `RECEIVING WORLD DATA from ${socket.id} for game ${
+        gameCode || "undefined"
+      }`
+    );
+
+    if (!gameCode) {
+      console.error("Error: No game code found for player", socket.id);
+      socket.emit("uploadWorldError", {
+        message:
+          "No game code associated with player. Please try again after game creation is complete.",
+      });
+      return;
+    }
+
+    if (!games[gameCode]) {
+      console.error("Error: Game not found:", gameCode);
+      socket.emit("uploadWorldError", { message: "Game not found" });
+      return;
+    }
+
+    // Check if sender is host
+    if (socket.id !== games[gameCode].host) {
+      console.error("Error: Only host can upload world data");
+      socket.emit("uploadWorldError", {
+        message: "Only host can upload world data",
+      });
+      return;
+    }
+
+    // Log data properties for debugging
+    console.log("Received data properties:", Object.keys(data));
+
+    if (data.worldBlocks) {
+      const blockCount = data.blockCount || "unknown";
+      const rowCount = Object.keys(data.worldBlocks).length;
+      console.log(
+        `World data contains ${rowCount} rows and approximately ${blockCount} blocks`
+      );
+
+      // Create a deep copy of the world data to ensure it's stored properly
+      let worldCopy;
+      try {
+        worldCopy = JSON.parse(JSON.stringify(data.worldBlocks));
+      } catch (error) {
+        console.error("Error creating deep copy of world data:", error);
+        socket.emit("uploadWorldError", {
+          message: "Error processing world data",
+        });
+        return;
+      }
+
+      // Verify the copy has data
+      if (!worldCopy || Object.keys(worldCopy).length === 0) {
+        console.error("Error: World copy is empty after processing");
+        socket.emit("uploadWorldError", {
+          message: "Error processing world data - empty after copy",
+        });
+        return;
+      }
+
+      // Store the world data
+      games[gameCode].worldBlocks = worldCopy;
+      games[gameCode].worldGenerated = true;
+
+      // Log successful storage
+      console.log(
+        `World data with ${rowCount} rows successfully stored for game ${gameCode}`
+      );
+
+      // Send acknowledgment to client
+      socket.emit("worldDataReceived", {
+        success: true,
+        rowCount: rowCount,
+        message: "World data stored successfully",
+      });
+
+      // Notify all other players in the game that world data is now available
+      socket.to(gameCode).emit("worldAvailable", {
+        rowCount: rowCount,
+      });
+    } else {
+      console.error("Error: No world blocks in upload data");
+      socket.emit("uploadWorldError", {
+        message: "No world blocks in upload data",
+      });
+    }
   });
 
   // Handle player movement
@@ -533,52 +658,80 @@ io.on("connection", (socket) => {
   socket.on("getPlayersOnPlanet", (data) => {
     const gameCode = playerGameMap[socket.id];
 
-    if (gameCode && games[gameCode] && games[gameCode].players) {
-      const requestedPlanet = data.planet || "earth";
+    // First check if player is in a game
+    if (!gameCode) {
       console.log(
-        `Player ${socket.id} requesting players on ${requestedPlanet}`
+        `Player ${socket.id} requested players but is not in a game yet`
       );
-
-      // Filter players on the requested planet
-      const playersOnPlanet = {};
-      for (const playerId in games[gameCode].players) {
-        if (
-          games[gameCode].players[playerId].currentPlanet === requestedPlanet
-        ) {
-          // Make sure we include all necessary state, including mining status
-          playersOnPlanet[playerId] = {
-            ...games[gameCode].players[playerId],
-            // Ensure mining data is included if it exists
-            mining: games[gameCode].players[playerId].mining || {
-              active: false,
-            },
-          };
-        }
-      }
-
-      // Log the response for debugging
-      console.log(
-        `Sending ${
-          Object.keys(playersOnPlanet).length
-        } players on ${requestedPlanet} to ${socket.id}`
-      );
-
-      // Send filtered player list to the client
-      socket.emit("playersOnPlanet", {
-        players: playersOnPlanet,
-        planet: requestedPlanet,
-      });
-    } else {
-      console.error(
-        `Invalid game data for player ${socket.id} in getPlayersOnPlanet event`
-      );
-      // Send empty response to avoid client-side errors
+      // Send empty response with helpful error message
       socket.emit("playersOnPlanet", {
         players: {},
         planet: data.planet || "earth",
-        error: "Invalid game data",
+        error: "Please join a game first",
       });
+      return;
     }
+
+    // Then check if the game exists
+    if (!games[gameCode]) {
+      console.log(
+        `Player ${socket.id} requested players but game ${gameCode} doesn't exist`
+      );
+      // Send empty response with error message
+      socket.emit("playersOnPlanet", {
+        players: {},
+        planet: data.planet || "earth",
+        error: "Game not found",
+      });
+      return;
+    }
+
+    // Now check if players object exists
+    if (!games[gameCode].players) {
+      console.log(
+        `Player ${socket.id} requested players but players object doesn't exist in game ${gameCode}`
+      );
+      // Initialize players object and send empty response
+      games[gameCode].players = {};
+      socket.emit("playersOnPlanet", {
+        players: {},
+        planet: data.planet || "earth",
+        error: "No players in game yet",
+      });
+      return;
+    }
+
+    // All checks passed, proceed normally
+    const requestedPlanet = data.planet || "earth";
+    console.log(`Player ${socket.id} requesting players on ${requestedPlanet}`);
+
+    // Filter players on the requested planet
+    const playersOnPlanet = {};
+    for (const playerId in games[gameCode].players) {
+      if (games[gameCode].players[playerId].currentPlanet === requestedPlanet) {
+        // Make sure we include all necessary state, including mining status
+        playersOnPlanet[playerId] = {
+          ...games[gameCode].players[playerId],
+          // Ensure mining data is included if it exists
+          mining: games[gameCode].players[playerId].mining || {
+            active: false,
+          },
+        };
+      }
+    }
+
+    // Log the response for debugging
+    console.log(
+      `Sending ${
+        Object.keys(playersOnPlanet).length
+      } players on ${requestedPlanet} to ${socket.id}`
+    );
+
+    // Send filtered player list to the client
+    socket.emit("playersOnPlanet", {
+      players: playersOnPlanet,
+      planet: requestedPlanet,
+    });
   });
 
   // Handle jetpack activation

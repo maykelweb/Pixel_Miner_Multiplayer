@@ -100,39 +100,39 @@ export function initMultiplayer(isHost = false, options = {}) {
   // Handle initial game state
   socket.on("gameState", (data) => {
     console.log("Received initial game state:", data);
-  
+
     // Set local player ID
     gameState.playerId = data.playerId;
-  
+
     // Clear any existing other players first
     for (const id in otherPlayers) {
       removeOtherPlayer(id);
     }
-  
+
     // Initialize other players (already filtered by planet on the server)
     for (const id in data.players) {
       if (id !== gameState.playerId) {
         // First add the other player
         addOtherPlayer(id, data.players[id]);
-  
+
         // Check for active tools and states
         const playerData = data.players[id];
-  
+
         if (playerData.currentTool) {
           updateOtherPlayerTool(id, playerData.currentTool);
         } else if (playerData.toolId) {
           // Alternative property name that might be used
           updateOtherPlayerTool(id, playerData.toolId);
         }
-  
+
         // Check if player has active laser and display it
         if (playerData.laserActive) {
           const playerElement = otherPlayers[id].element;
           const laserBeam = playerElement.querySelector(".other-player-laser");
-  
+
           if (laserBeam) {
             laserBeam.style.display = "block";
-  
+
             // Set angle if available
             if (playerData.laserAngle !== undefined) {
               laserBeam.style.transform = `rotate(${playerData.laserAngle}deg)`;
@@ -140,41 +140,44 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-  
+
         // Now properly check for active jetpack and display it
         if (data.players[id].jetpackActive === true) {
           const playerElement = otherPlayers[id].element;
-  
+
           // Find the jetpack flame element (should already exist from addOtherPlayer)
           const jetpackFlame = playerElement.querySelector(".jetpack-flame");
           if (jetpackFlame) {
             // Make it visible
             jetpackFlame.style.display = "block";
-  
+
             // Update the state in our local tracking object
             otherPlayers[id].jetpackActive = true;
           }
         }
       }
     }
-  
+
     // Update player count
     updatePlayerCount(Object.keys(data.players).length);
-  
-    if (
-      !isHost &&
-      data.worldBlocks &&
-      Object.keys(data.worldBlocks).length > 0
-    ) {
-      console.log("Using host's world data");
-  
+
+    // Handle world data if we're not the host or if we're rejoining
+    const hasWorldData =
+      data.worldBlocks && Object.keys(data.worldBlocks).length > 0;
+    const worldDataExpected = data.worldGenerated === true;
+
+    if (!isHost && hasWorldData) {
+      console.log(
+        `Received world data with ${Object.keys(data.worldBlocks).length} rows`
+      );
+
       try {
         // Clear any existing block map to prevent mixing
         gameState.blockMap = [];
-  
+
         // Find the maximum Y value in the received data
         const maxY = Math.max(...Object.keys(data.worldBlocks).map(Number));
-        
+
         // Calculate the maximum X value by checking all rows
         let maxX = 0;
         for (const y in data.worldBlocks) {
@@ -185,26 +188,28 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-        
-        console.log(`Reconstructing world with dimensions up to [${maxX}, ${maxY}]`);
-  
+
+        console.log(
+          `Reconstructing world with dimensions up to [${maxX}, ${maxY}]`
+        );
+
         // Initialize the entire blockMap with proper dimensions first
         for (let y = 0; y <= maxY; y++) {
           gameState.blockMap[y] = [];
-          
+
           // Pre-fill the row with nulls to ensure we have a complete array
           for (let x = 0; x <= maxX; x++) {
             gameState.blockMap[y][x] = null;
           }
         }
-  
+
         // Now fill in the actual block data
         for (const y in data.worldBlocks) {
           const yNum = Number(y);
           for (const x in data.worldBlocks[y]) {
             const xNum = Number(x);
             const blockData = data.worldBlocks[y][x];
-  
+
             if (blockData === null) {
               gameState.blockMap[yNum][xNum] = null;
             } else if (blockData && blockData.name) {
@@ -223,14 +228,20 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-  
+
         console.log("World synchronized from host data");
       } catch (error) {
         console.error("Error processing world data:", error);
       }
-      
+
       // After everything is set up, update visible blocks
       updateVisibleBlocks();
+    } else if (!isHost && worldDataExpected && !hasWorldData) {
+      // World data is expected but not received - request it explicitly
+      console.log(
+        "World data expected but not received. Requesting world data..."
+      );
+      requestWorldData();
     }
   });
 
@@ -733,84 +744,197 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Update player count
     updatePlayerCount(Object.keys(otherPlayers).length + 1);
   });
+
+  // Add this new event handler to the client-side socket.io event handlers
+  socket.on("worldDataResponse", (data) => {
+    if (!data.success) {
+      console.log("World data request failed:", data.message);
+      return;
+    }
+
+    console.log(
+      `Received world data response with ${
+        Object.keys(data.worldBlocks).length
+      } rows`
+    );
+
+    // Only process if we actually got world blocks
+    if (data.worldBlocks && Object.keys(data.worldBlocks).length > 0) {
+      try {
+        // Clear any existing block map to prevent mixing
+        gameState.blockMap = [];
+
+        // Find the maximum Y value in the received data
+        const maxY = Math.max(...Object.keys(data.worldBlocks).map(Number));
+
+        // Calculate the maximum X value by checking all rows
+        let maxX = 0;
+        for (const y in data.worldBlocks) {
+          if (data.worldBlocks[y]) {
+            const xKeys = Object.keys(data.worldBlocks[y]).map(Number);
+            if (xKeys.length > 0) {
+              maxX = Math.max(maxX, Math.max(...xKeys));
+            }
+          }
+        }
+
+        console.log(
+          `Reconstructing world with dimensions up to [${maxX}, ${maxY}]`
+        );
+
+        // Initialize the entire blockMap with proper dimensions first
+        for (let y = 0; y <= maxY; y++) {
+          gameState.blockMap[y] = [];
+
+          // Pre-fill the row with nulls to ensure we have a complete array
+          for (let x = 0; x <= maxX; x++) {
+            gameState.blockMap[y][x] = null;
+          }
+        }
+
+        // Now fill in the actual block data
+        for (const y in data.worldBlocks) {
+          const yNum = Number(y);
+          for (const x in data.worldBlocks[y]) {
+            const xNum = Number(x);
+            const blockData = data.worldBlocks[y][x];
+
+            if (blockData === null) {
+              gameState.blockMap[yNum][xNum] = null;
+            } else if (blockData && blockData.name) {
+              // Find the matching ore in our local ores array
+              const matchingOre = gameState.ores.find(
+                (ore) => ore.name === blockData.name
+              );
+              if (matchingOre) {
+                gameState.blockMap[yNum][xNum] = matchingOre;
+              } else {
+                console.warn(`Unknown ore received: ${blockData.name}`);
+                gameState.blockMap[yNum][xNum] = blockData;
+              }
+            } else {
+              gameState.blockMap[yNum][xNum] = blockData;
+            }
+          }
+        }
+
+        // Update rocket information if available
+        if (data.hasRocket) {
+          gameState.hasRocket = true;
+          gameState.rocketPlaced = true;
+
+          if (data.rocketPosition) {
+            gameState.rocket.x = data.rocketPosition.x;
+            gameState.rocket.y = data.rocketPosition.y;
+            gameState.rocketX = data.rocketPosition.x / gameState.blockSize;
+            gameState.rocketY = data.rocketPosition.y / gameState.blockSize;
+
+            // Initialize the rocket element if needed
+            if (typeof initializeRocket === "function") {
+              initializeRocket();
+            }
+          }
+        }
+
+        console.log("World synchronized from explicit request");
+
+        // After everything is set up, update visible blocks
+        updateVisibleBlocks();
+
+        // Show a message to confirm the world has loaded
+        showMessage("World data loaded successfully", 2000);
+      } catch (error) {
+        console.error("Error processing received world data:", error);
+        showMessage("Error processing world data", 3000);
+      }
+    } else {
+      console.warn("Received world data response, but no blocks were present");
+    }
+  });
 }
 
-/**
- * Upload the host's world to the server after world generation
- * This should be called once the world is fully generated
- */
 export function uploadWorldToServer() {
-  if (isConnected && socket && gameState.needToUploadWorld) {
-    console.log("Preparing to upload world data to server...");
-    
+  // Only upload if we're connected, the socket exists, AND we have received a game code
+  if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
+    console.log(
+      `Preparing to upload world data to server for game ${currentGameCode}...`
+    );
+
     // Ensure blockMap exists and has data
     if (!gameState.blockMap || gameState.blockMap.length === 0) {
       console.error("Error: blockMap is empty or null, cannot upload world");
       return; // Don't proceed with upload
     }
-    
-    // Create a more efficient representation of the world
-    // Only sending non-null blocks to reduce data size
-    const worldData = {};
-    let blockCount = 0;
 
-    for (let y = 0; y < gameState.blockMap.length; y++) {
-      if (!gameState.blockMap[y]) continue;
+    try {
+      // Create a simplified world representation
+      const worldData = {};
+      let blockCount = 0;
 
-      // Create row object and check for data in this row
-      let rowData = {};
-      let hasDataInRow = false;
-      
-      for (let x = 0; x < gameState.blockMap[y].length; x++) {
-        if (gameState.blockMap[y][x]) {
-          // For ore objects, only send necessary data to reduce size
-          if (typeof gameState.blockMap[y][x] === 'object') {
-            rowData[x] = {
-              name: gameState.blockMap[y][x].name,
-              color: gameState.blockMap[y][x].color,
-              // Include minimum required properties
-              value: gameState.blockMap[y][x].value || 0
-            };
-          } else {
-            rowData[x] = gameState.blockMap[y][x];
+      // Process the entire world data
+      for (let y = 0; y < gameState.blockMap.length; y++) {
+        if (!gameState.blockMap[y]) continue;
+
+        let rowData = {};
+        let hasDataInRow = false;
+
+        for (let x = 0; x < gameState.blockMap[y].length; x++) {
+          if (gameState.blockMap[y][x]) {
+            // Simplify ore objects
+            if (typeof gameState.blockMap[y][x] === "object") {
+              rowData[x] = {
+                name: gameState.blockMap[y][x].name || "unknown",
+                color: gameState.blockMap[y][x].color || "#000000",
+                value: gameState.blockMap[y][x].value || 0,
+              };
+            } else {
+              rowData[x] = gameState.blockMap[y][x];
+            }
+
+            hasDataInRow = true;
+            blockCount++;
           }
-          
-          hasDataInRow = true;
-          blockCount++;
+        }
+
+        if (hasDataInRow) {
+          worldData[y] = rowData;
         }
       }
-      
-      // Only add the row if it contains data
-      if (hasDataInRow) {
-        worldData[y] = rowData;
+
+      // Check if we have data to send
+      if (blockCount === 0 || Object.keys(worldData).length === 0) {
+        console.error("Error: No blocks found in world data");
+        return;
       }
+
+      console.log(
+        `Uploading world data with ${blockCount} blocks across ${
+          Object.keys(worldData).length
+        } rows...`
+      );
+
+      // Send the world data
+      socket.emit("uploadWorldData", {
+        worldBlocks: worldData,
+        blockCount: blockCount,
+        planetType: gameState.currentPlanet,
+      });
+
+      console.log("World data upload request sent for game", currentGameCode);
+      gameState.needToUploadWorld = false;
+    } catch (error) {
+      console.error("Error in uploadWorldToServer:", error);
+
+      // Set the flag to false to prevent repeated attempts
+      gameState.needToUploadWorld = false;
     }
-
-    // Check if we have any data to send
-    if (blockCount === 0 || Object.keys(worldData).length === 0) {
-      console.error("Error: No blocks found to upload, world generation may be incomplete");
-      
-      // Retry after a short delay instead of giving up
-      setTimeout(() => {
-        console.log("Retrying world upload...");
-        gameState.needToUploadWorld = true; // Re-enable upload flag
-        uploadWorldToServer();
-      }, 1000);
-      
-      return;
-    }
-
-    console.log(`Uploading world data with ${blockCount} blocks across ${Object.keys(worldData).length} rows...`);
-
-    // Send the world data to the server
-    socket.emit("uploadWorldData", {
-      worldBlocks: worldData,
-      blockCount: blockCount,
-      planetType: gameState.currentPlanet // Include planet type for server-side validation
+  } else {
+    console.log("Upload conditions not met:", {
+      isConnected: isConnected,
+      socketExists: !!socket,
+      needToUploadWorld: gameState.needToUploadWorld,
+      currentGameCode: currentGameCode || "not assigned yet",
     });
-
-    console.log("World data upload request sent");
-    gameState.needToUploadWorld = false;
   }
 }
 
@@ -1559,23 +1683,28 @@ export function requestPlayersOnCurrentPlanet() {
   if (isConnected && socket) {
     console.log(`Requesting players on planet: ${gameState.currentPlanet}`);
 
-    // Send request immediately - no need for timeout
-    socket.emit("getPlayersOnPlanet", {
-      planet: gameState.currentPlanet,
-    });
+    // Only request players if we have a valid game code
+    if (currentGameCode) {
+      // Send request
+      socket.emit("getPlayersOnPlanet", {
+        planet: gameState.currentPlanet,
+      });
 
-    // Add a safeguard retry in case the first request fails
-    setTimeout(() => {
-      // Only retry if we're still connected
-      if (isConnected && socket) {
-        console.log(
-          `Retry: requesting players on planet: ${gameState.currentPlanet}`
-        );
-        socket.emit("getPlayersOnPlanet", {
-          planet: gameState.currentPlanet,
-        });
-      }
-    }, 2000);
+      // Add a safeguard retry in case the first request fails
+      setTimeout(() => {
+        // Only retry if we're still connected and have a valid game code
+        if (isConnected && socket && currentGameCode) {
+          console.log(
+            `Retry: requesting players on planet: ${gameState.currentPlanet}`
+          );
+          socket.emit("getPlayersOnPlanet", {
+            planet: gameState.currentPlanet,
+          });
+        }
+      }, 2000);
+    } else {
+      console.warn("Cannot request players - not joined a game yet");
+    }
   } else {
     console.warn("Cannot request players - socket not connected");
   }
@@ -1645,14 +1774,17 @@ export function sendToolRotationUpdate() {
   }
 }
 
-/**
- * Refreshes player visibility by requesting current players and sending our position
- * Call this if you suspect players might not be seeing each other
- */
+// Handle player visibility refreshes more gracefully
 export function refreshPlayerVisibility() {
   console.log("Refreshing player visibility...");
 
-  // First, request all players on our current planet
+  // First check if we have a valid game code
+  if (!currentGameCode) {
+    console.warn("Cannot refresh player visibility - not joined a game yet");
+    return;
+  }
+
+  // Request all players on our current planet
   requestPlayersOnCurrentPlanet();
 
   // Then, send our own position repeatedly to ensure visibility
@@ -1688,5 +1820,24 @@ export function sendInitialToolInfo() {
       sendToolChanged(currentToolId);
       console.log(`Sent initial tool info: ${currentToolId}`);
     }
+  }
+}
+
+function requestWorldData() {
+  if (isConnected && socket && currentGameCode) {
+    console.log("Explicitly requesting world data...");
+    socket.emit("requestWorldData", {
+      planet: gameState.currentPlanet,
+    });
+
+    // Try again after a short delay in case the first request fails
+    setTimeout(() => {
+      if (isConnected && socket && currentGameCode) {
+        console.log("Second attempt at requesting world data...");
+        socket.emit("requestWorldData", {
+          planet: gameState.currentPlanet,
+        });
+      }
+    }, 2000);
   }
 }
