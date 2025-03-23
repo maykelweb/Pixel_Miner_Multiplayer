@@ -183,7 +183,7 @@ io.on("connection", (socket) => {
       console.log(`Adding player ${socket.id} to pending world data requests`);
       games[gameCode].pendingWorldDataRequests.push(socket.id);
     }
-    
+
     // Check if we need to send world data
     const worldGenerated = games[gameCode].worldGenerated === true;
 
@@ -276,10 +276,11 @@ io.on("connection", (socket) => {
   });
 
   // Add a new event handler to receive the world data from the host
-  socket.on("uploadWorldData", (data) => {
+  // Handler for starting a chunked world upload
+  socket.on("startWorldUpload", (data) => {
     const gameCode = playerGameMap[socket.id];
     console.log(
-      `RECEIVING WORLD DATA from ${socket.id} for game ${
+      `Starting chunked world upload from ${socket.id} for game ${
         gameCode || "undefined"
       }`
     );
@@ -308,39 +309,135 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Log data properties for debugging
-    console.log("Received data properties:", Object.keys(data));
+    console.log(
+      `Preparing to receive ${data.totalRows} rows with approximately ${data.blockCount} blocks`
+    );
 
-    if (data.worldBlocks) {
-      const blockCount = data.blockCount || "unknown";
-      const rowCount = Object.keys(data.worldBlocks).length;
-      console.log(
-        `World data contains ${rowCount} rows and approximately ${blockCount} blocks`
-      );
+    // Initialize temporary storage for the chunked upload
+    if (!games[gameCode].worldUpload) {
+      games[gameCode].worldUpload = {
+        chunks: {},
+        receivedChunks: 0,
+        totalChunks: 0,
+        isComplete: false,
+        startTime: Date.now(),
+        planetType: data.planetType || "earth",
+      };
+    } else {
+      // Reset if there was a previous upload in progress
+      games[gameCode].worldUpload = {
+        chunks: {},
+        receivedChunks: 0,
+        totalChunks: 0,
+        isComplete: false,
+        startTime: Date.now(),
+        planetType: data.planetType || "earth",
+      };
+    }
 
-      // Create a deep copy of the world data to ensure it's stored properly
-      let worldCopy;
-      try {
-        worldCopy = JSON.parse(JSON.stringify(data.worldBlocks));
-      } catch (error) {
-        console.error("Error creating deep copy of world data:", error);
+    // Acknowledge start of upload
+    socket.emit("worldUploadStarted", {
+      success: true,
+      message: "Ready to receive world chunks",
+    });
+  });
+
+  // Handler for receiving individual world chunks
+  socket.on("worldChunk", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (!gameCode || !games[gameCode] || !games[gameCode].worldUpload) {
+      console.error("Error: No active world upload found");
+      socket.emit("uploadWorldError", {
+        message: "No active world upload found",
+      });
+      return;
+    }
+
+    // Update total chunks on first chunk if not set
+    if (games[gameCode].worldUpload.totalChunks === 0) {
+      games[gameCode].worldUpload.totalChunks = data.totalChunks;
+    }
+
+    // Store this chunk
+    games[gameCode].worldUpload.chunks[data.chunkIndex] = data.chunkData;
+    games[gameCode].worldUpload.receivedChunks++;
+
+    console.log(
+      `Received chunk ${data.chunkIndex + 1}/${data.totalChunks} with ${
+        data.rowCount
+      } rows for game ${gameCode}`
+    );
+
+    // Acknowledge receipt
+    socket.emit("worldChunkReceived", {
+      chunkIndex: data.chunkIndex,
+      receivedChunks: games[gameCode].worldUpload.receivedChunks,
+      totalChunks: data.totalChunks,
+    });
+  });
+
+  // Handler for finalizing the world upload
+  socket.on("finishWorldUpload", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (!gameCode || !games[gameCode] || !games[gameCode].worldUpload) {
+      console.error("Error: No active world upload found");
+      socket.emit("uploadWorldError", {
+        message: "No active world upload found",
+      });
+      return;
+    }
+
+    console.log(`Finalizing world upload for game ${gameCode}`);
+
+    try {
+      // Check if we have all the expected chunks
+      if (
+        games[gameCode].worldUpload.receivedChunks <
+        games[gameCode].worldUpload.totalChunks
+      ) {
+        console.error(
+          `Error: Missing chunks. Received ${games[gameCode].worldUpload.receivedChunks}/${games[gameCode].worldUpload.totalChunks}`
+        );
         socket.emit("uploadWorldError", {
-          message: "Error processing world data",
+          message: `Missing chunks. Received ${games[gameCode].worldUpload.receivedChunks}/${games[gameCode].worldUpload.totalChunks}`,
         });
         return;
       }
 
-      // Verify the copy has data
-      if (!worldCopy || Object.keys(worldCopy).length === 0) {
-        console.error("Error: World copy is empty after processing");
+      // Combine all chunks into the final world data
+      const worldBlocks = {};
+      const uploadData = games[gameCode].worldUpload;
+
+      // Process each chunk
+      for (let i = 0; i < uploadData.totalChunks; i++) {
+        const chunkData = uploadData.chunks[i];
+        if (!chunkData) {
+          console.error(`Error: Missing chunk ${i}`);
+          continue;
+        }
+
+        // Merge chunk data into world blocks
+        for (const y in chunkData) {
+          worldBlocks[y] = chunkData[y];
+        }
+      }
+
+      // Verify we have data
+      const rowCount = Object.keys(worldBlocks).length;
+      if (rowCount === 0) {
+        console.error("Error: No data in combined world");
         socket.emit("uploadWorldError", {
-          message: "Error processing world data - empty after copy",
+          message: "No data in combined world",
         });
         return;
       }
+
+      console.log(`Successfully combined ${rowCount} rows of world data`);
 
       // Store the world data
-      games[gameCode].worldBlocks = worldCopy;
+      games[gameCode].worldBlocks = worldBlocks;
       games[gameCode].worldGenerated = true;
 
       // Log successful storage
@@ -348,15 +445,7 @@ io.on("connection", (socket) => {
         `World data with ${rowCount} rows successfully stored for game ${gameCode}`
       );
 
-      games[gameCode].worldBlocks = worldCopy;
-      games[gameCode].worldGenerated = true;
-
-      // Log successful storage
-      console.log(
-        `World data with ${rowCount} rows successfully stored for game ${gameCode}`
-      );
-
-      // ADDED: Keep track of players who joined before world was generated
+      // Handle pending players
       if (
         games[gameCode].pendingWorldDataRequests &&
         games[gameCode].pendingWorldDataRequests.length > 0
@@ -368,13 +457,14 @@ io.on("connection", (socket) => {
         games[gameCode].pendingWorldDataRequests.forEach((playerId) => {
           io.to(playerId).emit("worldDataResponse", {
             success: true,
-            worldBlocks: worldCopy,
+            worldBlocks: worldBlocks,
             gameCode: gameCode,
             hasRocket: games[gameCode].hasRocket,
             rocketPosition: games[gameCode].rocketPosition,
             message: `World data with ${rowCount} rows sent successfully`,
           });
         });
+
         // Clear the pending list after sending
         games[gameCode].pendingWorldDataRequests = [];
       }
@@ -384,16 +474,21 @@ io.on("connection", (socket) => {
         success: true,
         rowCount: rowCount,
         message: "World data stored successfully",
+        processingTime:
+          (Date.now() - games[gameCode].worldUpload.startTime) / 1000,
       });
 
       // Notify all other players in the game that world data is now available
       socket.to(gameCode).emit("worldAvailable", {
         rowCount: rowCount,
       });
-    } else {
-      console.error("Error: No world blocks in upload data");
+
+      // Clean up the temporary storage
+      delete games[gameCode].worldUpload;
+    } catch (error) {
+      console.error("Error finalizing world upload:", error);
       socket.emit("uploadWorldError", {
-        message: "No world blocks in upload data",
+        message: "Error processing world data: " + error.message,
       });
     }
   });

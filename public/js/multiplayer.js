@@ -99,7 +99,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle initial game state
   socket.on("gameState", (data) => {
-
     // Set local player ID
     gameState.playerId = data.playerId;
 
@@ -859,7 +858,9 @@ export function initMultiplayer(isHost = false, options = {}) {
 export function uploadWorldToServer() {
   // Only upload if we're connected, the socket exists, AND we have received a game code
   if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
-    console.log(`Preparing to upload world data to server for game ${currentGameCode}...`);
+    console.log(
+      `Preparing to upload world data to server for game ${currentGameCode}...`
+    );
 
     // Ensure blockMap exists and has data
     if (!gameState.blockMap || gameState.blockMap.length === 0) {
@@ -868,11 +869,11 @@ export function uploadWorldToServer() {
     }
 
     try {
-      // Create a compressed world representation
+      // Create a simplified world representation
       const worldData = {};
       let blockCount = 0;
 
-      // Process the world data with compression
+      // Process the entire world data
       for (let y = 0; y < gameState.blockMap.length; y++) {
         if (!gameState.blockMap[y]) continue;
 
@@ -880,27 +881,22 @@ export function uploadWorldToServer() {
         let hasDataInRow = false;
 
         for (let x = 0; x < gameState.blockMap[y].length; x++) {
-          const block = gameState.blockMap[y][x];
-          if (block) {
-            // Compress block objects to minimal representation
-            if (typeof block === "object") {
-              // Use short property names and only include essential data
+          if (gameState.blockMap[y][x]) {
+            // Simplify ore objects
+            if (typeof gameState.blockMap[y][x] === "object") {
               rowData[x] = {
-                n: block.name || "u", // 'n' for name, 'u' for unknown
-                c: block.color || "#000", // 'c' for color
-                v: block.value || 0, // 'v' for value
+                name: gameState.blockMap[y][x].name || "unknown",
+                color: gameState.blockMap[y][x].color || "#000000",
+                value: gameState.blockMap[y][x].value || 0,
               };
             } else {
-              // For string blocks, just store the string
-              rowData[x] = block;
+              rowData[x] = gameState.blockMap[y][x];
             }
-
             hasDataInRow = true;
             blockCount++;
           }
         }
 
-        // Only add rows that have blocks
         if (hasDataInRow) {
           worldData[y] = rowData;
         }
@@ -912,62 +908,81 @@ export function uploadWorldToServer() {
         return;
       }
 
-      console.log(`Compressing world data with ${blockCount} blocks across ${Object.keys(worldData).length} rows...`);
+      console.log(
+        `Uploading world data with ${blockCount} blocks across ${
+          Object.keys(worldData).length
+        } rows...`
+      );
 
-      // Split the upload into chunks if it's very large (over 1000 rows)
-      const MAX_ROWS_PER_CHUNK = 1000;
-      const worldDataKeys = Object.keys(worldData);
-      
-      if (worldDataKeys.length > MAX_ROWS_PER_CHUNK) {
-        console.log(`World data is large (${worldDataKeys.length} rows), splitting into chunks...`);
-        
-        // Calculate number of chunks
-        const totalChunks = Math.ceil(worldDataKeys.length / MAX_ROWS_PER_CHUNK);
-        
-        for (let i = 0; i < totalChunks; i++) {
-          // Get keys for this chunk
-          const chunkKeys = worldDataKeys.slice(i * MAX_ROWS_PER_CHUNK, (i + 1) * MAX_ROWS_PER_CHUNK);
-          
-          // Create chunk data
-          const chunkData = {};
-          chunkKeys.forEach(key => {
-            chunkData[key] = worldData[key];
-          });
-          
-          // Send chunk
-          console.log(`Sending chunk ${i+1}/${totalChunks} with ${chunkKeys.length} rows...`);
-          socket.emit("uploadWorldChunk", {
-            worldBlocks: chunkData,
-            chunkIndex: i,
-            totalChunks: totalChunks,
-            isComplete: false,
+      // ===== CHUNKED UPLOAD IMPLEMENTATION =====
+      // First notify the server that we're starting a chunked upload
+      socket.emit("startWorldUpload", {
+        totalRows: Object.keys(worldData).length,
+        blockCount: blockCount,
+        planetType: gameState.currentPlanet,
+      });
+
+      // Split the world data into chunks for easier transmission
+      const CHUNK_SIZE = 100; // Increased rows per chunk for faster transfer
+      const worldRows = Object.keys(worldData).sort(
+        (a, b) => Number(a) - Number(b)
+      );
+      const totalChunks = Math.ceil(worldRows.length / CHUNK_SIZE);
+
+      console.log(
+        `Splitting world upload into ${totalChunks} chunks of max ${CHUNK_SIZE} rows each`
+      );
+
+      // Function to send a chunk and get acknowledgment
+      const sendChunk = (chunkIndex) => {
+        if (chunkIndex >= totalChunks) {
+          // All chunks sent, send completion event
+          socket.emit("finishWorldUpload", {
+            totalSent: worldRows.length,
             blockCount: blockCount,
-            planetType: gameState.currentPlanet
           });
+          return;
         }
-        
-        // Send final completion message
-        setTimeout(() => {
-          socket.emit("uploadWorldComplete", {
-            totalChunks: totalChunks,
-            blockCount: blockCount,
-            planetType: gameState.currentPlanet
-          });
-        }, 500);
-      } else {
-        // For smaller worlds, send all at once
-        console.log(`Uploading world data with ${blockCount} blocks...`);
-        socket.emit("uploadWorldData", {
-          worldBlocks: worldData, // FIXED: Using the actual variable here, not a string
-          blockCount: blockCount,
-          planetType: gameState.currentPlanet
-        });
-      }
 
-      console.log("World data upload request sent for game", currentGameCode);
+        const chunkStart = chunkIndex * CHUNK_SIZE;
+        const chunkEnd = Math.min(
+          (chunkIndex + 1) * CHUNK_SIZE,
+          worldRows.length
+        );
+        const rowsInThisChunk = worldRows.slice(chunkStart, chunkEnd);
+
+        // Create chunk data object
+        const chunkData = {};
+        rowsInThisChunk.forEach((y) => {
+          chunkData[y] = worldData[y];
+        });
+
+        // Send this chunk immediately
+        socket.emit("worldChunk", {
+          chunkIndex: chunkIndex,
+          totalChunks: totalChunks,
+          chunkData: chunkData,
+          rowCount: rowsInThisChunk.length,
+        });
+
+        console.log(
+          `Sent chunk ${chunkIndex + 1}/${totalChunks} with ${
+            rowsInThisChunk.length
+          } rows`
+        );
+
+        // Send next chunk immediately without waiting
+        sendChunk(chunkIndex + 1);
+      };
+
+      // Start sending chunks immediately
+      sendChunk(0);
+
+      console.log("World data upload initiated for game", currentGameCode);
       gameState.needToUploadWorld = false;
     } catch (error) {
       console.error("Error in uploadWorldToServer:", error);
+
       // Set the flag to false to prevent repeated attempts
       gameState.needToUploadWorld = false;
     }
@@ -1881,7 +1896,7 @@ export function requestWorldData() {
   if (isConnected && socket && currentGameCode) {
     console.log("Explicitly requesting world data...");
     socket.emit("requestWorldData", {
-      planet: gameState.currentPlanet
+      planet: gameState.currentPlanet,
     });
 
     // Try again after a short delay in case the first request fails
@@ -1889,7 +1904,7 @@ export function requestWorldData() {
       if (isConnected && socket && currentGameCode) {
         console.log("Second attempt at requesting world data...");
         socket.emit("requestWorldData", {
-          planet: gameState.currentPlanet
+          planet: gameState.currentPlanet,
         });
       }
     }, 2000);
