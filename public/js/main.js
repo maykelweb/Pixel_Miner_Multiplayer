@@ -351,9 +351,6 @@ export function hostMultiplayerGame() {
   // Clean up menu background
   cleanupMenuBackground();
 
-  // Set upload world to server
-  gameState.needToUploadWorld = true;
-
   // First initialize multiplayer systems as host BEFORE generating the world
   // This ensures multiplayer is ready to sync world data
   initMultiplayer(true, {
@@ -364,14 +361,19 @@ export function hostMultiplayerGame() {
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
 
-  // FIXED: Don't remove save data, just set a flag to indicate if we should use it
+  // FIXED: Don't remove save data, just set flags appropriately
   if (!useExistingSave) {
     console.log("Creating new world - but keeping save data intact");
-    // Instead of removing save data, set a flag to generate a new world
+    // Set flag to generate a new world
     gameState.forceNewWorld = true;
   } else {
+    console.log("Using existing world from save");
     gameState.forceNewWorld = false;
   }
+
+  // Set upload world to server flag - IMPORTANT: Must be set before initGame
+  gameState.needToUploadWorld = true;
+  gameState.isHost = true;
 
   // Initialize the game - this will load the save or create a new world
   initGame();
@@ -387,7 +389,20 @@ export function hostMultiplayerGame() {
   const playerElement = document.getElementById("player");
   if (playerElement) playerElement.style.display = "block";
 
+  // Send an immediate player update to ensure presence in the game
   sendPlayerUpdate();
+  
+  // For extra reliability, schedule another world upload attempt after a short delay
+  // This ensures world data is sent even if the first attempt encounters timing issues
+  setTimeout(() => {
+    if (gameState.isHost && currentGameCode) {
+      console.log("Scheduled additional world upload check");
+      if (gameState.needToUploadWorld) {
+        console.log("Executing additional world upload");
+        uploadWorldToServer();
+      }
+    }
+  }, 5000);
 }
 
 /**

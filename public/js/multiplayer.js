@@ -971,6 +971,7 @@ export function uploadWorldToServer() {
       // Check if we have data to send
       if (blockCount === 0 || Object.keys(worldData).length === 0) {
         console.error("Error: No blocks found in world data");
+        console.log("World dimensions:", gameState.blockMap.length, "rows");
         return;
       }
 
@@ -1007,6 +1008,7 @@ export function uploadWorldToServer() {
             totalSent: worldRows.length,
             blockCount: blockCount,
           });
+          console.log("World upload complete - all chunks sent");
           return;
         }
 
@@ -1045,12 +1047,15 @@ export function uploadWorldToServer() {
       sendChunk(0);
 
       console.log("World data upload initiated for game", currentGameCode);
+      
+      // Only set the flag to false after we've started the process
+      // This allows retry mechanisms to work if needed
       gameState.needToUploadWorld = false;
     } catch (error) {
       console.error("Error in uploadWorldToServer:", error);
 
-      // Set the flag to false to prevent repeated attempts
-      gameState.needToUploadWorld = false;
+      // We'll keep the flag true to allow for retries
+      console.log("Upload failed, will retry later");
     }
   } else {
     console.log("Upload conditions not met:", {

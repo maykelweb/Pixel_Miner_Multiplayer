@@ -73,7 +73,16 @@ export function generateWorld() {
 
     // If we're the host, upload the world
     if (gameState.needToUploadWorld) {
+      console.log("Host uploading existing blockMap to server");
       uploadWorldToServer();
+
+      // Add a retry mechanism for existing world upload
+      setTimeout(() => {
+        if (gameState.needToUploadWorld) {
+          console.log("Retrying existing world data upload...");
+          uploadWorldToServer();
+        }
+      }, 3000);
     }
     return;
   }
@@ -547,7 +556,7 @@ function shuffleArray(array) {
 }
 // Function to update the background variables and position
 export function setupBackground() {
-  console.log("settingup background")
+  console.log("settingup background");
   const background = document.getElementById("fixed-background");
 
   // Set the background dimensions to match your world size
