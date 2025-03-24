@@ -1,11 +1,23 @@
 // rocket.js
 
 import { gameState } from "./config.js";
-import { showMessage, rocketLaunch, playSFX, ORIGINAL_VOLUMES, isPlayerNearRocket } from "./setup.js";
+import {
+  showMessage,
+  rocketLaunch,
+  playSFX,
+  ORIGINAL_VOLUMES,
+  isPlayerNearRocket,
+} from "./setup.js";
 import { generateWorld, transitionToEarth } from "./worldGeneration.js";
 import { generateMoonWorld } from "./moonGeneration.js";
 import { updateUI } from "./updates.js";
-import { sendRocketLaunched, refreshPlayerVisibility } from "./multiplayer.js";
+import {
+  sendRocketLaunched,
+  refreshPlayerVisibility,
+  requestPlayersOnCurrentPlanet,
+  sendPlayerUpdate,
+  sendPlanetChanged
+} from "./multiplayer.js";
 
 // Create rocket element
 let rocketElement = null;
@@ -104,7 +116,7 @@ export function initializeRocket() {
       .getElementById("rocket-travel-button")
       .addEventListener("click", launchRocket);
   }
-  
+
   // Make sure checkRocketInteraction doesn't run if player doesn't have a rocket
   if (!gameState.hasRocket || !gameState.rocketPlaced) {
     removeRocketKeyListener();
@@ -291,6 +303,7 @@ function selectDestination(destination) {
 // Launch the rocket to selected destination
 // Add this code to the launchRocket function right after closing the modal
 // Launch the rocket to selected destination
+// Launch the rocket to selected destination
 function launchRocket() {
   if (!selectedDestination || selectedDestination === gameState.currentPlanet) {
     showMessage("Please select a valid destination", 2000);
@@ -318,12 +331,24 @@ function launchRocket() {
   // Create launch animation effect
   createLaunchAnimation();
 
-  // Notify other players about planet change - use sendRocketLaunched
-  sendRocketLaunched(selectedDestination);
+  // CRITICAL: Send an explicit notification about departure BEFORE switching planets
+  // This ensures other players know we're departing
+  const oldPlanet = gameState.currentPlanet;
+  const newPlanet = selectedDestination;
+  
+  // First, update our planet in the game state so our socket messages will have the new value
+  gameState.currentPlanet = newPlanet;
+  
+  // Now send the rocket launched message with our new destination
+  sendRocketLaunched(newPlanet);
+  
+  // Send a planet changed message as a backup notification
+  sendPlanetChanged(newPlanet);
 
   // Transition to new planet after delay
   setTimeout(() => {
-    transitionToPlanet(selectedDestination);
+    // We don't need to update game state planet since we already did that above
+    transitionToPlanet(newPlanet);
 
     // Make sure player is visible again after transition
     if (playerElement) {
@@ -334,7 +359,6 @@ function launchRocket() {
     gameState.skipMultiplayerTransition = false;
   }, 3000);
 }
-
 
 // Create visual effect for rocket launch
 function createLaunchAnimation() {
@@ -530,8 +554,6 @@ function createLaunchAnimation() {
 }
 
 // Create visual effect for rocket landing
-// Modify the createLandingAnimation function like this:
-
 function createLandingAnimation() {
   // Set flag to prevent position updates during animation
   rocketLaunchInProgress = true;
@@ -543,8 +565,8 @@ function createLandingAnimation() {
   }
 
   // Immediately position player at the rocket center (even though invisible)
-  const rocketCenterX = gameState.rocket.x + (gameState.rocket.width / 2);
-  const rocketCenterY = gameState.rocket.y + (gameState.rocket.height / 2);
+  const rocketCenterX = gameState.rocket.x + gameState.rocket.width / 2;
+  const rocketCenterY = gameState.rocket.y + gameState.rocket.height / 2;
   const playerHalfWidth = gameState.player.width / 2;
   const playerHalfHeight = gameState.player.height / 2;
 
@@ -553,14 +575,16 @@ function createLandingAnimation() {
   gameState.player.y = rocketCenterY - playerHalfHeight;
 
   // Set camera position immediately
-  gameState.camera.x = gameState.player.x + playerHalfWidth - (window.innerWidth / 2);
-  gameState.camera.y = gameState.player.y + playerHalfHeight - (window.innerHeight / 2);
+  gameState.camera.x =
+    gameState.player.x + playerHalfWidth - window.innerWidth / 2;
+  gameState.camera.y =
+    gameState.player.y + playerHalfHeight - window.innerHeight / 2;
 
   // Get rocket position for landing animation
   const rocketWidth = gameState.rocket.width;
   const rocketHeight = gameState.rocket.height;
-  const rocketX = gameState.rocket.x - gameState.camera.x;  // Use the updated camera position
-  const rocketY = gameState.rocket.y - gameState.camera.y;  // Use the updated camera position
+  const rocketX = gameState.rocket.x - gameState.camera.x; // Use the updated camera position
+  const rocketY = gameState.rocket.y - gameState.camera.y; // Use the updated camera position
 
   // Create a fullscreen overlay for the transition
   const overlay = document.createElement("div");
@@ -592,6 +616,9 @@ function createLandingAnimation() {
 
   // Start the landing sequence after a short delay
   setTimeout(() => {
+    // First, send a player update with the new position
+    sendPlayerUpdate();
+
     // Fade in overlay to space scene
     overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
 
@@ -618,7 +645,8 @@ function createLandingAnimation() {
     rocketContainer.style.width = `${rocketWidth}px`;
     rocketContainer.style.height = `${rocketHeight}px`;
     rocketContainer.style.zIndex = "1001";
-    rocketContainer.style.transition = "top 2.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 2.5s";
+    rocketContainer.style.transition =
+      "top 2.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 2.5s";
     rocketContainer.style.transform = "scale(0.5)"; // Start smaller
     document.body.appendChild(rocketContainer);
 
@@ -655,7 +683,7 @@ function createLandingAnimation() {
       // Animate rocket coming down
       rocketContainer.style.transform = "scale(1)";
       rocketContainer.style.top = `${rocketY}px`;
-      
+
       // Play the rocket sound
       playSFX(rocketLaunch, ORIGINAL_VOLUMES.rocketLaunch, false);
 
@@ -663,25 +691,33 @@ function createLandingAnimation() {
       if (playerElement) {
         playerElement.style.display = "none";
       }
+
+      // Send another player update with the latest position
+      sendPlayerUpdate();
     }, 500);
 
     // Complete the landing sequence
     setTimeout(() => {
       // Fade out stars and overlay
-      elements.stars.forEach(star => {
+      elements.stars.forEach((star) => {
         star.style.opacity = "0";
       });
-      
+
       overlay.style.opacity = "0";
-      
+
       // Verify player position again
       gameState.player.x = rocketCenterX - playerHalfWidth;
       gameState.player.y = rocketCenterY - playerHalfHeight;
-      
+
       // Verify camera position again
-      gameState.camera.x = gameState.player.x + playerHalfWidth - (window.innerWidth / 2);
-      gameState.camera.y = gameState.player.y + playerHalfHeight - (window.innerHeight / 2);
-      
+      gameState.camera.x =
+        gameState.player.x + playerHalfWidth - window.innerWidth / 2;
+      gameState.camera.y =
+        gameState.player.y + playerHalfHeight - window.innerHeight / 2;
+
+      // Send another player update to ensure server has our position
+      sendPlayerUpdate();
+
       // Clean up and finalize
       setTimeout(() => {
         if (overlay && overlay.parentNode) {
@@ -698,33 +734,47 @@ function createLandingAnimation() {
 
         // Ensure the rocket is visible
         ensureRocketVisible(gameState.currentPlanet);
-        
+
         // One final check of player position before revealing
         gameState.player.x = rocketCenterX - playerHalfWidth;
         gameState.player.y = rocketCenterY - playerHalfHeight;
-        
+
         // One final camera update
-        gameState.camera.x = gameState.player.x + playerHalfWidth - (window.innerWidth / 2);
-        gameState.camera.y = gameState.player.y + playerHalfHeight - (window.innerHeight / 2);
+        gameState.camera.x =
+          gameState.player.x + playerHalfWidth - window.innerWidth / 2;
+        gameState.camera.y =
+          gameState.player.y + playerHalfHeight - window.innerHeight / 2;
 
         // Update UI
         updateUI();
-        
-        // Only now make the player visible
-        if (playerElement) {
-          playerElement.style.display = "block";
-        }
 
-        // Allow player to move again
-        playerInRocket = false;
+        // Final player position update to server
+        sendPlayerUpdate();
 
-        // Reset the animation flag
-        rocketLaunchInProgress = false;
-
+        // First request other players - this needs to happen BEFORE player is shown
         setTimeout(() => {
-          console.log("Announcing arrival on planet:", gameState.currentPlanet);
-          refreshPlayerVisibility();
-        }, 500);
+          requestPlayersOnCurrentPlanet();
+
+          // After a short delay, make the player visible
+          setTimeout(() => {
+            if (playerElement) {
+              playerElement.style.display = "block";
+            }
+
+            // Allow player to move again
+            playerInRocket = false;
+
+            // Reset the animation flag
+            rocketLaunchInProgress = false;
+
+            // Final announcements and visibility refresh
+            console.log(
+              "Announcing arrival on planet:",
+              gameState.currentPlanet
+            );
+            refreshPlayerVisibility();
+          }, 300);
+        }, 200);
       }, 1000);
     }, 3000);
   }, 500);
@@ -771,12 +821,12 @@ function transitionToPlanet(destination) {
   if (rocketElement) {
     rocketElement.style.display = "none";
   }
-  
+
   // Double-check player is hidden
   if (playerElement) {
     playerElement.style.display = "none";
   }
-  
+
   // Start the landing animation
   createLandingAnimation();
 }

@@ -266,7 +266,7 @@ export function initMultiplayer(isHost = false, options = {}) {
     } else if (!isHost && !hasWorldData) {
       // MODIFIED: Always request world data if we're not the host and no data was received
       // This handles the case where a player joins before the host uploads the world
-      
+
       requestWorldData();
 
       // For better user experience, show a message
@@ -306,7 +306,20 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle players moving
   socket.on("playerMoved", (data) => {
-    updateOtherPlayerPosition(data.id, data);
+    // Check if the player is not on our list and they're on our planet
+    if (
+      !otherPlayers[data.id] &&
+      data.currentPlanet === gameState.currentPlanet
+    ) {
+      console.log(`New player detected through movement: ${data.id}`);
+      // Add this player since they're not in our list yet
+      addOtherPlayer(data.id, data);
+      // Update player count
+      updatePlayerCount(Object.keys(otherPlayers).length + 1);
+    } else {
+      // Normal position update for existing player
+      updateOtherPlayerPosition(data.id, data);
+    }
   });
 
   // Handle player tool changes
@@ -557,7 +570,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle rocket purchase events
   socket.on("rocketPurchased", (data) => {
-
     // Update game state to show rocket for everyone
     gameState.hasRocket = true;
     gameState.rocketPlaced = true;
@@ -602,6 +614,9 @@ export function initMultiplayer(isHost = false, options = {}) {
     if (data.playerId !== gameState.playerId) {
       // If we can see this player, remove them from our view
       if (otherPlayers[data.playerId]) {
+        console.log(
+          `Removing player ${data.playerId} who changed to planet ${data.planet}`
+        );
         removeOtherPlayer(data.playerId);
 
         // Update player count after removal
@@ -614,12 +629,94 @@ export function initMultiplayer(isHost = false, options = {}) {
           }`,
           3000
         );
+      } else {
+        console.log(
+          `Received planet change for player ${data.playerId} but they're not in our view`
+        );
       }
-    } else {
-      // This is our own planet change
+      return; // Exit early for other players
+    }
 
-      // Save current planet state first
-      if (gameState.currentPlanet === "earth" && data.planet === "moon") {
+    // This is our own planet change
+
+    // Save current planet state first
+    if (gameState.currentPlanet === "earth" && data.planet === "moon") {
+      if (gameState.blockMap && gameState.blockMap.length > 0) {
+        gameState.earthBlockMap = JSON.parse(
+          JSON.stringify(gameState.blockMap)
+        );
+      }
+    } else if (gameState.currentPlanet === "moon" && data.planet === "earth") {
+      if (gameState.blockMap && gameState.blockMap.length > 0) {
+        gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
+      }
+    }
+
+    // Update the current planet
+    gameState.currentPlanet = data.planet;
+
+    // Load the appropriate planet's block map
+    if (data.planet === "earth") {
+      if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
+        gameState.blockMap = JSON.parse(
+          JSON.stringify(gameState.earthBlockMap)
+        );
+        gameState.gravity = 0.5; // Standard gravity on Earth
+      }
+    } else if (data.planet === "moon") {
+      if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
+        gameState.blockMap = JSON.parse(JSON.stringify(gameState.moonBlockMap));
+        gameState.gravity = 0.3; // Lower gravity on the Moon
+      }
+    }
+
+    // IMPORTANT: Clear ALL other players when we change planets
+    for (const id in otherPlayers) {
+      removeOtherPlayer(id);
+    }
+
+    // Update visible blocks
+    updateVisibleBlocks();
+
+    // Show message
+    showMessage(`You traveled to the ${data.planet}`, 3000);
+
+    // Request players on the new planet
+    requestPlayersOnCurrentPlanet();
+  });
+
+  socket.on("rocketLaunched", (data) => {
+    console.log(
+      `Received rocketLaunched event from player ${data.playerId}, target: ${data.targetPlanet}`
+    );
+
+    // If another player launched their rocket, remove them from our view immediately
+    if (data.playerId !== gameState.playerId) {
+      if (otherPlayers[data.playerId]) {
+        console.log(
+          `Removing player ${data.playerId} who launched to ${data.targetPlanet}`
+        );
+        removeOtherPlayer(data.playerId);
+
+        // Update player count after removal
+        updatePlayerCount(Object.keys(otherPlayers).length + 1);
+
+        showMessage(
+          `Player ${data.playerId.substring(0, 3)} launched to the ${
+            data.targetPlanet
+          }`,
+          3000
+        );
+      }
+      return; // Exit early for other players' launches
+    }
+
+    // Below code only executes for our own rocket launch
+
+    // Skip planet transition if we're already handling it in rocket.js
+    if (gameState.skipMultiplayerTransition) {
+      // We still need to save planet state
+      if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
         if (gameState.blockMap && gameState.blockMap.length > 0) {
           gameState.earthBlockMap = JSON.parse(
             JSON.stringify(gameState.blockMap)
@@ -627,7 +724,7 @@ export function initMultiplayer(isHost = false, options = {}) {
         }
       } else if (
         gameState.currentPlanet === "moon" &&
-        data.planet === "earth"
+        data.targetPlanet === "earth"
       ) {
         if (gameState.blockMap && gameState.blockMap.length > 0) {
           gameState.moonBlockMap = JSON.parse(
@@ -636,135 +733,110 @@ export function initMultiplayer(isHost = false, options = {}) {
         }
       }
 
-      // Update the current planet
-      gameState.currentPlanet = data.planet;
-
-      // Load the appropriate planet's block map
-      if (data.planet === "earth") {
-        if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
-          gameState.blockMap = JSON.parse(
-            JSON.stringify(gameState.earthBlockMap)
-          );
-          gameState.gravity = 0.5; // Standard gravity on Earth
-        }
-      } else if (data.planet === "moon") {
-        if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
-          gameState.blockMap = JSON.parse(
-            JSON.stringify(gameState.moonBlockMap)
-          );
-          gameState.gravity = 0.3; // Lower gravity on the Moon
-        }
-      }
-
-      // Clear other players since we changed planets
-      for (const id in otherPlayers) {
-        removeOtherPlayer(id);
-      }
-
-      // Update visible blocks
-      updateVisibleBlocks();
-
-      // Show message
-      showMessage(`You traveled to the ${data.planet}`, 3000);
-
-      // Request players on the new planet
-      requestPlayersOnCurrentPlanet();
+      // Show message but skip the rest of the planet transition
+      showMessage(
+        `Rocket launched! Traveling to the ${data.targetPlanet}...`,
+        3000
+      );
+      return;
     }
-  });
 
-  socket.on("rocketLaunched", (data) => {
-    // Only process this event if WE are the player who launched the rocket
-    if (data.playerId === gameState.playerId) {
-      // Skip planet transition if we're already handling it in rocket.js
-      if (gameState.skipMultiplayerTransition) {
-        // We still need to save planet state
-        if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
-          if (gameState.blockMap && gameState.blockMap.length > 0) {
-            gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
-          }
-        } else if (gameState.currentPlanet === "moon" && data.targetPlanet === "earth") {
-          if (gameState.blockMap && gameState.blockMap.length > 0) {
-            gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
-          }
-        }
-        
-        // Show message but skip the rest of the planet transition
-        showMessage(`Rocket launched! Traveling to the ${data.targetPlanet}...`, 3000);
-        return;
-      }
-  
-      // If we get here, we're not handling the transition in rocket.js,
-      // so proceed with the original planet transition code
-      
-      // Save current planet state first
-      if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
-        if (gameState.blockMap && gameState.blockMap.length > 0) {
-          gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
-        }
-      } else if (gameState.currentPlanet === "moon" && data.targetPlanet === "earth") {
-        if (gameState.blockMap && gameState.blockMap.length > 0) {
-          gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
-        }
-      }
-  
-      // Update the current planet
-      gameState.currentPlanet = data.targetPlanet;
-  
-      // Load the appropriate planet's block map
-      if (data.targetPlanet === "earth") {
-        if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
-          gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
-          gameState.gravity = 0.5; // Standard gravity on Earth
-        }
-      } else if (data.targetPlanet === "moon") {
-        if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
-          gameState.blockMap = JSON.parse(JSON.stringify(gameState.moonBlockMap));
-          gameState.gravity = 0.3; // Lower gravity on the Moon
-        }
-      }
-  
-      // Clear other players since we changed planets
-      for (const id in otherPlayers) {
-        removeOtherPlayer(id);
-      }
-  
-      // Update visible blocks
-      updateVisibleBlocks();
-  
-      showMessage(`Rocket launched! Traveling to the ${data.targetPlanet}...`, 3000);
-  
-      // Trigger rocket launch animations or effects
-      triggerRocketLaunchAnimation(data.targetPlanet);
-  
-      // Request players on the new planet
-      requestPlayersOnCurrentPlanet();
-    } else {
-      // If another player launched their rocket, remove them from our view
-      if (otherPlayers[data.playerId]) {
-        removeOtherPlayer(data.playerId);
-  
-        // Update player count after removal
-        updatePlayerCount(Object.keys(otherPlayers).length + 1);
-  
-        showMessage(
-          `Player ${data.playerId.substring(0, 3)} launched to the ${data.targetPlanet}`,
-          3000
+    // If we get here, we're not handling the transition in rocket.js,
+    // so proceed with the original planet transition code
+
+    // Save current planet state first
+    if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
+      if (gameState.blockMap && gameState.blockMap.length > 0) {
+        gameState.earthBlockMap = JSON.parse(
+          JSON.stringify(gameState.blockMap)
         );
       }
+    } else if (
+      gameState.currentPlanet === "moon" &&
+      data.targetPlanet === "earth"
+    ) {
+      if (gameState.blockMap && gameState.blockMap.length > 0) {
+        gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
+      }
     }
+
+    // Update the current planet
+    gameState.currentPlanet = data.targetPlanet;
+
+    // Load the appropriate planet's block map
+    if (data.targetPlanet === "earth") {
+      if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
+        gameState.blockMap = JSON.parse(
+          JSON.stringify(gameState.earthBlockMap)
+        );
+        gameState.gravity = 0.5; // Standard gravity on Earth
+      }
+    } else if (data.targetPlanet === "moon") {
+      if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
+        gameState.blockMap = JSON.parse(JSON.stringify(gameState.moonBlockMap));
+        gameState.gravity = 0.3; // Lower gravity on the Moon
+      }
+    }
+
+    // Clear other players since we changed planets
+    for (const id in otherPlayers) {
+      removeOtherPlayer(id);
+    }
+
+    // Update visible blocks
+    updateVisibleBlocks();
+
+    showMessage(
+      `Rocket launched! Traveling to the ${data.targetPlanet}...`,
+      3000
+    );
+
+    // Trigger rocket launch animations or effects
+    triggerRocketLaunchAnimation(data.targetPlanet);
+
+    // Request players on the new planet
+    requestPlayersOnCurrentPlanet();
   });
 
   socket.on("playersOnPlanet", (data) => {
+    console.log(
+      `Received players on planet: ${Object.keys(data.players).length} players`
+    );
 
-    // Add each player that isn't already visible
+    // Create a list of player IDs to add/update
+    const receivedPlayerIds = Object.keys(data.players);
+    const currentPlayerIds = Object.keys(otherPlayers);
+
+    // Don't clear players if we already have some and didn't receive any
+    // This protects against empty responses
+    if (currentPlayerIds.length > 0 && receivedPlayerIds.length === 0) {
+      console.warn(
+        "Received empty player list but already have players, ignoring"
+      );
+      return;
+    }
+
+    // Clear all existing other players first
+    for (const id in otherPlayers) {
+      removeOtherPlayer(id);
+    }
+
+    // Add each player that isn't ourselves
+    let playersAdded = 0;
     for (const id in data.players) {
-      if (id !== gameState.playerId && !otherPlayers[id]) {
-        addOtherPlayer(id, data.players[id]);
+      if (id !== gameState.playerId) {
+        // Only add players on our current planet
+        if (data.players[id].currentPlanet === gameState.currentPlanet) {
+          addOtherPlayer(id, data.players[id]);
+          playersAdded++;
+        }
       }
     }
 
     // Update player count
     updatePlayerCount(Object.keys(otherPlayers).length + 1);
+
+    console.log(`Added ${playersAdded} players to the game world`);
   });
 
   // Add this new event handler to the client-side socket.io event handlers
@@ -773,7 +845,6 @@ export function initMultiplayer(isHost = false, options = {}) {
       console.log("World data request failed:", data.message);
       return;
     }
-
 
     // Only process if we actually got world blocks
     if (data.worldBlocks && Object.keys(data.worldBlocks).length > 0) {
@@ -794,7 +865,6 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-
 
         // Initialize the entire blockMap with proper dimensions first
         for (let y = 0; y <= maxY; y++) {
@@ -850,7 +920,6 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-
 
         // After everything is set up, update visible blocks
         updateVisibleBlocks();
@@ -910,8 +979,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 export function uploadWorldToServer() {
   // Only upload if we're connected, the socket exists, AND we have received a game code
   if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
-    
-
     // Ensure blockMap exists and has data
     if (!gameState.blockMap || gameState.blockMap.length === 0) {
       console.error("Error: blockMap is empty or null, cannot upload world");
@@ -1223,6 +1290,9 @@ export function sendPlayerUpdate() {
     const currentToolType = gameState.crafting.currentToolType;
     const currentToolId = gameState.crafting.equippedTools[currentToolType];
 
+    // Always include a timestamp to help with ordering
+    const timestamp = Date.now();
+
     socket.emit("playerMove", {
       x: gameState.player.x,
       y: gameState.player.y,
@@ -1232,12 +1302,16 @@ export function sendPlayerUpdate() {
       onGround: gameState.player.onGround,
       health: gameState.player.health,
       depth: gameState.depth,
-      // Add current planet to ensure consistent planet tracking
+      // Always include current planet to ensure consistent planet tracking
       currentPlanet: gameState.currentPlanet,
       // Include tool information in regular updates
       currentTool: currentToolId,
       // Also include tool type to ensure consistency
       toolType: currentToolType,
+      // Add timestamp for ordering
+      timestamp: timestamp,
+      // Add explicit update type flag
+      updateType: "position",
     });
   }
 }
@@ -1497,7 +1571,6 @@ function updateOtherPlayerTool(id, toolId) {
             applyMiningAnimation(id);
           }
         }
-
       })
       .catch((error) => {
         console.error(`Failed to load tool SVG for player ${id}:`, error);
@@ -1750,9 +1823,33 @@ export function sendPlanetChanged(planet) {
 
 export function sendRocketLaunched(targetPlanet) {
   if (isConnected && socket && gameState.hasRocket) {
+    console.log(
+      `Sending rocketLaunched notification: player ${gameState.playerId} going to ${targetPlanet}`
+    );
+
+    // Send the rocket launched event with a different format to be distinct
+    // This ensures this event is handled differently than normal movement updates
     socket.emit("rocketLaunched", {
       targetPlanet: targetPlanet,
+      currentPlanet: gameState.currentPlanet, // Include current planet for confirmation
+      timestamp: Date.now(), // Adding timestamp to make the event unique
+      rocketAction: "launch", // Explicit action flag
     });
+
+    // Send additional notification after a delay as a backup
+    setTimeout(() => {
+      if (isConnected && socket) {
+        console.log(
+          `Sending backup rocketLaunched notification for ${targetPlanet}`
+        );
+        socket.emit("rocketLaunched", {
+          targetPlanet: targetPlanet,
+          currentPlanet: gameState.currentPlanet,
+          timestamp: Date.now(),
+          rocketAction: "launch-confirm",
+        });
+      }
+    }, 500);
   }
 }
 
@@ -1781,11 +1878,16 @@ function triggerRocketLaunchAnimation(targetPlanet) {
  * Request updated player list after changing planets
  * This ensures we see players already on our new planet
  */
+/**
+ * Request updated player list after changing planets
+ * This ensures we see players already on our new planet
+ */
 export function requestPlayersOnCurrentPlanet() {
   if (isConnected && socket) {
-
     // Only request players if we have a valid game code
     if (currentGameCode) {
+      console.log(`Requesting players on ${gameState.currentPlanet}`);
+
       // Send request
       socket.emit("getPlayersOnPlanet", {
         planet: gameState.currentPlanet,
@@ -1795,11 +1897,31 @@ export function requestPlayersOnCurrentPlanet() {
       setTimeout(() => {
         // Only retry if we're still connected and have a valid game code
         if (isConnected && socket && currentGameCode) {
+          console.log(
+            `Retry: Requesting players on ${gameState.currentPlanet}`
+          );
           socket.emit("getPlayersOnPlanet", {
             planet: gameState.currentPlanet,
           });
         }
-      }, 2000);
+      }, 1000);
+
+      // Send one more request after a longer delay
+      setTimeout(() => {
+        if (isConnected && socket && currentGameCode) {
+          console.log(
+            `Final retry: Requesting players on ${gameState.currentPlanet}`
+          );
+          socket.emit("getPlayersOnPlanet", {
+            planet: gameState.currentPlanet,
+          });
+
+          // Log the current state of other players
+          console.log(
+            `Current visible players: ${Object.keys(otherPlayers).length}`
+          );
+        }
+      }, 3000);
     } else {
       console.warn("Cannot request players - not joined a game yet");
     }
@@ -1873,35 +1995,48 @@ export function sendToolRotationUpdate() {
 }
 
 // Handle player visibility refreshes more gracefully
+// Handle player visibility refreshes more gracefully
 export function refreshPlayerVisibility() {
-
   // First check if we have a valid game code
   if (!currentGameCode) {
     console.warn("Cannot refresh player visibility - not joined a game yet");
     return;
   }
 
+  // First, send our own position update to ensure server has latest data
+  sendPlayerUpdate();
+
+  // Clear all existing other players first to prevent mixing planets
+  for (const id in otherPlayers) {
+    removeOtherPlayer(id);
+  }
+
   // Request all players on our current planet
   requestPlayersOnCurrentPlanet();
-
-  // Then, send our own position repeatedly to ensure visibility
-  sendPlayerUpdate();
 
   // Send additional updates with short delays for reliability
   setTimeout(() => {
     sendPlayerUpdate();
-  }, 500);
+  }, 300);
 
   setTimeout(() => {
     sendPlayerUpdate();
-  }, 1500);
+    // Request players again after a delay to catch any late arrivals
+    requestPlayersOnCurrentPlanet();
+  }, 800);
 
   // Log current state
   setTimeout(() => {
     console.log("Player visibility refresh complete");
     console.log(`Current planet: ${gameState.currentPlanet}`);
     console.log(`Visible players: ${Object.keys(otherPlayers).length}`);
-  }, 2000);
+
+    // If we still don't see any other players, try one more request
+    if (Object.keys(otherPlayers).length === 0) {
+      console.log("No players found, sending final visibility request");
+      requestPlayersOnCurrentPlanet();
+    }
+  }, 1500);
 }
 
 export function sendInitialToolInfo() {
