@@ -794,15 +794,15 @@ function transitionToPlanet(destination) {
     playerElement.style.display = "none";
   }
 
-  // Save the current planet's block map before switching
-  if (gameState.currentPlanet === "earth" && destination === "moon") {
-    // Save Earth map before switching to Moon
+  // Save the current blockmap based on the destination
+  if (destination === "moon") {
+    // We're leaving Earth, save Earth map
     if (gameState.blockMap && gameState.blockMap.length > 0) {
       console.log("Saving Earth map before going to moon");
       gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
     }
-  } else if (gameState.currentPlanet === "moon" && destination === "earth") {
-    // Save Moon map before returning to Earth
+  } else if (destination === "earth") {
+    // We're leaving Moon, save Moon map
     if (gameState.blockMap && gameState.blockMap.length > 0) {
       console.log("Saving Moon map before returning to Earth");
       gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
