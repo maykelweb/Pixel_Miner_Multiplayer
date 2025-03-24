@@ -300,6 +300,9 @@ function launchRocket() {
   // Close the modal
   closeRocketModal();
 
+  // Set flag to prevent multiplayer.js from handling the planet transition
+  gameState.skipMultiplayerTransition = true;
+
   // Set the flag to prevent player movement
   playerInRocket = true;
 
@@ -326,6 +329,9 @@ function launchRocket() {
     if (playerElement) {
       playerElement.style.display = "block";
     }
+    
+    // Reset the flag after transition is complete
+    gameState.skipMultiplayerTransition = false;
   }, 3000);
 }
 

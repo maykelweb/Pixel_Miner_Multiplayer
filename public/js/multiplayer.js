@@ -675,74 +675,79 @@ export function initMultiplayer(isHost = false, options = {}) {
   socket.on("rocketLaunched", (data) => {
     // Only process this event if WE are the player who launched the rocket
     if (data.playerId === gameState.playerId) {
+      // Skip planet transition if we're already handling it in rocket.js
+      if (gameState.skipMultiplayerTransition) {
+        // We still need to save planet state
+        if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
+          if (gameState.blockMap && gameState.blockMap.length > 0) {
+            gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
+          }
+        } else if (gameState.currentPlanet === "moon" && data.targetPlanet === "earth") {
+          if (gameState.blockMap && gameState.blockMap.length > 0) {
+            gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
+          }
+        }
+        
+        // Show message but skip the rest of the planet transition
+        showMessage(`Rocket launched! Traveling to the ${data.targetPlanet}...`, 3000);
+        return;
+      }
+  
+      // If we get here, we're not handling the transition in rocket.js,
+      // so proceed with the original planet transition code
+      
       // Save current planet state first
       if (gameState.currentPlanet === "earth" && data.targetPlanet === "moon") {
         if (gameState.blockMap && gameState.blockMap.length > 0) {
-          gameState.earthBlockMap = JSON.parse(
-            JSON.stringify(gameState.blockMap)
-          );
+          gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
         }
-      } else if (
-        gameState.currentPlanet === "moon" &&
-        data.targetPlanet === "earth"
-      ) {
+      } else if (gameState.currentPlanet === "moon" && data.targetPlanet === "earth") {
         if (gameState.blockMap && gameState.blockMap.length > 0) {
-          gameState.moonBlockMap = JSON.parse(
-            JSON.stringify(gameState.blockMap)
-          );
+          gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
         }
       }
-
+  
       // Update the current planet
       gameState.currentPlanet = data.targetPlanet;
-
+  
       // Load the appropriate planet's block map
       if (data.targetPlanet === "earth") {
         if (gameState.earthBlockMap && gameState.earthBlockMap.length > 0) {
-          gameState.blockMap = JSON.parse(
-            JSON.stringify(gameState.earthBlockMap)
-          );
+          gameState.blockMap = JSON.parse(JSON.stringify(gameState.earthBlockMap));
           gameState.gravity = 0.5; // Standard gravity on Earth
         }
       } else if (data.targetPlanet === "moon") {
         if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
-          gameState.blockMap = JSON.parse(
-            JSON.stringify(gameState.moonBlockMap)
-          );
+          gameState.blockMap = JSON.parse(JSON.stringify(gameState.moonBlockMap));
           gameState.gravity = 0.3; // Lower gravity on the Moon
         }
       }
-
+  
       // Clear other players since we changed planets
       for (const id in otherPlayers) {
         removeOtherPlayer(id);
       }
-
+  
       // Update visible blocks
       updateVisibleBlocks();
-
-      showMessage(
-        `Rocket launched! Traveling to the ${data.targetPlanet}...`,
-        3000
-      );
-
+  
+      showMessage(`Rocket launched! Traveling to the ${data.targetPlanet}...`, 3000);
+  
       // Trigger rocket launch animations or effects
       triggerRocketLaunchAnimation(data.targetPlanet);
-
+  
       // Request players on the new planet
       requestPlayersOnCurrentPlanet();
     } else {
       // If another player launched their rocket, remove them from our view
       if (otherPlayers[data.playerId]) {
         removeOtherPlayer(data.playerId);
-
+  
         // Update player count after removal
         updatePlayerCount(Object.keys(otherPlayers).length + 1);
-
+  
         showMessage(
-          `Player ${data.playerId.substring(0, 3)} launched to the ${
-            data.targetPlanet
-          }`,
+          `Player ${data.playerId.substring(0, 3)} launched to the ${data.targetPlanet}`,
           3000
         );
       }
