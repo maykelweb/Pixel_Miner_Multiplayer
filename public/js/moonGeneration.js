@@ -1,6 +1,7 @@
 // moonGeneration.js
 import { gameState } from "./config.js";
 import { updateVisibleBlocks } from "./updates.js";
+import { uploadWorldToServer } from "./multiplayer.js";
 
 // Cache common ore references to avoid repeated lookups
 let cachedOres = null;
@@ -62,6 +63,21 @@ export function generateMoonWorld() {
     const moonSkyRows = gameState.skyRows;
     placeMoonRocket(moonSkyRows);
     
+    // If we're the host, upload the existing Moon world
+    if (gameState.isHost || gameState.needToUploadWorld) {
+      console.log("Host uploading existing Moon map to server");
+      gameState.needToUploadWorld = true;
+      uploadWorldToServer();
+      
+      // Add a retry for reliability
+      setTimeout(() => {
+        if (gameState.needToUploadWorld) {
+          console.log("Retrying Moon world data upload...");
+          uploadWorldToServer();
+        }
+      }, 3000);
+    }
+    
     return;
   }
 
@@ -109,6 +125,19 @@ export function generateMoonWorld() {
   gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
 
   updateVisibleBlocks();
+  
+  // If we're the host, upload the newly generated Moon world to the server
+  if (gameState.isHost || gameState.needToUploadWorld) {
+    console.log("Host is uploading newly generated Moon world to server");
+    gameState.needToUploadWorld = true;
+    uploadWorldToServer();
+    
+    // Add a retry mechanism to ensure world is uploaded
+    setTimeout(() => {
+      console.log("Retrying Moon world data upload...");
+      uploadWorldToServer();
+    }, 3000);
+  }
 }
 
 // Determine what block should be at a specific position on the moon

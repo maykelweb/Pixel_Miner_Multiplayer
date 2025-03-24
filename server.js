@@ -36,8 +36,11 @@ io.on("connection", (socket) => {
         host: socket.id,
         maxPlayers: options.maxPlayers || 4,
         players: {}, // Initialize empty players object
-        worldBlocks: {},
-        worldGenerated: false,
+        // Store separate blockmaps for Earth and Moon
+        worldBlocksEarth: {},
+        worldBlocksMoon: {},
+        worldGeneratedEarth: false,
+        worldGeneratedMoon: false,
         currentPlayers: 0,
         hasRocket: false,
         rocketPosition: { x: 0, y: 0 },
@@ -156,7 +159,9 @@ io.on("connection", (socket) => {
     });
 
     // Use the player's actual current planet instead of hardcoding "earth"
+    // Get the appropriate world data for the planet the player is joining
     const currentPlanet = games[gameCode].players[socket.id].currentPlanet;
+    let worldData = {};
 
     // Create a filtered version of players on the same planet
     const playersOnSamePlanet = {};
@@ -166,27 +171,31 @@ io.on("connection", (socket) => {
       }
     }
 
-    // Get the appropriate world data for the planet the player is joining
-    let worldData = {};
+    // Check if world data is generated for the player's current planet
+    const worldGenerated =
+      currentPlanet === "earth"
+        ? games[gameCode].worldGeneratedEarth
+        : games[gameCode].worldGeneratedMoon;
 
-    // Make sure worldBlocks exists
-    if (!games[gameCode].worldBlocks) {
-      games[gameCode].worldBlocks = {};
-    }
-
-    if (!games[gameCode].worldGenerated) {
+    if (!worldGenerated) {
       if (!games[gameCode].pendingWorldDataRequests) {
         games[gameCode].pendingWorldDataRequests = [];
       }
-      console.log(`Adding player ${socket.id} to pending world data requests`);
-      games[gameCode].pendingWorldDataRequests.push(socket.id);
+      console.log(
+        `Adding player ${socket.id} to pending world data requests for ${currentPlanet}`
+      );
+      games[gameCode].pendingWorldDataRequests.push({
+        id: socket.id,
+        planet: currentPlanet,
+      });
     }
 
-    // Check if we need to send world data
-    const worldGenerated = games[gameCode].worldGenerated === true;
-
+    // Get the appropriate world data based on the player's planet
     if (worldGenerated) {
-      worldData = games[gameCode].worldBlocks;
+      worldData =
+        currentPlanet === "earth"
+          ? games[gameCode].worldBlocksEarth
+          : games[gameCode].worldBlocksMoon;
     }
 
     // Log what we're sending
@@ -250,44 +259,47 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Check if world data exists
-    if (!games[gameCode].worldGenerated) {
+    // Determine which planet's data to check
+    const requestedPlanet = data.planet || "earth";
+    const worldGeneratedForPlanet =
+      requestedPlanet === "earth"
+        ? games[gameCode].worldGeneratedEarth
+        : games[gameCode].worldGeneratedMoon;
+
+    // Check if world data exists for the requested planet
+    if (!worldGeneratedForPlanet) {
       console.log(
-        `Player ${socket.id} requested world data but world not generated in game ${gameCode} yet`
+        `Player ${socket.id} requested ${requestedPlanet} data but it's not generated in game ${gameCode} yet`
       );
       socket.emit("worldDataResponse", {
         success: false,
-        message: "World not generated yet",
+        message: `${requestedPlanet} world not generated yet`,
         gameCode: gameCode,
+        planet: requestedPlanet,
       });
       return;
     }
 
-    // Get the world data
-    const worldData = games[gameCode].worldBlocks || {};
-    const worldSize = Object.keys(worldData).length;
+    // Get the appropriate world data
+    const worldData =
+      requestedPlanet === "earth"
+        ? games[gameCode].worldBlocksEarth || {}
+        : games[gameCode].worldBlocksMoon || {};
 
+    const worldSize = Object.keys(worldData).length;
     console.log(
-      `Sending requested world data to player ${socket.id} (${worldSize} rows)`
+      `Sending requested ${requestedPlanet} world data to player ${socket.id} (${worldSize} rows)`
     );
 
-    // Ensure rocket data exists
-    if (!games[gameCode].hasRocket) {
-      games[gameCode].hasRocket = false;
-    }
-
-    if (!games[gameCode].rocketPosition) {
-      games[gameCode].rocketPosition = { x: 0, y: 0 };
-    }
-
-    // Send the world data response with rocket information
+    // Send the world data response with rocket information and planet type
     socket.emit("worldDataResponse", {
       success: true,
       worldBlocks: worldData,
       gameCode: gameCode,
       hasRocket: games[gameCode].hasRocket,
       rocketPosition: games[gameCode].rocketPosition,
-      message: `World data with ${worldSize} rows sent successfully`,
+      planet: requestedPlanet,
+      message: `${requestedPlanet} world data with ${worldSize} rows sent successfully`,
     });
   });
 
@@ -325,8 +337,10 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Store the planet type for this upload
+    const planetType = data.planetType || "earth";
     console.log(
-      `Preparing to receive ${data.totalRows} rows with approximately ${data.blockCount} blocks`
+      `Starting chunked world upload for ${planetType} from ${socket.id}`
     );
 
     // Import rocket data from the host's upload
@@ -350,7 +364,7 @@ io.on("connection", (socket) => {
         totalChunks: 0,
         isComplete: false,
         startTime: Date.now(),
-        planetType: data.planetType || "earth",
+        planetType: planetType,
       };
     } else {
       // Reset if there was a previous upload in progress
@@ -360,14 +374,14 @@ io.on("connection", (socket) => {
         totalChunks: 0,
         isComplete: false,
         startTime: Date.now(),
-        planetType: data.planetType || "earth",
+        planetType: planetType,
       };
     }
 
     // Acknowledge start of upload
     socket.emit("worldUploadStarted", {
       success: true,
-      message: "Ready to receive world chunks",
+      message: `Ready to receive ${planetType} world chunks`,
     });
   });
 
@@ -465,44 +479,70 @@ io.on("connection", (socket) => {
 
       console.log(`Successfully combined ${rowCount} rows of world data`);
 
-      // Store the world data
-      games[gameCode].worldBlocks = worldBlocks;
-      games[gameCode].worldGenerated = true;
+      // Determine which planet's blockmap to update
+      const planetType = games[gameCode].worldUpload.planetType || "earth";
 
-      // Log successful storage
-      console.log(
-        `World data with ${rowCount} rows successfully stored for game ${gameCode}`
-      );
+      // Store the world data in the appropriate planet's blockmap
+      if (planetType === "earth") {
+        games[gameCode].worldBlocksEarth = worldBlocks;
+        games[gameCode].worldGeneratedEarth = true;
+        console.log(
+          `Earth world data with ${rowCount} rows successfully stored for game ${gameCode}`
+        );
+      } else if (planetType === "moon") {
+        games[gameCode].worldBlocksMoon = worldBlocks;
+        games[gameCode].worldGeneratedMoon = true;
+        console.log(
+          `Moon world data with ${rowCount} rows successfully stored for game ${gameCode}`
+        );
+      }
 
-      // Handle pending players
+      // Handle pending players who are waiting for this specific planet's data
       if (
         games[gameCode].pendingWorldDataRequests &&
         games[gameCode].pendingWorldDataRequests.length > 0
       ) {
-        console.log(
-          `Sending world data to ${games[gameCode].pendingWorldDataRequests.length} players who joined early`
+        const pendingForThisPlanet = games[
+          gameCode
+        ].pendingWorldDataRequests.filter(
+          (req) =>
+            (!req.planet && planetType === "earth") || req.planet === planetType
         );
 
-        games[gameCode].pendingWorldDataRequests.forEach((playerId) => {
-          io.to(playerId).emit("worldDataResponse", {
-            success: true,
-            worldBlocks: worldBlocks,
-            gameCode: gameCode,
-            hasRocket: games[gameCode].hasRocket,
-            rocketPosition: games[gameCode].rocketPosition,
-            message: `World data with ${rowCount} rows sent successfully`,
-          });
-        });
+        if (pendingForThisPlanet.length > 0) {
+          console.log(
+            `Sending ${planetType} data to ${pendingForThisPlanet.length} players who joined early`
+          );
 
-        // Clear the pending list after sending
-        games[gameCode].pendingWorldDataRequests = [];
+          pendingForThisPlanet.forEach((request) => {
+            const playerId = typeof request === "string" ? request : request.id;
+            io.to(playerId).emit("worldDataResponse", {
+              success: true,
+              worldBlocks: worldBlocks,
+              gameCode: gameCode,
+              hasRocket: games[gameCode].hasRocket,
+              rocketPosition: games[gameCode].rocketPosition,
+              planet: planetType,
+              message: `${planetType} world data with ${rowCount} rows sent successfully`,
+            });
+          });
+
+          // Remove processed requests
+          games[gameCode].pendingWorldDataRequests = games[
+            gameCode
+          ].pendingWorldDataRequests.filter((req) => {
+            if (typeof req === "string") return planetType !== "earth";
+            return req.planet !== planetType;
+          });
+        }
       }
 
       // Send acknowledgment to client
       socket.emit("worldDataReceived", {
         success: true,
         rowCount: rowCount,
-        message: "World data stored successfully",
+        planet: planetType,
+        message: `${planetType} world data stored successfully`,
         processingTime:
           (Date.now() - games[gameCode].worldUpload.startTime) / 1000,
       });
@@ -510,6 +550,7 @@ io.on("connection", (socket) => {
       // Notify all other players in the game that world data is now available
       socket.to(gameCode).emit("worldAvailable", {
         rowCount: rowCount,
+        planet: planetType,
       });
 
       // Clean up the temporary storage

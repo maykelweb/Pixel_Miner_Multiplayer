@@ -832,11 +832,15 @@ export function initMultiplayer(isHost = false, options = {}) {
       return;
     }
 
+    // Get the planet type from the response, default to current planet
+    const planetType = data.planet || gameState.currentPlanet;
+    console.log(`Received world data for ${planetType}`);
+
     // Only process if we actually got world blocks
     if (data.worldBlocks && Object.keys(data.worldBlocks).length > 0) {
       try {
-        // Clear any existing block map to prevent mixing
-        gameState.blockMap = [];
+        // Create a temporary blockMap to process the data
+        let tempBlockMap = [];
 
         // Find the maximum Y value in the received data
         const maxY = Math.max(...Object.keys(data.worldBlocks).map(Number));
@@ -854,11 +858,11 @@ export function initMultiplayer(isHost = false, options = {}) {
 
         // Initialize the entire blockMap with proper dimensions first
         for (let y = 0; y <= maxY; y++) {
-          gameState.blockMap[y] = [];
+          tempBlockMap[y] = [];
 
           // Pre-fill the row with nulls to ensure we have a complete array
           for (let x = 0; x <= maxX; x++) {
-            gameState.blockMap[y][x] = null;
+            tempBlockMap[y][x] = null;
           }
         }
 
@@ -870,26 +874,44 @@ export function initMultiplayer(isHost = false, options = {}) {
             const blockData = data.worldBlocks[y][x];
 
             if (blockData === null) {
-              gameState.blockMap[yNum][xNum] = null;
+              tempBlockMap[yNum][xNum] = null;
             } else if (blockData && blockData.name) {
               // Find the matching ore in our local ores array
               const matchingOre = gameState.ores.find(
                 (ore) => ore.name === blockData.name
               );
               if (matchingOre) {
-                gameState.blockMap[yNum][xNum] = matchingOre;
+                tempBlockMap[yNum][xNum] = matchingOre;
               } else {
                 console.warn(`Unknown ore received: ${blockData.name}`);
-                gameState.blockMap[yNum][xNum] = blockData;
+                tempBlockMap[yNum][xNum] = blockData;
               }
             } else {
-              gameState.blockMap[yNum][xNum] = blockData;
+              tempBlockMap[yNum][xNum] = blockData;
             }
           }
         }
 
+        // Store the processed world data in the appropriate location
+        if (planetType === "earth") {
+          gameState.earthBlockMap = tempBlockMap;
+
+          // If we're currently on Earth, also update the active blockMap
+          if (gameState.currentPlanet === "earth") {
+            gameState.blockMap = tempBlockMap;
+            updateVisibleBlocks();
+          }
+        } else if (planetType === "moon") {
+          gameState.moonBlockMap = tempBlockMap;
+
+          // If we're currently on Moon, also update the active blockMap
+          if (gameState.currentPlanet === "moon") {
+            gameState.blockMap = tempBlockMap;
+            updateVisibleBlocks();
+          }
+        }
+
         // Update rocket information if available
-        // Always check for rocket information in the response
         if (data.hasRocket === true) {
           gameState.hasRocket = true;
           gameState.rocketPlaced = true;
@@ -907,32 +929,24 @@ export function initMultiplayer(isHost = false, options = {}) {
           }
         }
 
-        // After everything is set up, update visible blocks
-        updateVisibleBlocks();
-
-        // NEW: Now that we have world data, make the player visible if it was hidden
-        if (gameState.isWaitingForWorldData) {
+        // Only make the player visible if we're done waiting and
+        // we got data for our current planet
+        if (
+          gameState.isWaitingForWorldData &&
+          planetType === gameState.currentPlanet
+        ) {
           try {
             // Find a valid spawn position
             let spawnY = 5; // Default safe position
             let spawnX = 10; // Default X position
 
             // Try to find the ground level near the middle
-            if (gameState.blockMap && gameState.blockMap.length > 0) {
-              const middleX = Math.floor(
-                (gameState.blockMap[0] || []).length / 2
-              );
+            if (tempBlockMap && tempBlockMap.length > 0) {
+              const middleX = Math.floor((tempBlockMap[0] || []).length / 2);
 
               // Start checking from top for the first solid block
-              for (
-                let y = 0;
-                y < Math.min(50, gameState.blockMap.length);
-                y++
-              ) {
-                if (
-                  gameState.blockMap[y] &&
-                  gameState.blockMap[y][middleX] !== null
-                ) {
+              for (let y = 0; y < Math.min(50, tempBlockMap.length); y++) {
+                if (tempBlockMap[y] && tempBlockMap[y][middleX] !== null) {
                   // Found solid ground, position player above it
                   spawnY = Math.max(0, y - 2); // Two blocks above ground
                   spawnX = middleX;
@@ -976,14 +990,17 @@ export function initMultiplayer(isHost = false, options = {}) {
         }
 
         // Show a message to confirm the world has loaded
-        showMessage("World data loaded successfully", 2000);
+        showMessage(`${planetType} world data loaded successfully`, 2000);
       } catch (error) {
         console.error("Error processing received world data:", error);
         showMessage("Error processing world data", 3000);
 
         // Even if there's an error, we should make the player visible
         // and hide the loading screen to prevent being stuck
-        if (gameState.isWaitingForWorldData) {
+        if (
+          gameState.isWaitingForWorldData &&
+          planetType === gameState.currentPlanet
+        ) {
           const playerElement = document.getElementById("player");
           if (playerElement) {
             playerElement.style.visibility = "visible";
@@ -993,21 +1010,27 @@ export function initMultiplayer(isHost = false, options = {}) {
         }
       }
     } else {
-      console.warn("Received world data response, but no blocks were present");
+      console.warn(
+        `Received ${planetType} world data response, but no blocks were present`
+      );
 
-      // If we got an empty response, still make the player visible after a timeout
-      // This prevents players from being stuck in a loading state
-      setTimeout(() => {
-        if (gameState.isWaitingForWorldData) {
-          const playerElement = document.getElementById("player");
-          if (playerElement) {
-            playerElement.style.visibility = "visible";
+      // If we got an empty response for our current planet, still make the player visible after a timeout
+      if (planetType === gameState.currentPlanet) {
+        setTimeout(() => {
+          if (gameState.isWaitingForWorldData) {
+            const playerElement = document.getElementById("player");
+            if (playerElement) {
+              playerElement.style.visibility = "visible";
+            }
+            gameState.isWaitingForWorldData = false;
+            hideLoadingScreen();
+            showMessage(
+              "Could not load world data. Using default world.",
+              3000
+            );
           }
-          gameState.isWaitingForWorldData = false;
-          hideLoadingScreen();
-          showMessage("Could not load world data. Using default world.", 3000);
-        }
-      }, 5000); // Give it 5 seconds before giving up
+        }, 5000); // Give it 5 seconds before giving up
+      }
     }
   });
 }
@@ -1061,7 +1084,10 @@ export function uploadWorldToServer() {
         return;
       }
 
-      // ===== CHUNKED UPLOAD IMPLEMENTATION =====
+      console.log(
+        `Starting ${gameState.currentPlanet} world upload with ${blockCount} blocks`
+      );
+
       // First notify the server that we're starting a chunked upload
       socket.emit("startWorldUpload", {
         totalRows: Object.keys(worldData).length,
@@ -1092,6 +1118,7 @@ export function uploadWorldToServer() {
           socket.emit("finishWorldUpload", {
             totalSent: worldRows.length,
             blockCount: blockCount,
+            planetType: gameState.currentPlanet,
           });
           return;
         }
