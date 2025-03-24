@@ -97,8 +97,12 @@ function gameLoop(timestamp) {
     gameState.lastTime = timestamp;
     gameState.deltaTime = Math.min(gameState.deltaTime, 100);
 
-    // Update game state and render
-    updatePlayer();
+    // FIXED: Skip player physics updates if waiting for world data
+    // This prevents the player from falling through the unloaded world
+    if (!gameState.isWaitingForWorldData) {
+      updatePlayer();
+    }
+    
     updateCamera();
     updateInventory();
     updateVisibleBlocks();
@@ -644,7 +648,7 @@ export function showLoadingScreen(message) {
   loadingScreen.style.left = "0";
   loadingScreen.style.width = "100%";
   loadingScreen.style.height = "100%";
-  loadingScreen.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  loadingScreen.style.backgroundColor = "rgba(0, 0, 0, 1)";
   loadingScreen.style.display = "flex";
   loadingScreen.style.flexDirection = "column";
   loadingScreen.style.alignItems = "center";

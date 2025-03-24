@@ -682,7 +682,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   socket.on("rocketLaunched", (data) => {
-
     // If another player launched their rocket, remove them from our view immediately
     if (data.playerId !== gameState.playerId) {
       if (otherPlayers[data.playerId]) {
@@ -792,7 +791,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   socket.on("playersOnPlanet", (data) => {
-
     // Create a list of player IDs to add/update
     const receivedPlayerIds = Object.keys(data.players);
     const currentPlayerIds = Object.keys(otherPlayers);
@@ -914,17 +912,67 @@ export function initMultiplayer(isHost = false, options = {}) {
 
         // NEW: Now that we have world data, make the player visible if it was hidden
         if (gameState.isWaitingForWorldData) {
-          // Show the player
-          const playerElement = document.getElementById("player");
-          if (playerElement) {
-            playerElement.style.visibility = "visible";
+          try {
+            // Find a valid spawn position
+            let spawnY = 5; // Default safe position
+            let spawnX = 10; // Default X position
+
+            // Try to find the ground level near the middle
+            if (gameState.blockMap && gameState.blockMap.length > 0) {
+              const middleX = Math.floor(
+                (gameState.blockMap[0] || []).length / 2
+              );
+
+              // Start checking from top for the first solid block
+              for (
+                let y = 0;
+                y < Math.min(50, gameState.blockMap.length);
+                y++
+              ) {
+                if (
+                  gameState.blockMap[y] &&
+                  gameState.blockMap[y][middleX] !== null
+                ) {
+                  // Found solid ground, position player above it
+                  spawnY = Math.max(0, y - 2); // Two blocks above ground
+                  spawnX = middleX;
+                  break;
+                }
+              }
+            }
+
+            // Position player at spawn point
+            if (gameState.player) {
+              gameState.player.x = spawnX * gameState.blockSize;
+              gameState.player.y = spawnY * gameState.blockSize;
+              // Reset velocity to prevent falling when physics resumes
+              gameState.player.velocityY = 0;
+              gameState.player.velocityX = 0;
+
+              // Center camera on player
+              gameState.camera.x = gameState.player.x - window.innerWidth / 2;
+              gameState.camera.y = gameState.player.y - window.innerHeight / 2;
+            }
+
+            // Now make the player visible
+            const playerElement = document.getElementById("player");
+            if (playerElement) {
+              playerElement.style.visibility = "visible";
+            }
+
+            // Clear waiting flag to resume game updates
+            gameState.isWaitingForWorldData = false;
+            hideLoadingScreen();
+          } catch (error) {
+            console.error("Error positioning player after world load:", error);
+            // Still make player visible and resume game in case of error
+            const playerElement = document.getElementById("player");
+            if (playerElement) {
+              playerElement.style.visibility = "visible";
+            }
+            gameState.isWaitingForWorldData = false;
+            hideLoadingScreen();
           }
-
-          // Reset the waiting flag
-          gameState.isWaitingForWorldData = false;
-
-          // Hide the loading screen if it's still showing
-          hideLoadingScreen();
         }
 
         // Show a message to confirm the world has loaded
@@ -1811,7 +1859,6 @@ export function sendPlanetChanged(planet) {
 
 export function sendRocketLaunched(targetPlanet) {
   if (isConnected && socket && gameState.hasRocket) {
-
     // Send the rocket launched event with a different format to be distinct
     // This ensures this event is handled differently than normal movement updates
     socket.emit("rocketLaunched", {
@@ -1994,7 +2041,6 @@ export function refreshPlayerVisibility() {
 
   // Log current state
   setTimeout(() => {
-
     // If we still don't see any other players, try one more request
     if (Object.keys(otherPlayers).length === 0) {
       requestPlayersOnCurrentPlanet();
