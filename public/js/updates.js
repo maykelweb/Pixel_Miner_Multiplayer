@@ -44,7 +44,6 @@ export function renderPlayer() {
 }
 
 // Update visible blocks with efficient DOM operations
-// Update visible blocks with efficient DOM operations
 export function updateVisibleBlocks() {
   const minBlockX = Math.max(
     0,
@@ -277,8 +276,8 @@ export function updateCraftingStationPosition() {
   const craftingStation = document.getElementById("crafting-station");
   if (!craftingStation) return;
 
-  // Only show crafting station on Earth
-  if (gameState.currentPlanet !== "earth") {
+  // Check for rocket transition in addition to planet check
+  if (gameState.inRocketTransition || gameState.currentPlanet !== "earth") {
     craftingStation.style.display = "none";
     return;
   } else {
@@ -307,8 +306,9 @@ export function updateShopPosition() {
   const shopSign = document.getElementById("shop-sign");
   if (!shopSign) return;
 
-  // Only show shop sign on Earth
-  if (gameState.currentPlanet !== "earth") {
+  // Check for rocket transition in addition to planet check
+  // This ensures shop stays hidden during planet transitions
+  if (gameState.inRocketTransition || gameState.currentPlanet !== "earth") {
     shopSign.style.display = "none";
     return;
   } else {

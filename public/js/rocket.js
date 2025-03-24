@@ -16,7 +16,7 @@ import {
   refreshPlayerVisibility,
   requestPlayersOnCurrentPlanet,
   sendPlayerUpdate,
-  sendPlanetChanged
+  sendPlanetChanged,
 } from "./multiplayer.js";
 
 // Create rocket element
@@ -301,9 +301,6 @@ function selectDestination(destination) {
 }
 
 // Launch the rocket to selected destination
-// Add this code to the launchRocket function right after closing the modal
-// Launch the rocket to selected destination
-// Launch the rocket to selected destination
 function launchRocket() {
   if (!selectedDestination || selectedDestination === gameState.currentPlanet) {
     showMessage("Please select a valid destination", 2000);
@@ -319,6 +316,12 @@ function launchRocket() {
   // Set the flag to prevent player movement
   playerInRocket = true;
 
+  // IMPORTANT: Add a visual transition flag
+  gameState.inRocketTransition = true;
+  
+  // Store destination planet but DON'T change currentPlanet yet
+  const targetPlanet = selectedDestination;
+  
   // Hide the player character during rocket launch
   const playerElement = document.getElementById("player");
   if (playerElement) {
@@ -331,32 +334,36 @@ function launchRocket() {
   // Create launch animation effect
   createLaunchAnimation();
 
-  // CRITICAL: Send an explicit notification about departure BEFORE switching planets
-  // This ensures other players know we're departing
-  const oldPlanet = gameState.currentPlanet;
-  const newPlanet = selectedDestination;
-  
-  // First, update our planet in the game state so our socket messages will have the new value
-  gameState.currentPlanet = newPlanet;
-  
+  // Get current planet for reference later
+  const currentPlanet = gameState.currentPlanet;
+
+  // IMPORTANT: We need to send the multiplayer event, but we DON'T actually 
+  // want to change the local gameState.currentPlanet until the animation finishes
+  // This is for any connected players to see us leave
+
   // Now send the rocket launched message with our new destination
-  sendRocketLaunched(newPlanet);
-  
-  // Send a planet changed message as a backup notification
-  sendPlanetChanged(newPlanet);
+  // We're passing the target planet, but NOT changing our local state yet
+  sendRocketLaunched(targetPlanet);
 
   // Transition to new planet after delay
   setTimeout(() => {
-    // We don't need to update game state planet since we already did that above
-    transitionToPlanet(newPlanet);
+    // NOW we can change the planet state after the animation has mostly completed
+    gameState.currentPlanet = targetPlanet;
+    
+    // Send a planet changed message as a backup notification
+    sendPlanetChanged(targetPlanet);
+    
+    // Now call the transition function with the new planet
+    transitionToPlanet(targetPlanet);
 
     // Make sure player is visible again after transition
     if (playerElement) {
       playerElement.style.display = "block";
     }
-    
-    // Reset the flag after transition is complete
+
+    // Reset the flags after transition is complete
     gameState.skipMultiplayerTransition = false;
+    gameState.inRocketTransition = false;
   }, 3000);
 }
 
@@ -745,7 +752,10 @@ function createLandingAnimation() {
         gameState.camera.y =
           gameState.player.y + playerHalfHeight - window.innerHeight / 2;
 
-        // Update UI
+        // Clear the planet transition flag
+        gameState.inPlanetTransition = false;
+
+        // Final update to UI elements
         updateUI();
 
         // Final player position update to server
@@ -768,10 +778,6 @@ function createLandingAnimation() {
             rocketLaunchInProgress = false;
 
             // Final announcements and visibility refresh
-            console.log(
-              "Announcing arrival on planet:",
-              gameState.currentPlanet
-            );
             refreshPlayerVisibility();
           }, 300);
         }, 200);

@@ -311,7 +311,6 @@ export function initMultiplayer(isHost = false, options = {}) {
       !otherPlayers[data.id] &&
       data.currentPlanet === gameState.currentPlanet
     ) {
-      console.log(`New player detected through movement: ${data.id}`);
       // Add this player since they're not in our list yet
       addOtherPlayer(data.id, data);
       // Update player count
@@ -630,9 +629,6 @@ export function initMultiplayer(isHost = false, options = {}) {
           3000
         );
       } else {
-        console.log(
-          `Received planet change for player ${data.playerId} but they're not in our view`
-        );
       }
       return; // Exit early for other players
     }
@@ -686,9 +682,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   socket.on("rocketLaunched", (data) => {
-    console.log(
-      `Received rocketLaunched event from player ${data.playerId}, target: ${data.targetPlanet}`
-    );
 
     // If another player launched their rocket, remove them from our view immediately
     if (data.playerId !== gameState.playerId) {
@@ -799,9 +792,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   socket.on("playersOnPlanet", (data) => {
-    console.log(
-      `Received players on planet: ${Object.keys(data.players).length} players`
-    );
 
     // Create a list of player IDs to add/update
     const receivedPlayerIds = Object.keys(data.players);
@@ -835,8 +825,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
     // Update player count
     updatePlayerCount(Object.keys(otherPlayers).length + 1);
-
-    console.log(`Added ${playersAdded} players to the game world`);
   });
 
   // Add this new event handler to the client-side socket.io event handlers
@@ -1823,9 +1811,6 @@ export function sendPlanetChanged(planet) {
 
 export function sendRocketLaunched(targetPlanet) {
   if (isConnected && socket && gameState.hasRocket) {
-    console.log(
-      `Sending rocketLaunched notification: player ${gameState.playerId} going to ${targetPlanet}`
-    );
 
     // Send the rocket launched event with a different format to be distinct
     // This ensures this event is handled differently than normal movement updates
@@ -1839,9 +1824,6 @@ export function sendRocketLaunched(targetPlanet) {
     // Send additional notification after a delay as a backup
     setTimeout(() => {
       if (isConnected && socket) {
-        console.log(
-          `Sending backup rocketLaunched notification for ${targetPlanet}`
-        );
         socket.emit("rocketLaunched", {
           targetPlanet: targetPlanet,
           currentPlanet: gameState.currentPlanet,
@@ -1897,9 +1879,6 @@ export function requestPlayersOnCurrentPlanet() {
       setTimeout(() => {
         // Only retry if we're still connected and have a valid game code
         if (isConnected && socket && currentGameCode) {
-          console.log(
-            `Retry: Requesting players on ${gameState.currentPlanet}`
-          );
           socket.emit("getPlayersOnPlanet", {
             planet: gameState.currentPlanet,
           });
@@ -1909,17 +1888,9 @@ export function requestPlayersOnCurrentPlanet() {
       // Send one more request after a longer delay
       setTimeout(() => {
         if (isConnected && socket && currentGameCode) {
-          console.log(
-            `Final retry: Requesting players on ${gameState.currentPlanet}`
-          );
           socket.emit("getPlayersOnPlanet", {
             planet: gameState.currentPlanet,
           });
-
-          // Log the current state of other players
-          console.log(
-            `Current visible players: ${Object.keys(otherPlayers).length}`
-          );
         }
       }, 3000);
     } else {
@@ -2027,13 +1998,9 @@ export function refreshPlayerVisibility() {
 
   // Log current state
   setTimeout(() => {
-    console.log("Player visibility refresh complete");
-    console.log(`Current planet: ${gameState.currentPlanet}`);
-    console.log(`Visible players: ${Object.keys(otherPlayers).length}`);
 
     // If we still don't see any other players, try one more request
     if (Object.keys(otherPlayers).length === 0) {
-      console.log("No players found, sending final visibility request");
       requestPlayersOnCurrentPlanet();
     }
   }, 1500);
