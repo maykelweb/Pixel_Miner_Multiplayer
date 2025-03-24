@@ -66,8 +66,6 @@ io.on("connection", (socket) => {
         depth: 0,
         currentPlanet: "earth", // Added planet property
         jetpackActive: false, // Add the jetpack state property
-        currentPlanet: "earth", // Added planet property
-        jetpackActive: false, // Add the jetpack state property
       };
 
       games[gameCode].currentPlayers = 1;
@@ -201,6 +199,15 @@ io.on("connection", (socket) => {
       );
     }
 
+    // Ensure rocket info is properly initialized in game object
+    if (!games[gameCode].hasRocket) {
+      games[gameCode].hasRocket = false;
+    }
+
+    if (!games[gameCode].rocketPosition) {
+      games[gameCode].rocketPosition = { x: 0, y: 0 };
+    }
+
     // Send game state to the new player
     socket.emit("gameState", {
       playerId: socket.id,
@@ -264,7 +271,16 @@ io.on("connection", (socket) => {
       `Sending requested world data to player ${socket.id} (${worldSize} rows)`
     );
 
-    // Send the world data response
+    // Ensure rocket data exists
+    if (!games[gameCode].hasRocket) {
+      games[gameCode].hasRocket = false;
+    }
+
+    if (!games[gameCode].rocketPosition) {
+      games[gameCode].rocketPosition = { x: 0, y: 0 };
+    }
+
+    // Send the world data response with rocket information
     socket.emit("worldDataResponse", {
       success: true,
       worldBlocks: worldData,
@@ -312,6 +328,19 @@ io.on("connection", (socket) => {
     console.log(
       `Preparing to receive ${data.totalRows} rows with approximately ${data.blockCount} blocks`
     );
+
+    // Import rocket data from the host's upload
+    if (data.hasRocket === true && data.rocketPosition) {
+      console.log("Received rocket information from host:", data.hasRocket);
+      games[gameCode].hasRocket = true;
+      games[gameCode].rocketPosition = data.rocketPosition;
+      console.log("Rocket position:", data.rocketPosition);
+    } else {
+      // For new worlds, ensure rocket is not present
+      games[gameCode].hasRocket = false;
+      games[gameCode].rocketPosition = { x: 0, y: 0 };
+      console.log("No rocket in this world data upload");
+    }
 
     // Initialize temporary storage for the chunked upload
     if (!games[gameCode].worldUpload) {

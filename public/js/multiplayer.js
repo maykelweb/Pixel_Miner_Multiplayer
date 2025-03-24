@@ -5,6 +5,7 @@ import { updateVisibleBlocks } from "./updates.js";
 import { createBreakingAnimation } from "./animations.js";
 import { getCurrentTool } from "./crafting.js";
 import { hideLoadingScreen, showLoadingScreen } from "./main.js";
+import { initializeRocket, updateRocketPosition } from "./rocket.js";
 
 // Socket.io client
 let socket;
@@ -66,7 +67,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   socket.on("gameHosted", (data) => {
     currentGameCode = data.gameCode;
     console.log("Game created with code:", currentGameCode);
-    showMessage("Game created! Code: " + currentGameCode, 5000);
 
     // Display the game code for the host
     showGameCode(currentGameCode);
@@ -165,11 +165,25 @@ export function initMultiplayer(isHost = false, options = {}) {
       data.worldBlocks && Object.keys(data.worldBlocks).length > 0;
     const worldDataExpected = data.worldGenerated === true;
 
-    if (!isHost && hasWorldData) {
-      console.log(
-        `Received world data with ${Object.keys(data.worldBlocks).length} rows`
-      );
+    // Handle rocket data - Always check for rocket information
+    if (data.hasRocket === true) {
+      gameState.hasRocket = true;
+      gameState.rocketPlaced = true;
 
+      if (data.rocketPosition) {
+        gameState.rocket.x = data.rocketPosition.x;
+        gameState.rocket.y = data.rocketPosition.y;
+        gameState.rocketX = data.rocketPosition.x / gameState.blockSize;
+        gameState.rocketY = data.rocketPosition.y / gameState.blockSize;
+
+        // Initialize the rocket element
+        if (typeof initializeRocket === "function") {
+          initializeRocket();
+        }
+      }
+    }
+
+    if (!isHost && hasWorldData) {
       try {
         // Clear any existing block map to prevent mixing
         gameState.blockMap = [];
@@ -187,10 +201,6 @@ export function initMultiplayer(isHost = false, options = {}) {
             }
           }
         }
-
-        console.log(
-          `Reconstructing world with dimensions up to [${maxX}, ${maxY}]`
-        );
 
         // Initialize the entire blockMap with proper dimensions first
         for (let y = 0; y <= maxY; y++) {
@@ -228,8 +238,6 @@ export function initMultiplayer(isHost = false, options = {}) {
           }
         }
 
-        console.log("World synchronized from host data");
-
         // NEW: Now that we have world data, make the player visible if it was hidden
         if (gameState.isWaitingForWorldData) {
           const playerElement = document.getElementById("player");
@@ -258,9 +266,7 @@ export function initMultiplayer(isHost = false, options = {}) {
     } else if (!isHost && !hasWorldData) {
       // MODIFIED: Always request world data if we're not the host and no data was received
       // This handles the case where a player joins before the host uploads the world
-      console.log(
-        "No world data received. Requesting world data from server..."
-      );
+      
       requestWorldData();
 
       // For better user experience, show a message
@@ -279,9 +285,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
     // Make sure the player doesn't already exist in our list
     if (otherPlayers[playerData.id]) {
-      console.log(
-        `Player ${playerData.id} already exists, updating instead of adding`
-      );
       updateOtherPlayerPosition(playerData.id, playerData);
       return;
     }
@@ -298,9 +301,6 @@ export function initMultiplayer(isHost = false, options = {}) {
       // Send our current tool information to make sure the new player sees it correctly
       sendInitialToolInfo();
     } else {
-      console.log(
-        `New player is on ${playerData.currentPlanet}, we are on ${gameState.currentPlanet}, not adding to view`
-      );
     }
   });
 
@@ -437,7 +437,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle laser activation from other players
   socket.on("playerLaserActivated", (data) => {
-    console.log("Player laser activated:", data.id);
     if (otherPlayers[data.id]) {
       const playerElement = otherPlayers[data.id].element;
 
@@ -496,7 +495,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle laser updates (angle) from other players
   socket.on("playerLaserUpdate", (data) => {
-    console.log("Laser update for player:", data.id, "angle:", data.angle);
     if (otherPlayers[data.id]) {
       // Update the laser angle even if not active yet (could be activated right after)
       if (!otherPlayers[data.id].laser) {
@@ -518,7 +516,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   socket.on("playerJetpackActivated", (data) => {
-    console.log("here");
     if (otherPlayers[data.id]) {
       const playerElement = otherPlayers[data.id].element;
 
@@ -560,7 +557,6 @@ export function initMultiplayer(isHost = false, options = {}) {
 
   // Handle rocket purchase events
   socket.on("rocketPurchased", (data) => {
-    console.log("Someone purchased a rocket!");
 
     // Update game state to show rocket for everyone
     gameState.hasRocket = true;
@@ -606,9 +602,6 @@ export function initMultiplayer(isHost = false, options = {}) {
     if (data.playerId !== gameState.playerId) {
       // If we can see this player, remove them from our view
       if (otherPlayers[data.playerId]) {
-        console.log(
-          `Player ${data.playerId} moved to ${data.planet}, removing from view`
-        );
         removeOtherPlayer(data.playerId);
 
         // Update player count after removal
@@ -741,9 +734,6 @@ export function initMultiplayer(isHost = false, options = {}) {
     } else {
       // If another player launched their rocket, remove them from our view
       if (otherPlayers[data.playerId]) {
-        console.log(
-          `Player ${data.playerId} launched to ${data.targetPlanet}, removing from view`
-        );
         removeOtherPlayer(data.playerId);
 
         // Update player count after removal
@@ -760,7 +750,6 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 
   socket.on("playersOnPlanet", (data) => {
-    console.log("Received players on current planet:", data);
 
     // Add each player that isn't already visible
     for (const id in data.players) {
@@ -780,11 +769,6 @@ export function initMultiplayer(isHost = false, options = {}) {
       return;
     }
 
-    console.log(
-      `Received world data response with ${
-        Object.keys(data.worldBlocks).length
-      } rows`
-    );
 
     // Only process if we actually got world blocks
     if (data.worldBlocks && Object.keys(data.worldBlocks).length > 0) {
@@ -806,9 +790,6 @@ export function initMultiplayer(isHost = false, options = {}) {
           }
         }
 
-        console.log(
-          `Reconstructing world with dimensions up to [${maxX}, ${maxY}]`
-        );
 
         // Initialize the entire blockMap with proper dimensions first
         for (let y = 0; y <= maxY; y++) {
@@ -847,7 +828,8 @@ export function initMultiplayer(isHost = false, options = {}) {
         }
 
         // Update rocket information if available
-        if (data.hasRocket) {
+        // Always check for rocket information in the response
+        if (data.hasRocket === true) {
           gameState.hasRocket = true;
           gameState.rocketPlaced = true;
 
@@ -857,14 +839,13 @@ export function initMultiplayer(isHost = false, options = {}) {
             gameState.rocketX = data.rocketPosition.x / gameState.blockSize;
             gameState.rocketY = data.rocketPosition.y / gameState.blockSize;
 
-            // Initialize the rocket element if needed
+            // Initialize the rocket element
             if (typeof initializeRocket === "function") {
               initializeRocket();
             }
           }
         }
 
-        console.log("World synchronized from explicit request");
 
         // After everything is set up, update visible blocks
         updateVisibleBlocks();
@@ -924,9 +905,7 @@ export function initMultiplayer(isHost = false, options = {}) {
 export function uploadWorldToServer() {
   // Only upload if we're connected, the socket exists, AND we have received a game code
   if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
-    console.log(
-      `Preparing to upload world data to server for game ${currentGameCode}...`
-    );
+    
 
     // Ensure blockMap exists and has data
     if (!gameState.blockMap || gameState.blockMap.length === 0) {
@@ -971,15 +950,8 @@ export function uploadWorldToServer() {
       // Check if we have data to send
       if (blockCount === 0 || Object.keys(worldData).length === 0) {
         console.error("Error: No blocks found in world data");
-        console.log("World dimensions:", gameState.blockMap.length, "rows");
         return;
       }
-
-      console.log(
-        `Uploading world data with ${blockCount} blocks across ${
-          Object.keys(worldData).length
-        } rows...`
-      );
 
       // ===== CHUNKED UPLOAD IMPLEMENTATION =====
       // First notify the server that we're starting a chunked upload
@@ -987,6 +959,15 @@ export function uploadWorldToServer() {
         totalRows: Object.keys(worldData).length,
         blockCount: blockCount,
         planetType: gameState.currentPlanet,
+        // Only include rocket data if it actually exists
+        hasRocket: gameState.hasRocket === true,
+        rocketPosition:
+          gameState.hasRocket === true && gameState.rocket
+            ? {
+                x: gameState.rocket.x,
+                y: gameState.rocket.y,
+              }
+            : null,
       });
 
       // Split the world data into chunks for easier transmission
@@ -996,10 +977,6 @@ export function uploadWorldToServer() {
       );
       const totalChunks = Math.ceil(worldRows.length / CHUNK_SIZE);
 
-      console.log(
-        `Splitting world upload into ${totalChunks} chunks of max ${CHUNK_SIZE} rows each`
-      );
-
       // Function to send a chunk and get acknowledgment
       const sendChunk = (chunkIndex) => {
         if (chunkIndex >= totalChunks) {
@@ -1008,7 +985,6 @@ export function uploadWorldToServer() {
             totalSent: worldRows.length,
             blockCount: blockCount,
           });
-          console.log("World upload complete - all chunks sent");
           return;
         }
 
@@ -1033,12 +1009,6 @@ export function uploadWorldToServer() {
           rowCount: rowsInThisChunk.length,
         });
 
-        console.log(
-          `Sent chunk ${chunkIndex + 1}/${totalChunks} with ${
-            rowsInThisChunk.length
-          } rows`
-        );
-
         // Send next chunk immediately without waiting
         sendChunk(chunkIndex + 1);
       };
@@ -1046,8 +1016,6 @@ export function uploadWorldToServer() {
       // Start sending chunks immediately
       sendChunk(0);
 
-      console.log("World data upload initiated for game", currentGameCode);
-      
       // Only set the flag to false after we've started the process
       // This allows retry mechanisms to work if needed
       gameState.needToUploadWorld = false;
@@ -1409,9 +1377,6 @@ function addOtherPlayer(id, playerData) {
   const gameWorld = document.getElementById("game-world");
   if (gameWorld) {
     gameWorld.appendChild(newPlayerElement);
-    console.log(
-      `Added other player ${id} at position (${adjustedX}, ${adjustedY})`
-    );
 
     // Check for tool information in a consistent way
     // This is the key part that needs fixing - properly check all possible tool properties
@@ -1528,7 +1493,6 @@ function updateOtherPlayerTool(id, toolId) {
           }
         }
 
-        console.log(`Updated player ${id} tool to ${toolType} (${toolSrc})`);
       })
       .catch((error) => {
         console.error(`Failed to load tool SVG for player ${id}:`, error);
@@ -1576,10 +1540,6 @@ function applyMiningAnimation(playerId) {
       tool = "laser";
     }
   }
-
-  console.log(
-    `Applying mining animation for player ${playerId} with tool: ${tool}`
-  );
 
   // Apply the appropriate animation class to the SVG element (not the container)
   if (tool === "drill" || tool.includes("drill")) {
@@ -1818,7 +1778,6 @@ function triggerRocketLaunchAnimation(targetPlanet) {
  */
 export function requestPlayersOnCurrentPlanet() {
   if (isConnected && socket) {
-    console.log(`Requesting players on planet: ${gameState.currentPlanet}`);
 
     // Only request players if we have a valid game code
     if (currentGameCode) {
@@ -1831,9 +1790,6 @@ export function requestPlayersOnCurrentPlanet() {
       setTimeout(() => {
         // Only retry if we're still connected and have a valid game code
         if (isConnected && socket && currentGameCode) {
-          console.log(
-            `Retry: requesting players on planet: ${gameState.currentPlanet}`
-          );
           socket.emit("getPlayersOnPlanet", {
             planet: gameState.currentPlanet,
           });
@@ -1913,7 +1869,6 @@ export function sendToolRotationUpdate() {
 
 // Handle player visibility refreshes more gracefully
 export function refreshPlayerVisibility() {
-  console.log("Refreshing player visibility...");
 
   // First check if we have a valid game code
   if (!currentGameCode) {
@@ -1930,12 +1885,10 @@ export function refreshPlayerVisibility() {
   // Send additional updates with short delays for reliability
   setTimeout(() => {
     sendPlayerUpdate();
-    console.log("Sending additional player update (1)");
   }, 500);
 
   setTimeout(() => {
     sendPlayerUpdate();
-    console.log("Sending additional player update (2)");
   }, 1500);
 
   // Log current state
@@ -1965,7 +1918,6 @@ export function sendInitialToolInfo() {
  */
 export function requestWorldData() {
   if (isConnected && socket && currentGameCode) {
-    console.log("Explicitly requesting world data...");
     socket.emit("requestWorldData", {
       planet: gameState.currentPlanet,
     });
@@ -1973,7 +1925,6 @@ export function requestWorldData() {
     // Try again after a short delay in case the first request fails
     setTimeout(() => {
       if (isConnected && socket && currentGameCode) {
-        console.log("Second attempt at requesting world data...");
         socket.emit("requestWorldData", {
           planet: gameState.currentPlanet,
         });
