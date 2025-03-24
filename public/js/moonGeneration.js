@@ -35,9 +35,6 @@ export function generateMoonWorld() {
 
   // Initialize background for moon
   setupMoonBackground();
-  
-  // Update the current planet
-  gameState.currentPlanet = "moon";
 
   // Save the Earth block map if we're coming from Earth
   if (
@@ -52,53 +49,53 @@ export function generateMoonWorld() {
   // Check if the moon world is already generated
   if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
     console.log("Using existing moon map");
-    
+
     // Use deep copy to avoid reference issues
     gameState.blockMap = JSON.parse(JSON.stringify(gameState.moonBlockMap));
-    
+
     // Update visible blocks for the player's current position
     updateVisibleBlocks();
-    
+
     // Position the rocket on the moon
     const moonSkyRows = gameState.skyRows;
     placeMoonRocket(moonSkyRows);
-    
+
     // If we're the host, upload the existing Moon world
     if (gameState.isHost) {
       console.log("Host uploading existing Moon map to server");
-      
+
       // Save moon upload state explicitly - this is key to ensuring moon uploads work
       const needToUploadMoon = true;
-      
-      // Call uploadWorldToServer which will detect we're on the moon
+
+      // Call uploadWorldToServer specifying "moon" as the planet to upload
       gameState.needToUploadWorld = true;
-      uploadWorldToServer();
-      
+      uploadWorldToServer("moon");
+
       // Add multiple retries with increasing timeouts for reliability
       // The first retry happens quickly in case of network hiccups
       setTimeout(() => {
         if (needToUploadMoon) {
           console.log("First retry for Moon world upload...");
           gameState.needToUploadWorld = true;
-          uploadWorldToServer();
+          uploadWorldToServer("moon");
         }
       }, 2000);
-      
+
       // Second retry with longer delay
       setTimeout(() => {
         if (needToUploadMoon) {
           console.log("Second retry for Moon world upload...");
           gameState.needToUploadWorld = true;
-          uploadWorldToServer();
+          uploadWorldToServer("moon");
         }
       }, 5000);
     }
-    
+
     return;
   }
 
   console.log("Generating new moon world");
-  
+
   // Reset the ore cache to ensure we're using fresh data
   cachedOres = null;
 
@@ -141,34 +138,34 @@ export function generateMoonWorld() {
   gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
 
   updateVisibleBlocks();
-  
+
   // If we're the host, upload the newly generated Moon world to the server
   if (gameState.isHost) {
     console.log("Host is uploading newly generated Moon world to server");
-    
+
     // Force the upload flag to true
     gameState.needToUploadWorld = true;
-    uploadWorldToServer();
-    
+    uploadWorldToServer("moon");
+
     // Add multiple retries with increasing delays to ensure world is uploaded
     // These separate upload attempts increase reliability
     setTimeout(() => {
       console.log("First retry for newly generated Moon world upload...");
       gameState.needToUploadWorld = true;
-      uploadWorldToServer();
+      uploadWorldToServer("moon");
     }, 2000);
-    
+
     setTimeout(() => {
       console.log("Second retry for newly generated Moon world upload...");
       gameState.needToUploadWorld = true;
-      uploadWorldToServer();
+      uploadWorldToServer("moon");
     }, 5000);
-    
+
     // Final attempt with even longer delay
     setTimeout(() => {
       console.log("Final attempt for Moon world upload...");
       gameState.needToUploadWorld = true;
-      uploadWorldToServer();
+      uploadWorldToServer("moon");
     }, 8000);
   }
 }
@@ -206,14 +203,23 @@ function addMoonOreVeins() {
   // Process each ore type
   gameState.ores.forEach((ore) => {
     // Skip basic terrain blocks
-    if (ore.name.toLowerCase() === "dirt" || ore.name.toLowerCase() === "stone" || ore.name.toLowerCase() === "grass") {
+    if (
+      ore.name.toLowerCase() === "dirt" ||
+      ore.name.toLowerCase() === "stone" ||
+      ore.name.toLowerCase() === "grass"
+    ) {
       return;
     }
 
     // Skip Earth-only ores and ores that aren't moon-specific
     // Only allow moon-only ores or specially selected ores for the moon
-    if (ore.earthOnly || (!ore.moonOnly && 
-        !["diamond", "titanium", "lunarite", "silicon", "magnesium"].includes(ore.name.toLowerCase()))) {
+    if (
+      ore.earthOnly ||
+      (!ore.moonOnly &&
+        !["diamond", "titanium", "lunarite", "silicon", "magnesium"].includes(
+          ore.name.toLowerCase()
+        ))
+    ) {
       return;
     }
 
@@ -409,10 +415,10 @@ function shuffleArray(array) {
 function placeMoonRocket(moonSkyRows) {
   // Position the rocket on a flat part of the moon's surface
   const startX = Math.floor(gameState.worldWidth / 2);
-  
+
   // Find the flattest area within a reasonable range
   const flatSpotX = findFlatSpotOnSurface(startX, moonSkyRows);
-  
+
   // Find the lunar surface at the flat spot
   let surfaceY = moonSkyRows;
   while (
@@ -424,49 +430,54 @@ function placeMoonRocket(moonSkyRows) {
 
   // Make sure the rocket object exists
   if (!gameState.rocket) {
-    gameState.rocket = { 
-      width: 64,  // Default width
-      height: 128 // Default height
+    gameState.rocket = {
+      width: 64, // Default width
+      height: 128, // Default height
     };
   }
 
   // Set both block and pixel coordinates
   gameState.rocketX = flatSpotX;
   gameState.rocketY = surfaceY - 5;
-  
+
   // Convert block coordinates to pixel coordinates for rendering
   gameState.rocket.x = flatSpotX * gameState.blockSize;
   gameState.rocket.y = (surfaceY - 5) * gameState.blockSize;
-  
+
   // Make sure rocket is enabled and placed
   gameState.hasRocket = true;
   gameState.rocketPlaced = true;
-  
-  console.log("Rocket placed on Moon at pixels:", 
-      gameState.rocket.x, gameState.rocket.y, 
-      "blocks:", gameState.rocketX, gameState.rocketY);
+
+  console.log(
+    "Rocket placed on Moon at pixels:",
+    gameState.rocket.x,
+    gameState.rocket.y,
+    "blocks:",
+    gameState.rocketX,
+    gameState.rocketY
+  );
 }
 
 // Helper function to find a flat spot on the surface
 function findFlatSpotOnSurface(startX, skyRows) {
   const minFlatLength = 6; // Number of flat blocks needed for rocket
-  
+
   let bestFlatSpotX = startX;
   let bestFlatLength = 0;
-  
+
   // Search in both directions from the center
   for (let direction of [1, -1]) {
     let x = startX;
     let consecutiveFlat = 0;
     let prevSurfaceY = -1;
-    
+
     // Search up to half the world width
     for (let step = 0; step < gameState.worldWidth / 4; step++) {
       x += direction;
-      
+
       // Stay within bounds
       if (x < 2 || x >= gameState.worldWidth - 2) break;
-      
+
       // Find surface Y at this position
       let surfaceY = skyRows;
       while (
@@ -475,7 +486,7 @@ function findFlatSpotOnSurface(startX, skyRows) {
       ) {
         surfaceY++;
       }
-      
+
       // Check if we're on a flat surface
       if (prevSurfaceY === -1) {
         // First block
@@ -489,13 +500,13 @@ function findFlatSpotOnSurface(startX, skyRows) {
         consecutiveFlat = 1;
         prevSurfaceY = surfaceY;
       }
-      
+
       // If this is the best flat area so far, remember it
       if (consecutiveFlat > bestFlatLength) {
         bestFlatLength = consecutiveFlat;
         // Place rocket in middle of flat area
-        bestFlatSpotX = x - (direction * Math.floor(consecutiveFlat / 2));
-        
+        bestFlatSpotX = x - direction * Math.floor(consecutiveFlat / 2);
+
         // If good enough, stop searching
         if (bestFlatLength >= minFlatLength) {
           return bestFlatSpotX;
@@ -503,10 +514,9 @@ function findFlatSpotOnSurface(startX, skyRows) {
       }
     }
   }
-  
-  return bestFlatSpotX;
-}  
 
+  return bestFlatSpotX;
+}
 
 // Setup moon background with CSS stars
 function setupMoonBackground() {
@@ -560,27 +570,27 @@ function addCSSStarsToBackground() {
 
   // Create stars with a documentFragment for better performance
   const fragment = document.createDocumentFragment();
-  
+
   for (let i = 0; i < starCount; i++) {
     const star = document.createElement("div");
-    
+
     // Assign different classes for variety with less code
     const starType = Math.floor(Math.random() * 3) + 1;
     star.className = `star type-${starType}`;
-    
+
     // Random position
     const x = Math.random() * 100;
     const y = Math.random() * 100;
-    
+
     star.style.left = `${x}%`;
     star.style.top = `${y}%`;
-    
+
     // Add some animation delay variation
     star.style.animationDelay = `${Math.random() * 5}s`;
-    
+
     fragment.appendChild(star);
   }
-  
+
   starsContainer.appendChild(fragment);
   document.getElementById("game-world").appendChild(starsContainer);
 
@@ -588,23 +598,23 @@ function addCSSStarsToBackground() {
   const brightStars = document.createElement("div");
   brightStars.id = "bright-stars";
   brightStars.style.height = `${gameState.skyRows * gameState.blockSize}px`;
-  
+
   // Add 5 brighter stars
   for (let i = 0; i < 5; i++) {
     const brightStar = document.createElement("div");
     brightStar.className = "bright-star";
-    
+
     // Random position for bright stars
     brightStar.style.left = `${Math.random() * 100}%`;
     brightStar.style.top = `${Math.random() * 100}%`;
-    
+
     // Subtle pulse animation
     brightStar.style.animation = "twinkle-2 4s infinite";
     brightStar.style.animationDelay = `${Math.random() * 5}s`;
-    
+
     brightStars.appendChild(brightStar);
   }
-  
+
   document.getElementById("game-world").appendChild(brightStars);
 }
 

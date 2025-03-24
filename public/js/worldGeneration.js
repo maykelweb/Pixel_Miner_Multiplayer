@@ -74,57 +74,35 @@ export function generateWorld() {
     // If we're the host, upload the world
     if (gameState.needToUploadWorld) {
       console.log("Host uploading existing Earth blockMap to server");
-      uploadWorldToServer();
+      uploadWorldToServer("earth");
 
       // Add a retry mechanism for existing world upload
       setTimeout(() => {
         if (gameState.needToUploadWorld) {
           console.log("Retrying existing Earth world data upload...");
-          uploadWorldToServer();
+          uploadWorldToServer("earth");
         }
       }, 3000);
 
       // Also upload Moon world if it exists
       if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
-        // Temporarily save current context
-        const currentPlanet = gameState.currentPlanet;
-        const currentBlockMap = gameState.blockMap;
-
-        // Switch to Moon context
-        gameState.currentPlanet = "moon";
-        gameState.blockMap = gameState.moonBlockMap;
-
-        // Upload Moon data - ensure flag is explicitly set
+        // Upload Moon data directly without changing the current planet
         console.log("Host is also uploading existing Moon world to server");
         gameState.needToUploadWorld = true;
-        uploadWorldToServer();
+        uploadWorldToServer("moon");
 
         // Add multiple retry attempts for Moon upload with increasing delays
         setTimeout(() => {
-          if (gameState.currentPlanet !== "moon") {
-            // Must restore Moon context first if it changed
-            gameState.currentPlanet = "moon";
-            gameState.blockMap = gameState.moonBlockMap;
-          }
           console.log("First retry for existing Moon world upload...");
           gameState.needToUploadWorld = true;
-          uploadWorldToServer();
+          uploadWorldToServer("moon");
         }, 2000);
 
         setTimeout(() => {
-          if (gameState.currentPlanet !== "moon") {
-            // Must restore Moon context first if it changed
-            gameState.currentPlanet = "moon";
-            gameState.blockMap = gameState.moonBlockMap;
-          }
           console.log("Second retry for existing Moon world upload...");
           gameState.needToUploadWorld = true;
-          uploadWorldToServer();
+          uploadWorldToServer("moon");
         }, 5000);
-
-        // Restore original context after setting up retries
-        gameState.currentPlanet = currentPlanet;
-        gameState.blockMap = currentBlockMap;
       }
     }
     return;
@@ -144,57 +122,35 @@ export function generateWorld() {
     // If we're the host, upload the world after restoration
     if (gameState.needToUploadWorld) {
       console.log("Host is uploading restored Earth map to server");
-      uploadWorldToServer();
+      uploadWorldToServer("earth");
 
       // Add a retry mechanism to ensure world is uploaded
       setTimeout(() => {
         if (gameState.needToUploadWorld) {
           console.log("Retrying Earth world data upload...");
-          uploadWorldToServer();
+          uploadWorldToServer("earth");
         }
       }, 3000);
 
       // Also upload Moon world if it exists
       if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
-        // Temporarily save current context
-        const currentPlanet = gameState.currentPlanet;
-        const currentBlockMap = gameState.blockMap;
-
-        // Switch to Moon context
-        gameState.currentPlanet = "moon";
-        gameState.blockMap = gameState.moonBlockMap;
-
-        // Upload Moon data - ensure flag is explicitly set
+        // Upload Moon data directly without changing the current planet
         console.log("Host is also uploading saved Moon world to server");
         gameState.needToUploadWorld = true;
-        uploadWorldToServer();
+        uploadWorldToServer("moon");
 
         // Add multiple retry attempts for Moon upload with increasing delays
         setTimeout(() => {
-          if (gameState.currentPlanet !== "moon") {
-            // Must restore Moon context first if it changed
-            gameState.currentPlanet = "moon";
-            gameState.blockMap = gameState.moonBlockMap;
-          }
           console.log("First retry for saved Moon world upload...");
           gameState.needToUploadWorld = true;
-          uploadWorldToServer();
+          uploadWorldToServer("moon");
         }, 2000);
 
         setTimeout(() => {
-          if (gameState.currentPlanet !== "moon") {
-            // Must restore Moon context first if it changed
-            gameState.currentPlanet = "moon";
-            gameState.blockMap = gameState.moonBlockMap;
-          }
           console.log("Second retry for saved Moon world upload...");
           gameState.needToUploadWorld = true;
-          uploadWorldToServer();
+          uploadWorldToServer("moon");
         }, 5000);
-
-        // Restore original context after setting up retries
-        gameState.currentPlanet = currentPlanet;
-        gameState.blockMap = currentBlockMap;
       }
     }
     return;
@@ -248,13 +204,13 @@ export function generateWorld() {
   // If we're the host, upload the newly generated world to the server
   if (gameState.needToUploadWorld) {
     console.log("Host is uploading newly generated Earth world to server");
-    uploadWorldToServer();
+    uploadWorldToServer("earth");
 
     // Add a retry mechanism to ensure world is uploaded
     setTimeout(() => {
       if (gameState.needToUploadWorld) {
         console.log("Retrying Earth world data upload...");
-        uploadWorldToServer();
+        uploadWorldToServer("earth");
       }
     }, 3000);
   }
@@ -293,6 +249,7 @@ export function transitionToEarth() {
     }
   }, 500);
 }
+
 
 // Function to remove Moon-specific background elements when returning to Earth
 function removeSpaceBackgroundElements() {

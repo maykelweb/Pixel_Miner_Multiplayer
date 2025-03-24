@@ -1035,21 +1035,45 @@ export function initMultiplayer(isHost = false, options = {}) {
   });
 }
 
-export function uploadWorldToServer() {
+/**
+ * Upload a world's blockMap to the server
+ * @param {string} [planetToUpload] - Optional planet to upload ('earth' or 'moon'). Defaults to current planet if not specified.
+ */
+export function uploadWorldToServer(planetToUpload) {
+  // Determine which planet to upload
+  const targetPlanet = planetToUpload || gameState.currentPlanet;
+  
   // Only upload if we're connected, the socket exists, AND we have received a game code
   if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
-    // Ensure blockMap exists and has data
-    if (!gameState.blockMap || gameState.blockMap.length === 0) {
+    // Determine which blockMap to use based on the target planet
+    let blockMapToUpload;
+    
+    if (targetPlanet === gameState.currentPlanet) {
+      // If uploading current planet, use the active blockMap
+      blockMapToUpload = gameState.blockMap;
+    } else if (targetPlanet === "earth" && gameState.earthBlockMap) {
+      // If uploading Earth and we have a stored Earth map
+      blockMapToUpload = gameState.earthBlockMap;
+    } else if (targetPlanet === "moon" && gameState.moonBlockMap) {
+      // If uploading Moon and we have a stored Moon map
+      blockMapToUpload = gameState.moonBlockMap;
+    } else {
       console.error(
-        `Error: blockMap for ${gameState.currentPlanet} is empty or null, cannot upload world`
+        `Error: No blockMap available for ${targetPlanet}, cannot upload world`
+      );
+      return; // Don't proceed with upload
+    }
+
+    // Ensure the chosen blockMap exists and has data
+    if (!blockMapToUpload || blockMapToUpload.length === 0) {
+      console.error(
+        `Error: blockMap for ${targetPlanet} is empty or null, cannot upload world`
       );
       return; // Don't proceed with upload
     }
 
     // Log which planet's data we're uploading
-    console.log(
-      `Starting upload process for ${gameState.currentPlanet} world data`
-    );
+    console.log(`Starting upload process for ${targetPlanet} world data`);
 
     try {
       // Create a simplified world representation
@@ -1057,23 +1081,23 @@ export function uploadWorldToServer() {
       let blockCount = 0;
 
       // Process the entire world data
-      for (let y = 0; y < gameState.blockMap.length; y++) {
-        if (!gameState.blockMap[y]) continue;
+      for (let y = 0; y < blockMapToUpload.length; y++) {
+        if (!blockMapToUpload[y]) continue;
 
         let rowData = {};
         let hasDataInRow = false;
 
-        for (let x = 0; x < gameState.blockMap[y].length; x++) {
-          if (gameState.blockMap[y][x]) {
+        for (let x = 0; x < blockMapToUpload[y].length; x++) {
+          if (blockMapToUpload[y][x]) {
             // Simplify ore objects
-            if (typeof gameState.blockMap[y][x] === "object") {
+            if (typeof blockMapToUpload[y][x] === "object") {
               rowData[x] = {
-                name: gameState.blockMap[y][x].name || "unknown",
-                color: gameState.blockMap[y][x].color || "#000000",
-                value: gameState.blockMap[y][x].value || 0,
+                name: blockMapToUpload[y][x].name || "unknown",
+                color: blockMapToUpload[y][x].color || "#000000",
+                value: blockMapToUpload[y][x].value || 0,
               };
             } else {
-              rowData[x] = gameState.blockMap[y][x];
+              rowData[x] = blockMapToUpload[y][x];
             }
             hasDataInRow = true;
             blockCount++;
@@ -1092,23 +1116,26 @@ export function uploadWorldToServer() {
       }
 
       console.log(
-        `Starting ${gameState.currentPlanet} world upload with ${blockCount} blocks`
+        `Starting ${targetPlanet} world upload with ${blockCount} blocks`
       );
+
+      // Determine rocket position for the target planet
+      let rocketPosition = null;
+      if (gameState.hasRocket === true && gameState.rocket) {
+        rocketPosition = {
+          x: gameState.rocket.x,
+          y: gameState.rocket.y,
+        };
+      }
 
       // First notify the server that we're starting a chunked upload
       socket.emit("startWorldUpload", {
         totalRows: Object.keys(worldData).length,
         blockCount: blockCount,
-        planetType: gameState.currentPlanet,
+        planetType: targetPlanet, // Use the target planet type, not current planet
         // Only include rocket data if it actually exists
         hasRocket: gameState.hasRocket === true,
-        rocketPosition:
-          gameState.hasRocket === true && gameState.rocket
-            ? {
-                x: gameState.rocket.x,
-                y: gameState.rocket.y,
-              }
-            : null,
+        rocketPosition: rocketPosition,
       });
 
       // Split the world data into chunks for easier transmission
@@ -1122,14 +1149,13 @@ export function uploadWorldToServer() {
       const sendChunk = (chunkIndex) => {
         if (chunkIndex >= totalChunks) {
           // All chunks sent, send completion event
-          const planetType = gameState.currentPlanet;
           console.log(
-            `Finishing ${planetType} world upload, all ${totalChunks} chunks sent`
+            `Finishing ${targetPlanet} world upload, all ${totalChunks} chunks sent`
           );
           socket.emit("finishWorldUpload", {
             totalSent: worldRows.length,
             blockCount: blockCount,
-            planetType: planetType,
+            planetType: targetPlanet, // Use the target planet type, not current planet
           });
           return;
         }
@@ -1164,21 +1190,20 @@ export function uploadWorldToServer() {
 
       // Log which planet's data upload has started
       console.log(
-        `Started chunk upload for ${gameState.currentPlanet} world data (${totalChunks} chunks)`
+        `Started chunk upload for ${targetPlanet} world data (${totalChunks} chunks)`
       );
 
       // Only set the flag to false after we've started the process
       // This allows retry mechanisms to work if needed
       // IMPORTANT: We need to preserve the flag for any scheduled retries, especially for Moon
-      const planetUploading = gameState.currentPlanet;
-      const shouldPreserveFlag = planetUploading === "moon";
+      const shouldPreserveFlag = targetPlanet === "moon";
 
       if (!shouldPreserveFlag) {
         gameState.needToUploadWorld = false;
-        console.log(`Cleared upload flag for ${planetUploading}`);
+        console.log(`Cleared upload flag for ${targetPlanet}`);
       } else {
         console.log(
-          `Preserving upload flag for ${planetUploading} to ensure retries work`
+          `Preserving upload flag for ${targetPlanet} to ensure retries work`
         );
       }
     } catch (error) {
