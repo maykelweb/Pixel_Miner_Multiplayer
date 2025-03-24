@@ -236,7 +236,7 @@ io.on("connection", (socket) => {
 
   socket.on("requestWorldData", (data) => {
     const gameCode = playerGameMap[socket.id];
-
+  
     if (!gameCode) {
       console.log(
         `Player ${socket.id} requested world data but is not in a game yet`
@@ -247,7 +247,7 @@ io.on("connection", (socket) => {
       });
       return;
     }
-
+  
     if (!games[gameCode]) {
       console.log(
         `Player ${socket.id} requested world data but game ${gameCode} doesn't exist`
@@ -258,19 +258,40 @@ io.on("connection", (socket) => {
       });
       return;
     }
-
+  
     // Determine which planet's data to check
     const requestedPlanet = data.planet || "earth";
     const worldGeneratedForPlanet =
       requestedPlanet === "earth"
         ? games[gameCode].worldGeneratedEarth
         : games[gameCode].worldGeneratedMoon;
-
+  
     // Check if world data exists for the requested planet
     if (!worldGeneratedForPlanet) {
       console.log(
         `Player ${socket.id} requested ${requestedPlanet} data but it's not generated in game ${gameCode} yet`
       );
+      
+      // Add this player to the pending requests list so they get data once it's uploaded
+      if (!games[gameCode].pendingWorldDataRequests) {
+        games[gameCode].pendingWorldDataRequests = [];
+      }
+      
+      // Check if they're already in the list to avoid duplicates
+      const alreadyInPending = games[gameCode].pendingWorldDataRequests.some(req => 
+        (typeof req === 'string' && req === socket.id) || 
+        (req.id === socket.id && req.planet === requestedPlanet)
+      );
+      
+      if (!alreadyInPending) {
+        console.log(`Adding player ${socket.id} to pending requests for ${requestedPlanet}`);
+        games[gameCode].pendingWorldDataRequests.push({
+          id: socket.id,
+          planet: requestedPlanet
+        });
+      }
+      
+      // Always respond with the error so the client can handle appropriately
       socket.emit("worldDataResponse", {
         success: false,
         message: `${requestedPlanet} world not generated yet`,
@@ -279,18 +300,18 @@ io.on("connection", (socket) => {
       });
       return;
     }
-
+  
     // Get the appropriate world data
     const worldData =
       requestedPlanet === "earth"
         ? games[gameCode].worldBlocksEarth || {}
         : games[gameCode].worldBlocksMoon || {};
-
+  
     const worldSize = Object.keys(worldData).length;
     console.log(
       `Sending requested ${requestedPlanet} world data to player ${socket.id} (${worldSize} rows)`
     );
-
+  
     // Send the world data response with rocket information and planet type
     socket.emit("worldDataResponse", {
       success: true,

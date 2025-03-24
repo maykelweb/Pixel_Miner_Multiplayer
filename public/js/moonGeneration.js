@@ -1,7 +1,7 @@
 // moonGeneration.js
 import { gameState } from "./config.js";
 import { updateVisibleBlocks } from "./updates.js";
-import { uploadWorldToServer } from "./multiplayer.js";
+import { uploadWorldToServer, requestWorldData } from "./multiplayer.js";
 
 // Cache common ore references to avoid repeated lookups
 let cachedOres = null;
@@ -27,6 +27,10 @@ function getOres() {
 
 // Generate a moon environment
 export function generateMoonWorld() {
+  // Set a flag so we know a moon generation is in progress
+  gameState.generatingMoon = true;
+
+  
   // Remove any existing clouds from the Earth world
   const cloudLayer = document.getElementById("cloud-layer");
   if (cloudLayer) {
@@ -35,6 +39,32 @@ export function generateMoonWorld() {
 
   // Initialize background for moon
   setupMoonBackground();
+
+  // ADDED: For non-host players, try to request the moon blockmap from the server first
+  // Skip this if we already tried and failed (to avoid infinite loops)
+  if (!gameState.isHost && !gameState.hasRequestedMoonData) {
+    console.log("Non-host player requesting moon blockmap from server first");
+
+    // Set flag so we don't retry indefinitely
+    gameState.hasRequestedMoonData = true;
+
+    // Request moon data
+    requestWorldData("moon");
+
+    // Add a timeout to proceed with generation if the server doesn't respond
+    setTimeout(() => {
+      if (!gameState.moonBlockMap) {
+        console.log(
+          "No moon data received from server, proceeding with generation"
+        );
+        // Continue with generation
+        generateMoonWorld();
+      }
+    }, 3000); // Wait 3 seconds for server response
+
+    return; // Exit early, will resume after getting response or timeout
+  }
+
 
   // Save the Earth block map if we're coming from Earth
   if (
@@ -64,33 +94,16 @@ export function generateMoonWorld() {
     if (gameState.isHost) {
       console.log("Host uploading existing Moon map to server");
 
-      // Save moon upload state explicitly - this is key to ensuring moon uploads work
-      const needToUploadMoon = true;
-
-      // Call uploadWorldToServer specifying "moon" as the planet to upload
+      // Force upload of moon data regardless of previous uploads
       gameState.needToUploadWorld = true;
       uploadWorldToServer("moon");
 
-      // Add multiple retries with increasing timeouts for reliability
-      // The first retry happens quickly in case of network hiccups
-      setTimeout(() => {
-        if (needToUploadMoon) {
-          console.log("First retry for Moon world upload...");
-          gameState.needToUploadWorld = true;
-          uploadWorldToServer("moon");
-        }
-      }, 2000);
-
-      // Second retry with longer delay
-      setTimeout(() => {
-        if (needToUploadMoon) {
-          console.log("Second retry for Moon world upload...");
-          gameState.needToUploadWorld = true;
-          uploadWorldToServer("moon");
-        }
-      }, 5000);
+      // Always do a few retries to ensure moon data is properly uploaded
+      scheduleRetryUploads("moon");
     }
 
+    // Clear generation flag
+    gameState.generatingMoon = false;
     return;
   }
 
@@ -147,27 +160,51 @@ export function generateMoonWorld() {
     gameState.needToUploadWorld = true;
     uploadWorldToServer("moon");
 
-    // Add multiple retries with increasing delays to ensure world is uploaded
-    // These separate upload attempts increase reliability
-    setTimeout(() => {
-      console.log("First retry for newly generated Moon world upload...");
-      gameState.needToUploadWorld = true;
-      uploadWorldToServer("moon");
-    }, 2000);
-
-    setTimeout(() => {
-      console.log("Second retry for newly generated Moon world upload...");
-      gameState.needToUploadWorld = true;
-      uploadWorldToServer("moon");
-    }, 5000);
-
-    // Final attempt with even longer delay
-    setTimeout(() => {
-      console.log("Final attempt for Moon world upload...");
-      gameState.needToUploadWorld = true;
-      uploadWorldToServer("moon");
-    }, 8000);
+    // Schedule multiple retries
+    scheduleRetryUploads("moon");
   }
+  // ADDED: Allow non-host players to upload if they generated a new moon map
+  else if (!gameState.isHost && gameState.hasRequestedMoonData) {
+    console.log(
+      "Non-host player uploading newly generated Moon world to server"
+    );
+
+    // Force the upload flag to true for non-host upload
+    gameState.needToUploadWorld = true;
+    uploadWorldToServer("moon", true); // Use forceUpload=true parameter
+
+    // Schedule retry uploads for reliability
+    scheduleRetryUploads("moon");
+  }
+
+  // Clear generation flag
+  gameState.generatingMoon = false;
+
+  // Reset the request flag after successful generation
+  gameState.hasRequestedMoonData = false;
+}
+
+// New helper function to schedule multiple upload retries
+function scheduleRetryUploads(planet) {
+  // Make multiple retry attempts to ensure world is uploaded
+  setTimeout(() => {
+    console.log(`First retry for ${planet} world upload...`);
+    gameState.needToUploadWorld = true;
+    uploadWorldToServer(planet);
+  }, 2000);
+
+  setTimeout(() => {
+    console.log(`Second retry for ${planet} world upload...`);
+    gameState.needToUploadWorld = true;
+    uploadWorldToServer(planet);
+  }, 5000);
+
+  // Final attempt with even longer delay
+  setTimeout(() => {
+    console.log(`Final attempt for ${planet} world upload...`);
+    gameState.needToUploadWorld = true;
+    uploadWorldToServer(planet);
+  }, 8000);
 }
 
 // Determine what block should be at a specific position on the moon

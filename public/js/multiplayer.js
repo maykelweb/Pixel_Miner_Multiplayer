@@ -164,6 +164,12 @@ export function initMultiplayer(isHost = false, options = {}) {
     const hasWorldData =
       data.worldBlocks && Object.keys(data.worldBlocks).length > 0;
     const worldDataExpected = data.worldGenerated === true;
+    const currentPlanet = data.currentPlanet || gameState.currentPlanet;
+
+    // IMPROVED: Set current planet if provided in the game state
+    if (data.currentPlanet) {
+      gameState.currentPlanet = data.currentPlanet;
+    }
 
     // Handle rocket data - Always check for rocket information
     if (data.hasRocket === true) {
@@ -238,6 +244,17 @@ export function initMultiplayer(isHost = false, options = {}) {
           }
         }
 
+        // Store in the appropriate planet's blockmap
+        if (currentPlanet === "earth") {
+          gameState.earthBlockMap = JSON.parse(
+            JSON.stringify(gameState.blockMap)
+          );
+        } else if (currentPlanet === "moon") {
+          gameState.moonBlockMap = JSON.parse(
+            JSON.stringify(gameState.blockMap)
+          );
+        }
+
         // NEW: Now that we have world data, make the player visible if it was hidden
         if (gameState.isWaitingForWorldData) {
           const playerElement = document.getElementById("player");
@@ -264,17 +281,41 @@ export function initMultiplayer(isHost = false, options = {}) {
       // After everything is set up, update visible blocks
       updateVisibleBlocks();
     } else if (!isHost && !hasWorldData) {
-      // MODIFIED: Always request world data if we're not the host and no data was received
-      // This handles the case where a player joins before the host uploads the world
+      // IMPROVED: If we're not the host and no data was received, request world data
+      // Make sure we're tracking that we're waiting for data
+      gameState.isWaitingForWorldData = true;
 
+      // Mark player invisible until we get data
+      const playerElement = document.getElementById("player");
+      if (playerElement) {
+        playerElement.style.visibility = "hidden";
+      }
+
+      // Request world data for the current planet
       requestWorldData();
 
       // For better user experience, show a message
       showMessage("Connecting to game world...", 3000);
 
       // Make sure loading screen shows during this process
-      if (gameState.isWaitingForWorldData) {
-        showLoadingScreen("Downloading world data...");
+      showLoadingScreen("Downloading world data...");
+    } else if (isHost && !hasWorldData) {
+      // IMPROVED: If we're the host but don't have data for our planet, generate it
+      if (currentPlanet === "earth") {
+        // Generate Earth world if needed
+        if (!gameState.earthBlockMap || gameState.earthBlockMap.length === 0) {
+          console.log("Host generating Earth world data");
+          generateWorld();
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer("earth");
+        }
+      } else if (currentPlanet === "moon") {
+        // Generate Moon world if needed
+        if (!gameState.moonBlockMap || gameState.moonBlockMap.length === 0) {
+          console.log("Host generating Moon world data");
+          generateMoonWorld();
+          // Note: generateMoonWorld already handles uploading to server
+        }
       }
     }
   });
@@ -829,6 +870,79 @@ export function initMultiplayer(isHost = false, options = {}) {
   socket.on("worldDataResponse", (data) => {
     if (!data.success) {
       console.log("World data request failed:", data.message);
+
+      // Get the planet type from the response, default to current planet
+      const planetType = data.planet || gameState.currentPlanet;
+
+      // Only take action if this is for our current planet (so we don't generate unnecessary worlds)
+      if (planetType === gameState.currentPlanet) {
+        // FIXED: Allow both host and non-host players to generate moon worlds when needed
+        if (
+          (gameState.isHost || planetType === "moon") &&
+          data.message &&
+          data.message.includes("not generated yet")
+        ) {
+          console.log(
+            `${
+              gameState.isHost ? "Host" : "Non-host player"
+            } is generating ${planetType} world that doesn't exist yet on server`
+          );
+
+          if (planetType === "moon") {
+            // Generate moon world and upload to server
+            generateMoonWorld();
+            // Note: generateMoonWorld already handles upload to server
+          } else if (planetType === "earth") {
+            // Generate earth world if needed (rarely needed as Earth is usually generated first)
+            // Only hosts should generate Earth
+            if (gameState.isHost) {
+              generateWorld();
+              // Force upload
+              gameState.needToUploadWorld = true;
+              uploadWorldToServer("earth");
+            }
+          }
+
+          // Show message to user
+          showMessage(`Generating ${planetType} world...`, 3000);
+        } else {
+          // Non-host or other error scenario - retry with increasing delays
+          console.log(
+            `World data for ${planetType} not available yet. Scheduling retry...`
+          );
+
+          // Show appropriate message to user
+          if (data.message && data.message.includes("not generated yet")) {
+            showMessage(
+              `Waiting for ${planetType} world to be generated...`,
+              3000
+            );
+          } else {
+            showMessage(`Connection issue. Retrying...`, 3000);
+          }
+
+          // Schedule retry with increasing delays for better reliability
+          setTimeout(() => {
+            if (isConnected && socket && currentGameCode) {
+              console.log(`Retrying ${planetType} world data request...`);
+              requestWorldData();
+            }
+          }, 3000);
+
+          // Add a second retry with a longer delay
+          setTimeout(() => {
+            if (
+              isConnected &&
+              socket &&
+              currentGameCode &&
+              gameState.isWaitingForWorldData
+            ) {
+              console.log(`Second retry for ${planetType} world data...`);
+              requestWorldData();
+            }
+          }, 7000);
+        }
+      }
       return;
     }
 
@@ -1039,15 +1153,27 @@ export function initMultiplayer(isHost = false, options = {}) {
  * Upload a world's blockMap to the server
  * @param {string} [planetToUpload] - Optional planet to upload ('earth' or 'moon'). Defaults to current planet if not specified.
  */
-export function uploadWorldToServer(planetToUpload) {
+/**
+ * Upload a world's blockMap to the server
+ * @param {string} [planetToUpload] - Optional planet to upload ('earth' or 'moon'). Defaults to current planet if not specified.
+ * @param {boolean} [forceUpload] - If true, forces upload regardless of flags
+ */
+export function uploadWorldToServer(planetToUpload, forceUpload = false) {
   // Determine which planet to upload
   const targetPlanet = planetToUpload || gameState.currentPlanet;
-  
+
   // Only upload if we're connected, the socket exists, AND we have received a game code
-  if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
+  // Also check the forceUpload parameter to allow bypassing the needToUploadWorld check
+  if (
+    (isConnected &&
+      socket &&
+      (gameState.needToUploadWorld || forceUpload) &&
+      currentGameCode) ||
+    forceUpload
+  ) {
     // Determine which blockMap to use based on the target planet
     let blockMapToUpload;
-    
+
     if (targetPlanet === gameState.currentPlanet) {
       // If uploading current planet, use the active blockMap
       blockMapToUpload = gameState.blockMap;
@@ -1069,11 +1195,32 @@ export function uploadWorldToServer(planetToUpload) {
       console.error(
         `Error: blockMap for ${targetPlanet} is empty or null, cannot upload world`
       );
-      return; // Don't proceed with upload
+
+      // For the moon, attempt to generate a new map if needed
+      if (
+        targetPlanet === "moon" &&
+        gameState.isHost &&
+        typeof generateMoonWorld === "function"
+      ) {
+        console.log("Attempting to generate moon world before upload");
+        generateMoonWorld();
+
+        // Schedule an upload attempt for after generation
+        setTimeout(() => {
+          uploadWorldToServer(targetPlanet, true);
+        }, 2000);
+      }
+      return; // Don't proceed with current upload attempt
     }
 
+    // Set a flag to track this upload
+    const uploadStartTime = Date.now();
+    const uploadId = `${targetPlanet}-${uploadStartTime}`;
+
     // Log which planet's data we're uploading
-    console.log(`Starting upload process for ${targetPlanet} world data`);
+    console.log(
+      `Starting upload process for ${targetPlanet} world data (ID: ${uploadId})`
+    );
 
     try {
       // Create a simplified world representation
@@ -1111,12 +1258,24 @@ export function uploadWorldToServer(planetToUpload) {
 
       // Check if we have data to send
       if (blockCount === 0 || Object.keys(worldData).length === 0) {
-        console.error("Error: No blocks found in world data");
+        console.error(
+          `Error: No blocks found in world data for ${targetPlanet}`
+        );
+
+        // For moon, attempt to regenerate
+        if (
+          targetPlanet === "moon" &&
+          gameState.isHost &&
+          typeof generateMoonWorld === "function"
+        ) {
+          console.log("Attempting to regenerate moon world due to empty world");
+          generateMoonWorld();
+        }
         return;
       }
 
       console.log(
-        `Starting ${targetPlanet} world upload with ${blockCount} blocks`
+        `Starting ${targetPlanet} world upload with ${blockCount} blocks (ID: ${uploadId})`
       );
 
       // Determine rocket position for the target planet
@@ -1136,6 +1295,7 @@ export function uploadWorldToServer(planetToUpload) {
         // Only include rocket data if it actually exists
         hasRocket: gameState.hasRocket === true,
         rocketPosition: rocketPosition,
+        uploadId: uploadId, // Include unique ID for tracking this upload
       });
 
       // Split the world data into chunks for easier transmission
@@ -1150,12 +1310,13 @@ export function uploadWorldToServer(planetToUpload) {
         if (chunkIndex >= totalChunks) {
           // All chunks sent, send completion event
           console.log(
-            `Finishing ${targetPlanet} world upload, all ${totalChunks} chunks sent`
+            `Finishing ${targetPlanet} world upload, all ${totalChunks} chunks sent (ID: ${uploadId})`
           );
           socket.emit("finishWorldUpload", {
             totalSent: worldRows.length,
             blockCount: blockCount,
             planetType: targetPlanet, // Use the target planet type, not current planet
+            uploadId: uploadId, // Include the upload ID for tracking
           });
           return;
         }
@@ -1179,6 +1340,7 @@ export function uploadWorldToServer(planetToUpload) {
           totalChunks: totalChunks,
           chunkData: chunkData,
           rowCount: rowsInThisChunk.length,
+          uploadId: uploadId, // Include the upload ID
         });
 
         // Send next chunk immediately without waiting
@@ -1190,15 +1352,39 @@ export function uploadWorldToServer(planetToUpload) {
 
       // Log which planet's data upload has started
       console.log(
-        `Started chunk upload for ${targetPlanet} world data (${totalChunks} chunks)`
+        `Started chunk upload for ${targetPlanet} world data (${totalChunks} chunks, ID: ${uploadId})`
       );
+
+      // Add event listener for world data received confirmation
+      const worldReceivedHandler = (data) => {
+        if (data.planet === targetPlanet) {
+          console.log(
+            `Server confirmed ${targetPlanet} world data received (ID: ${uploadId})`
+          );
+
+          // Clear the need to upload flag only when we get confirmation
+          if (targetPlanet === gameState.currentPlanet) {
+            gameState.needToUploadWorld = false;
+          }
+
+          // Remove this one-time listener
+          socket.off("worldDataReceived", worldReceivedHandler);
+        }
+      };
+
+      // Listen for completion confirmation
+      socket.on("worldDataReceived", worldReceivedHandler);
+
+      // Remove listener after timeout if no response
+      setTimeout(() => {
+        socket.off("worldDataReceived", worldReceivedHandler);
+      }, 20000); // 20 second timeout
 
       // Only set the flag to false after we've started the process
       // This allows retry mechanisms to work if needed
-      // IMPORTANT: We need to preserve the flag for any scheduled retries, especially for Moon
       const shouldPreserveFlag = targetPlanet === "moon";
 
-      if (!shouldPreserveFlag) {
+      if (!shouldPreserveFlag && !forceUpload) {
         gameState.needToUploadWorld = false;
         console.log(`Cleared upload flag for ${targetPlanet}`);
       } else {
@@ -1217,6 +1403,7 @@ export function uploadWorldToServer(planetToUpload) {
       isConnected: isConnected,
       socketExists: !!socket,
       needToUploadWorld: gameState.needToUploadWorld,
+      forceUpload: forceUpload,
       currentGameCode: currentGameCode || "not assigned yet",
     });
   }
@@ -2144,17 +2331,23 @@ export function sendInitialToolInfo() {
  * Request world data from the server
  * This function should be exported from multiplayer.js so that it can be used in worldGeneration.js
  */
-export function requestWorldData() {
+export function requestWorldData(forcedPlanet = null) {
   if (isConnected && socket && currentGameCode) {
+    // Allow forcing a specific planet request, otherwise use current planet
+    const planetToRequest = forcedPlanet || gameState.currentPlanet;
+
+    console.log(`Requesting world data for ${planetToRequest}`);
+
     socket.emit("requestWorldData", {
-      planet: gameState.currentPlanet,
+      planet: planetToRequest,
     });
 
     // Try again after a short delay in case the first request fails
     setTimeout(() => {
       if (isConnected && socket && currentGameCode) {
+        console.log(`First retry for ${planetToRequest} world data...`);
         socket.emit("requestWorldData", {
-          planet: gameState.currentPlanet,
+          planet: planetToRequest,
         });
       }
     }, 2000);
