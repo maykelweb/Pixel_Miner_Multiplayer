@@ -83,23 +83,46 @@ export function generateWorld() {
           uploadWorldToServer();
         }
       }, 3000);
-      
+
       // Also upload Moon world if it exists
       if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
         // Temporarily save current context
         const currentPlanet = gameState.currentPlanet;
         const currentBlockMap = gameState.blockMap;
-        
+
         // Switch to Moon context
         gameState.currentPlanet = "moon";
         gameState.blockMap = gameState.moonBlockMap;
-        
-        // Upload Moon data
+
+        // Upload Moon data - ensure flag is explicitly set
         console.log("Host is also uploading existing Moon world to server");
         gameState.needToUploadWorld = true;
         uploadWorldToServer();
-        
-        // Restore original context
+
+        // Add multiple retry attempts for Moon upload with increasing delays
+        setTimeout(() => {
+          if (gameState.currentPlanet !== "moon") {
+            // Must restore Moon context first if it changed
+            gameState.currentPlanet = "moon";
+            gameState.blockMap = gameState.moonBlockMap;
+          }
+          console.log("First retry for existing Moon world upload...");
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer();
+        }, 2000);
+
+        setTimeout(() => {
+          if (gameState.currentPlanet !== "moon") {
+            // Must restore Moon context first if it changed
+            gameState.currentPlanet = "moon";
+            gameState.blockMap = gameState.moonBlockMap;
+          }
+          console.log("Second retry for existing Moon world upload...");
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer();
+        }, 5000);
+
+        // Restore original context after setting up retries
         gameState.currentPlanet = currentPlanet;
         gameState.blockMap = currentBlockMap;
       }
@@ -130,23 +153,46 @@ export function generateWorld() {
           uploadWorldToServer();
         }
       }, 3000);
-      
+
       // Also upload Moon world if it exists
       if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
         // Temporarily save current context
         const currentPlanet = gameState.currentPlanet;
         const currentBlockMap = gameState.blockMap;
-        
+
         // Switch to Moon context
         gameState.currentPlanet = "moon";
         gameState.blockMap = gameState.moonBlockMap;
-        
-        // Upload Moon data
+
+        // Upload Moon data - ensure flag is explicitly set
         console.log("Host is also uploading saved Moon world to server");
         gameState.needToUploadWorld = true;
         uploadWorldToServer();
-        
-        // Restore original context
+
+        // Add multiple retry attempts for Moon upload with increasing delays
+        setTimeout(() => {
+          if (gameState.currentPlanet !== "moon") {
+            // Must restore Moon context first if it changed
+            gameState.currentPlanet = "moon";
+            gameState.blockMap = gameState.moonBlockMap;
+          }
+          console.log("First retry for saved Moon world upload...");
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer();
+        }, 2000);
+
+        setTimeout(() => {
+          if (gameState.currentPlanet !== "moon") {
+            // Must restore Moon context first if it changed
+            gameState.currentPlanet = "moon";
+            gameState.blockMap = gameState.moonBlockMap;
+          }
+          console.log("Second retry for saved Moon world upload...");
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer();
+        }, 5000);
+
+        // Restore original context after setting up retries
         gameState.currentPlanet = currentPlanet;
         gameState.blockMap = currentBlockMap;
       }
@@ -214,6 +260,7 @@ export function generateWorld() {
   }
 }
 
+// 2. Update the transitionToEarth function to maintain proper world state
 export function transitionToEarth() {
   // Position the rocket on Earth
   placeEarthRocket();

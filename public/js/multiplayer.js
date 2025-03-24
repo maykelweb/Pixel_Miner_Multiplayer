@@ -1040,9 +1040,16 @@ export function uploadWorldToServer() {
   if (isConnected && socket && gameState.needToUploadWorld && currentGameCode) {
     // Ensure blockMap exists and has data
     if (!gameState.blockMap || gameState.blockMap.length === 0) {
-      console.error("Error: blockMap is empty or null, cannot upload world");
+      console.error(
+        `Error: blockMap for ${gameState.currentPlanet} is empty or null, cannot upload world`
+      );
       return; // Don't proceed with upload
     }
+
+    // Log which planet's data we're uploading
+    console.log(
+      `Starting upload process for ${gameState.currentPlanet} world data`
+    );
 
     try {
       // Create a simplified world representation
@@ -1115,10 +1122,14 @@ export function uploadWorldToServer() {
       const sendChunk = (chunkIndex) => {
         if (chunkIndex >= totalChunks) {
           // All chunks sent, send completion event
+          const planetType = gameState.currentPlanet;
+          console.log(
+            `Finishing ${planetType} world upload, all ${totalChunks} chunks sent`
+          );
           socket.emit("finishWorldUpload", {
             totalSent: worldRows.length,
             blockCount: blockCount,
-            planetType: gameState.currentPlanet,
+            planetType: planetType,
           });
           return;
         }
@@ -1151,9 +1162,25 @@ export function uploadWorldToServer() {
       // Start sending chunks immediately
       sendChunk(0);
 
+      // Log which planet's data upload has started
+      console.log(
+        `Started chunk upload for ${gameState.currentPlanet} world data (${totalChunks} chunks)`
+      );
+
       // Only set the flag to false after we've started the process
       // This allows retry mechanisms to work if needed
-      gameState.needToUploadWorld = false;
+      // IMPORTANT: We need to preserve the flag for any scheduled retries, especially for Moon
+      const planetUploading = gameState.currentPlanet;
+      const shouldPreserveFlag = planetUploading === "moon";
+
+      if (!shouldPreserveFlag) {
+        gameState.needToUploadWorld = false;
+        console.log(`Cleared upload flag for ${planetUploading}`);
+      } else {
+        console.log(
+          `Preserving upload flag for ${planetUploading} to ensure retries work`
+        );
+      }
     } catch (error) {
       console.error("Error in uploadWorldToServer:", error);
 

@@ -64,18 +64,34 @@ export function generateMoonWorld() {
     placeMoonRocket(moonSkyRows);
     
     // If we're the host, upload the existing Moon world
-    if (gameState.isHost || gameState.needToUploadWorld) {
+    if (gameState.isHost) {
       console.log("Host uploading existing Moon map to server");
+      
+      // Save moon upload state explicitly - this is key to ensuring moon uploads work
+      const needToUploadMoon = true;
+      
+      // Call uploadWorldToServer which will detect we're on the moon
       gameState.needToUploadWorld = true;
       uploadWorldToServer();
       
-      // Add a retry for reliability
+      // Add multiple retries with increasing timeouts for reliability
+      // The first retry happens quickly in case of network hiccups
       setTimeout(() => {
-        if (gameState.needToUploadWorld) {
-          console.log("Retrying Moon world data upload...");
+        if (needToUploadMoon) {
+          console.log("First retry for Moon world upload...");
+          gameState.needToUploadWorld = true;
           uploadWorldToServer();
         }
-      }, 3000);
+      }, 2000);
+      
+      // Second retry with longer delay
+      setTimeout(() => {
+        if (needToUploadMoon) {
+          console.log("Second retry for Moon world upload...");
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer();
+        }
+      }, 5000);
     }
     
     return;
@@ -127,20 +143,36 @@ export function generateMoonWorld() {
   updateVisibleBlocks();
   
   // If we're the host, upload the newly generated Moon world to the server
-  if (gameState.isHost || gameState.needToUploadWorld) {
+  if (gameState.isHost) {
     console.log("Host is uploading newly generated Moon world to server");
+    
+    // Force the upload flag to true
     gameState.needToUploadWorld = true;
     uploadWorldToServer();
     
-    // Add a retry mechanism to ensure world is uploaded
+    // Add multiple retries with increasing delays to ensure world is uploaded
+    // These separate upload attempts increase reliability
     setTimeout(() => {
-      console.log("Retrying Moon world data upload...");
+      console.log("First retry for newly generated Moon world upload...");
+      gameState.needToUploadWorld = true;
       uploadWorldToServer();
-    }, 3000);
+    }, 2000);
+    
+    setTimeout(() => {
+      console.log("Second retry for newly generated Moon world upload...");
+      gameState.needToUploadWorld = true;
+      uploadWorldToServer();
+    }, 5000);
+    
+    // Final attempt with even longer delay
+    setTimeout(() => {
+      console.log("Final attempt for Moon world upload...");
+      gameState.needToUploadWorld = true;
+      uploadWorldToServer();
+    }, 8000);
   }
 }
 
-// Determine what block should be at a specific position on the moon
 // Determine what block should be at a specific position on the moon
 function getMoonBlockForPosition(x, y, moonStone, moonSkyRows) {
   const depthFromSurface = y - moonSkyRows;
