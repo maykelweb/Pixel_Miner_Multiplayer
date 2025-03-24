@@ -6,6 +6,7 @@ import { createBreakingAnimation } from "./animations.js";
 import { getCurrentTool } from "./crafting.js";
 import { initializeRocket, updateRocketPosition } from "./rocket.js";
 import { showLoadingScreen, hideLoadingScreen } from "./menu.js";
+import { generateMoonWorld } from "./moonGeneration.js";
 
 // Socket.io client
 let socket;

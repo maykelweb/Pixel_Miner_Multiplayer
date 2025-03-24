@@ -26,6 +26,7 @@ function getOres() {
 }
 
 // Generate a moon environment
+// Updated section in moonGeneration.js
 export function generateMoonWorld() {
   // Set a flag so we know a moon generation is in progress
   gameState.generatingMoon = true;
@@ -40,10 +41,10 @@ export function generateMoonWorld() {
   // Initialize background for moon
   setupMoonBackground();
 
-  // ADDED: For non-host players, try to request the moon blockmap from the server first
+  // MODIFIED: Allow both host and non-host players to request moon blockmap from the server first
   // Skip this if we already tried and failed (to avoid infinite loops)
-  if (!gameState.isHost && !gameState.hasRequestedMoonData) {
-    console.log("Non-host player requesting moon blockmap from server first");
+  if (!gameState.hasRequestedMoonData) {
+    console.log("Requesting moon blockmap from server first");
 
     // Set flag so we don't retry indefinitely
     gameState.hasRequestedMoonData = true;
@@ -57,7 +58,8 @@ export function generateMoonWorld() {
         console.log(
           "No moon data received from server, proceeding with generation"
         );
-        // Continue with generation
+        // Continue with generation but reset flag first
+        gameState.hasRequestedMoonData = false; // Reset flag to prevent issues in future calls
         generateMoonWorld();
       }
     }, 3000); // Wait 3 seconds for server response
