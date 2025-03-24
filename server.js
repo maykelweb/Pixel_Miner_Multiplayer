@@ -707,19 +707,32 @@ io.on("connection", (socket) => {
   // Handle block mining
   socket.on("blockMined", (data) => {
     const gameCode = playerGameMap[socket.id];
-
+  
     if (gameCode && games[gameCode]) {
-      // Update shared world state
-      if (!games[gameCode].worldBlocks[data.y]) {
-        games[gameCode].worldBlocks[data.y] = {};
+      // Get the current planet of the player
+      const currentPlanet = games[gameCode].players[socket.id]?.currentPlanet || 'earth';
+      
+      // Determine which blockmap to update
+      const blockMap = currentPlanet === 'earth' ? 'worldBlocksEarth' : 'worldBlocksMoon';
+      
+      // Update the correct planet's blockmap
+      if (!games[gameCode][blockMap][data.y]) {
+        games[gameCode][blockMap][data.y] = {};
       }
-      games[gameCode].worldBlocks[data.y][data.x] = null; // Remove the block
-
-      // Broadcast block change to all players in the same game
-      io.to(gameCode).emit("worldUpdated", {
-        x: data.x,
-        y: data.y,
-        block: null,
+      games[gameCode][blockMap][data.y][data.x] = null; // Remove the block
+  
+      // Get a list of players on the same planet
+      const playersOnSamePlanet = Object.keys(games[gameCode].players).filter(
+        playerId => games[gameCode].players[playerId].currentPlanet === currentPlanet
+      );
+      
+      // Broadcast block change to all players on the same planet
+      playersOnSamePlanet.forEach(playerId => {
+        io.to(playerId).emit("worldUpdated", {
+          x: data.x,
+          y: data.y,
+          block: null,
+        });
       });
     }
   });

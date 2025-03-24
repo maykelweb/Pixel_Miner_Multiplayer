@@ -31,7 +31,6 @@ export function generateMoonWorld() {
   // Set a flag so we know a moon generation is in progress
   gameState.generatingMoon = true;
 
-  
   // Remove any existing clouds from the Earth world
   const cloudLayer = document.getElementById("cloud-layer");
   if (cloudLayer) {
@@ -41,44 +40,7 @@ export function generateMoonWorld() {
   // Initialize background for moon
   setupMoonBackground();
 
-  // MODIFIED: Allow both host and non-host players to request moon blockmap from the server first
-  // Skip this if we already tried and failed (to avoid infinite loops)
-  if (!gameState.hasRequestedMoonData) {
-    console.log("Requesting moon blockmap from server first");
-
-    // Set flag so we don't retry indefinitely
-    gameState.hasRequestedMoonData = true;
-
-    // Request moon data
-    requestWorldData("moon");
-
-    // Add a timeout to proceed with generation if the server doesn't respond
-    setTimeout(() => {
-      if (!gameState.moonBlockMap) {
-        console.log(
-          "No moon data received from server, proceeding with generation"
-        );
-        // Continue with generation but reset flag first
-        gameState.hasRequestedMoonData = false; // Reset flag to prevent issues in future calls
-        generateMoonWorld();
-      }
-    }, 3000); // Wait 3 seconds for server response
-
-    return; // Exit early, will resume after getting response or timeout
-  }
-
-
-  // Save the Earth block map if we're coming from Earth
-  if (
-    gameState.blockMap &&
-    gameState.blockMap.length > 0 &&
-    !gameState.moonBlockMap
-  ) {
-    console.log("Saving Earth map before first moon generation");
-    gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
-  }
-
-  // Check if the moon world is already generated
+  // Check if the moon world is already generated or received from server
   if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
     console.log("Using existing moon map");
 
@@ -107,6 +69,44 @@ export function generateMoonWorld() {
     // Clear generation flag
     gameState.generatingMoon = false;
     return;
+  }
+
+  // If we don't have moon data yet, check with the server first
+  // Skip this if we already tried and failed (to avoid infinite loops)
+  if (!gameState.hasRequestedMoonData) {
+    console.log("Requesting moon blockmap from server first");
+
+    // Set flag so we don't retry indefinitely
+    gameState.hasRequestedMoonData = true;
+
+    // Request moon data
+    requestWorldData("moon");
+
+    // Add a timeout to proceed with generation if the server doesn't respond
+    setTimeout(() => {
+      if (!gameState.moonBlockMap) {
+        console.log(
+          "No moon data received from server, proceeding with generation"
+        );
+        // Continue with generation but reset flag first
+        gameState.hasRequestedMoonData = false; // Reset flag to prevent issues in future calls
+        generateMoonWorld();
+      }
+    }, 3000); // Wait 3 seconds for server response
+
+    return; // Exit early, will resume after getting response or timeout
+  }
+
+  // If we reach here, we need to generate a new moon world
+
+  // Save the Earth block map if we're coming from Earth
+  if (
+    gameState.blockMap &&
+    gameState.blockMap.length > 0 &&
+    !gameState.moonBlockMap
+  ) {
+    console.log("Saving Earth map before first moon generation");
+    gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
   }
 
   console.log("Generating new moon world");
