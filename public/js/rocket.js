@@ -5,7 +5,7 @@ import { showMessage, rocketLaunch, playSFX, ORIGINAL_VOLUMES, isPlayerNearRocke
 import { generateWorld, transitionToEarth } from "./worldGeneration.js";
 import { generateMoonWorld } from "./moonGeneration.js";
 import { updateUI } from "./updates.js";
-import { sendPlanetChanged } from "./multiplayer.js";
+import { sendRocketLaunched, refreshPlayerVisibility } from "./multiplayer.js";
 
 // Create rocket element
 let rocketElement = null;
@@ -315,8 +315,8 @@ function launchRocket() {
   // Create launch animation effect
   createLaunchAnimation();
 
-  // Notify other players about planet change
-  sendPlanetChanged(selectedDestination);
+  // Notify other players about planet change - use sendRocketLaunched
+  sendRocketLaunched(selectedDestination);
 
   // Transition to new planet after delay
   setTimeout(() => {
@@ -714,6 +714,11 @@ function createLandingAnimation() {
 
         // Reset the animation flag
         rocketLaunchInProgress = false;
+
+        setTimeout(() => {
+          console.log("Announcing arrival on planet:", gameState.currentPlanet);
+          refreshPlayerVisibility();
+        }, 500);
       }, 1000);
     }, 3000);
   }, 500);
