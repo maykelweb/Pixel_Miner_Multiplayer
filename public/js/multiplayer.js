@@ -1860,10 +1860,6 @@ function triggerRocketLaunchAnimation(targetPlanet) {
  * Request updated player list after changing planets
  * This ensures we see players already on our new planet
  */
-/**
- * Request updated player list after changing planets
- * This ensures we see players already on our new planet
- */
 export function requestPlayersOnCurrentPlanet() {
   if (isConnected && socket) {
     // Only request players if we have a valid game code

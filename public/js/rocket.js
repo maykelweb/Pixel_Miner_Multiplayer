@@ -323,10 +323,10 @@ function launchRocket() {
 
   // IMPORTANT: Add a visual transition flag
   gameState.inRocketTransition = true;
-  
+
   // Store destination planet but DON'T change currentPlanet yet
   const targetPlanet = selectedDestination;
-  
+
   // Hide the player character during rocket launch
   const playerElement = document.getElementById("player");
   if (playerElement) {
@@ -342,7 +342,7 @@ function launchRocket() {
   // Get current planet for reference later
   const currentPlanet = gameState.currentPlanet;
 
-  // IMPORTANT: We need to send the multiplayer event, but we DON'T actually 
+  // IMPORTANT: We need to send the multiplayer event, but we DON'T actually
   // want to change the local gameState.currentPlanet until the animation finishes
   // This is for any connected players to see us leave
 
@@ -354,10 +354,10 @@ function launchRocket() {
   setTimeout(() => {
     // NOW we can change the planet state after the animation has mostly completed
     gameState.currentPlanet = targetPlanet;
-    
+
     // Send a planet changed message as a backup notification
     sendPlanetChanged(targetPlanet);
-    
+
     // Now call the transition function with the new planet
     transitionToPlanet(targetPlanet);
 
@@ -745,9 +745,6 @@ function createLandingAnimation() {
           rocketContainer.parentNode.removeChild(rocketContainer);
         }
 
-        // Ensure the rocket is visible
-        ensureRocketVisible(gameState.currentPlanet);
-
         // One final check of player position before revealing
         gameState.player.x = rocketCenterX - playerHalfWidth;
         gameState.player.y = rocketCenterY - playerHalfHeight;
@@ -767,27 +764,23 @@ function createLandingAnimation() {
         // Final player position update to server
         sendPlayerUpdate();
 
-        // First request other players - this needs to happen BEFORE player is shown
-        setTimeout(() => {
-          requestPlayersOnCurrentPlanet();
+        requestPlayersOnCurrentPlanet();
 
-          // After a short delay, make the player visible
-          setTimeout(() => {
-            if (playerElement) {
-              playerElement.style.display = "block";
-            }
+        if (playerElement) {
+          playerElement.style.display = "block";
+        }
 
-            // Allow player to move again
-            playerInRocket = false;
+        // Allow player to move again
+        playerInRocket = false;
 
-            // Reset the animation flag
-            rocketLaunchInProgress = false;
-            rocketLandingInProgress = false;
+        // Reset the animation flag
+        rocketLaunchInProgress = false;
+        rocketLandingInProgress = false;
 
-            // Final announcements and visibility refresh
-            refreshPlayerVisibility();
-          }, 300);
-        }, 200);
+        ensureRocketVisible(gameState.currentPlanet);
+
+        // Final announcements and visibility refresh
+        refreshPlayerVisibility();
       }, 1000);
     }, 3000);
   }, 500);
