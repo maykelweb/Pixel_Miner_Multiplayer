@@ -514,3 +514,139 @@ export function saveAudioSettings() {
     );
   }
 }
+
+
+// Create a loading screen function
+export function showLoadingScreen(message) {
+  // Remove any existing loading screen
+  const existingLoadingScreen = document.getElementById("loading-screen");
+  if (existingLoadingScreen) {
+    document.body.removeChild(existingLoadingScreen);
+  }
+
+  // Remove any existing loading screen styles
+  const existingStyles = document.getElementById("loading-screen-styles");
+  if (existingStyles) {
+    document.head.removeChild(existingStyles);
+  }
+
+  // Create loading screen element
+  const loadingScreen = document.createElement("div");
+  loadingScreen.id = "loading-screen";
+  
+  // Create content container
+  const contentContainer = document.createElement("div");
+  contentContainer.className = "loading-content";
+  
+  // Create game logo
+  const logoContainer = document.createElement("div");
+  logoContainer.className = "paused-game-logo";
+  logoContainer.innerHTML = `<span>Pixel</span><span>Miner</span>`;
+  
+  // Create loading spinner with multiple rings for a more dynamic effect
+  const spinner = document.createElement("div");
+  spinner.className = "loading-spinner";
+  
+  // Inner rings
+  for (let i = 1; i <= 3; i++) {
+    const ring = document.createElement("div");
+    ring.className = `spinner-ring ring-${i}`;
+    spinner.appendChild(ring);
+  }
+  
+  // Create message container with animated dots
+  const messageContainer = document.createElement("div");
+  messageContainer.className = "loading-message-container";
+  
+  // Create the message element
+  const messageElement = document.createElement("div");
+  messageElement.className = "loading-message";
+  messageElement.textContent = message;
+  
+  // Create animated dots
+  const dotsElement = document.createElement("div");
+  dotsElement.className = "loading-dots";
+  dotsElement.innerHTML = "<span>.</span><span>.</span><span>.</span>";
+  
+  // Assemble the message container
+  messageContainer.appendChild(messageElement);
+  messageContainer.appendChild(dotsElement);
+  
+  // Add progress bar
+  const progressContainer = document.createElement("div");
+  progressContainer.className = "progress-container";
+  const progressBar = document.createElement("div");
+  progressBar.className = "progress-bar";
+  progressContainer.appendChild(progressBar);
+  
+  // Add elements to container
+  contentContainer.appendChild(logoContainer);
+  contentContainer.appendChild(spinner);
+  contentContainer.appendChild(messageContainer);
+  contentContainer.appendChild(progressContainer);
+  
+  // Add container to loading screen
+  loadingScreen.appendChild(contentContainer);
+  
+  // Add to document
+  document.body.appendChild(loadingScreen);
+  
+  // Animate the progress bar
+  animateProgress(progressBar);
+}
+
+// Function to animate the progress bar in a more realistic way
+function animateProgress(progressBar) {
+  let width = 0;
+  const interval = setInterval(() => {
+    if (width >= 90) {
+      // Stop at 90% to indicate waiting for response
+      clearInterval(interval);
+    } else {
+      // Increase by a random amount to simulate variable loading
+      width += Math.random() * 3;
+      if (width > 90) width = 90;
+      progressBar.style.width = width + '%';
+    }
+  }, 200);
+  
+  // Store the interval ID for cleanup
+  progressBar.dataset.intervalId = interval;
+}
+
+// Function to hide loading screen
+export function hideLoadingScreen() {
+  const loadingScreen = document.getElementById("loading-screen");
+  if (loadingScreen) {
+    // Get progress bar and clear its animation interval
+    const progressBar = loadingScreen.querySelector(".progress-bar");
+    if (progressBar && progressBar.dataset.intervalId) {
+      clearInterval(parseInt(progressBar.dataset.intervalId));
+    }
+    
+    // Quickly finish the progress animation
+    if (progressBar) {
+      progressBar.style.transition = "width 0.5s ease-out";
+      progressBar.style.width = "100%";
+    }
+    
+    // Add fade-out effect after progress completes
+    setTimeout(() => {
+      loadingScreen.style.transition = "opacity 0.5s ease";
+      loadingScreen.style.opacity = "0";
+      
+      // Remove from DOM after transition
+      setTimeout(() => {
+        if (loadingScreen.parentNode) {
+          loadingScreen.parentNode.removeChild(loadingScreen);
+        }
+        
+        // Clean up styles when done
+        const styles = document.getElementById("loading-screen-styles");
+        if (styles) {
+          styles.parentNode.removeChild(styles);
+        }
+      }, 500);
+    }, 300);
+  }
+}

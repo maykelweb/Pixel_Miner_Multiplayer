@@ -4,8 +4,8 @@ import { playerElement, showMessage } from "./setup.js";
 import { updateVisibleBlocks } from "./updates.js";
 import { createBreakingAnimation } from "./animations.js";
 import { getCurrentTool } from "./crafting.js";
-import { hideLoadingScreen, showLoadingScreen } from "./main.js";
 import { initializeRocket, updateRocketPosition } from "./rocket.js";
+import { showLoadingScreen, hideLoadingScreen } from "./menu.js";
 
 // Socket.io client
 let socket;
