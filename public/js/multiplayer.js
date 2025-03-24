@@ -1852,7 +1852,7 @@ function triggerRocketLaunchAnimation(targetPlanet) {
     // Remove animation class after animation completes
     setTimeout(() => {
       rocketElement.classList.remove("launching");
-    }, 3000);
+    }, 5000);
   }
 }
 

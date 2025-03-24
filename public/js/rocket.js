@@ -36,6 +36,7 @@ let playerInRocketRange = false;
 
 // Add flag to track if rocket launch animation is in progress
 let rocketLaunchInProgress = false;
+let rocketLandingInProgress = false;
 
 // Track if player is in rocket (for preventing movement)
 export let playerInRocket = false;
@@ -127,6 +128,10 @@ export function initializeRocket() {
 
 // Update rocket position based on camera
 export function updateRocketPosition() {
+  if (rocketLandingInProgress) {
+    if (rocketElement) rocketElement.style.display = "none";
+  }
+
   // Skip updating if launch animation is in progress
   if (rocketLaunchInProgress) return;
 
@@ -564,6 +569,7 @@ function createLaunchAnimation() {
 function createLandingAnimation() {
   // Set flag to prevent position updates during animation
   rocketLaunchInProgress = true;
+  rocketLandingInProgress = true;
 
   // Force player to be hidden and stay hidden throughout the entire animation
   const playerElement = document.getElementById("player");
@@ -776,6 +782,7 @@ function createLandingAnimation() {
 
             // Reset the animation flag
             rocketLaunchInProgress = false;
+            rocketLandingInProgress = false;
 
             // Final announcements and visibility refresh
             refreshPlayerVisibility();
