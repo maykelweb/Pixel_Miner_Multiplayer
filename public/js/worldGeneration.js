@@ -62,8 +62,7 @@ export function generateWorld() {
     return;
   }
 
-  // Rest of the function remains unchanged
-  // FIXED: Check for forceNewWorld flag before using existing blockMap
+  // Check for forceNewWorld flag before using existing blockMap
   if (
     gameState.blockMap &&
     gameState.blockMap.length > 0 &&
@@ -80,7 +79,7 @@ export function generateWorld() {
   }
 
   // Check if returning from moon (look for saved Earth map)
-  // FIXED: Also consider forceNewWorld flag here
+  // Also consider forceNewWorld flag here
   if (
     gameState.earthBlockMap &&
     gameState.earthBlockMap.length > 0 &&

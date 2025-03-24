@@ -69,6 +69,7 @@ export const gameState = {
   needToUploadWorld: false, // Flag for hosts to upload world data
   playerId: null, // Will be set when connected to server
   forceNewWorld: false, // Flag to force new world generation for hosting
+  isWaitingForWorldData: false, // Flag when waiting to load world when joining
   ores: [
     {
       name: "grass",
@@ -488,7 +489,7 @@ export const gameState = {
     try {
       // Log the size of the save data for debugging
       const saveString = JSON.stringify(gameData);
-      
+
       // Attempt to save
       localStorage.setItem("pixelMinerSave", saveString);
 

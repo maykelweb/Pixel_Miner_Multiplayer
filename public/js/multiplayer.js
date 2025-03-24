@@ -4,6 +4,7 @@ import { playerElement, showMessage } from "./setup.js";
 import { updateVisibleBlocks } from "./updates.js";
 import { createBreakingAnimation } from "./animations.js";
 import { getCurrentTool } from "./crafting.js";
+import { hideLoadingScreen, showLoadingScreen } from "./main.js";
 
 // Socket.io client
 let socket;
@@ -228,8 +229,28 @@ export function initMultiplayer(isHost = false, options = {}) {
         }
 
         console.log("World synchronized from host data");
+
+        // NEW: Now that we have world data, make the player visible if it was hidden
+        if (gameState.isWaitingForWorldData) {
+          const playerElement = document.getElementById("player");
+          if (playerElement) {
+            playerElement.style.visibility = "visible";
+          }
+          gameState.isWaitingForWorldData = false;
+          hideLoadingScreen();
+        }
       } catch (error) {
         console.error("Error processing world data:", error);
+
+        // Even on error, make player visible to prevent being stuck
+        if (gameState.isWaitingForWorldData) {
+          const playerElement = document.getElementById("player");
+          if (playerElement) {
+            playerElement.style.visibility = "visible";
+          }
+          gameState.isWaitingForWorldData = false;
+          hideLoadingScreen();
+        }
       }
 
       // After everything is set up, update visible blocks
@@ -244,6 +265,11 @@ export function initMultiplayer(isHost = false, options = {}) {
 
       // For better user experience, show a message
       showMessage("Connecting to game world...", 3000);
+
+      // Make sure loading screen shows during this process
+      if (gameState.isWaitingForWorldData) {
+        showLoadingScreen("Downloading world data...");
+      }
     }
   });
 
@@ -843,14 +869,54 @@ export function initMultiplayer(isHost = false, options = {}) {
         // After everything is set up, update visible blocks
         updateVisibleBlocks();
 
+        // NEW: Now that we have world data, make the player visible if it was hidden
+        if (gameState.isWaitingForWorldData) {
+          // Show the player
+          const playerElement = document.getElementById("player");
+          if (playerElement) {
+            playerElement.style.visibility = "visible";
+          }
+
+          // Reset the waiting flag
+          gameState.isWaitingForWorldData = false;
+
+          // Hide the loading screen if it's still showing
+          hideLoadingScreen();
+        }
+
         // Show a message to confirm the world has loaded
         showMessage("World data loaded successfully", 2000);
       } catch (error) {
         console.error("Error processing received world data:", error);
         showMessage("Error processing world data", 3000);
+
+        // Even if there's an error, we should make the player visible
+        // and hide the loading screen to prevent being stuck
+        if (gameState.isWaitingForWorldData) {
+          const playerElement = document.getElementById("player");
+          if (playerElement) {
+            playerElement.style.visibility = "visible";
+          }
+          gameState.isWaitingForWorldData = false;
+          hideLoadingScreen();
+        }
       }
     } else {
       console.warn("Received world data response, but no blocks were present");
+
+      // If we got an empty response, still make the player visible after a timeout
+      // This prevents players from being stuck in a loading state
+      setTimeout(() => {
+        if (gameState.isWaitingForWorldData) {
+          const playerElement = document.getElementById("player");
+          if (playerElement) {
+            playerElement.style.visibility = "visible";
+          }
+          gameState.isWaitingForWorldData = false;
+          hideLoadingScreen();
+          showMessage("Could not load world data. Using default world.", 3000);
+        }
+      }, 5000); // Give it 5 seconds before giving up
     }
   });
 }

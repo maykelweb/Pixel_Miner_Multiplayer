@@ -285,7 +285,7 @@ export function initGame() {
     // that will be filled with the host's data
     gameState.blockMap = [];
     // Since we're not generating a world, setup the background here
-    setupBackground() 
+    setupBackground()
     initializeClouds();
   }
 
@@ -298,8 +298,16 @@ export function initGame() {
   document.getElementById("info-panel").style.display = "block";
   document.getElementById("depth-indicator").style.display = "block";
 
-  // Add player to world
+  // Add player to world but only make it visible if not waiting for world data
   gameWorld.appendChild(playerElement);
+  
+  // NEW: Hide player element initially if joining multiplayer
+  if (gameState.isJoiningMultiplayer && gameState.isWaitingForWorldData) {
+    playerElement.style.visibility = "hidden";
+  } else {
+    playerElement.style.visibility = "visible";
+  }
+  
   loadEquippedTool();
 
   gameState.shopOpen = false;
@@ -422,6 +430,12 @@ export function joinMultiplayerGame() {
   // Clean up menu background
   cleanupMenuBackground();
 
+  // Show a loading screen while waiting for world data
+  showLoadingScreen("Connecting to game...");
+
+  // Flag that we're waiting for world data
+  gameState.isWaitingForWorldData = true;
+
   // Initialize multiplayer systems as client with the game code
   console.log("Initializing multiplayer as client with game code:", gameCode);
   initMultiplayer(false, {
@@ -441,17 +455,15 @@ export function joinMultiplayerGame() {
   const depthIndicator = document.getElementById("depth-indicator");
   if (depthIndicator) depthIndicator.style.display = "block";
 
-  // Make sure player is visible
-  const playerElement = document.getElementById("player");
-  if (playerElement) playerElement.style.display = "block";
-
   // Initialize game - world generation will be overridden with host data
+  // BUT keep player hidden until world data is received
   initGame();
 
   // Transition from menu music to game music
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
 }
+
 
 // Called once during initialization to ensure proper setup
 export function setupMultiplayer() {
@@ -599,6 +611,81 @@ function showMessage(message, duration = 2000) {
   setTimeout(() => {
     messageElement.style.opacity = "0";
   }, duration);
+}
+
+// Create a loading screen function
+export function showLoadingScreen(message) {
+  // Remove any existing loading screen
+  const existingLoadingScreen = document.getElementById("loading-screen");
+  if (existingLoadingScreen) {
+    document.body.removeChild(existingLoadingScreen);
+  }
+
+  // Create loading screen element
+  const loadingScreen = document.createElement("div");
+  loadingScreen.id = "loading-screen";
+  loadingScreen.style.position = "fixed";
+  loadingScreen.style.top = "0";
+  loadingScreen.style.left = "0";
+  loadingScreen.style.width = "100%";
+  loadingScreen.style.height = "100%";
+  loadingScreen.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  loadingScreen.style.display = "flex";
+  loadingScreen.style.flexDirection = "column";
+  loadingScreen.style.alignItems = "center";
+  loadingScreen.style.justifyContent = "center";
+  loadingScreen.style.zIndex = "1000";
+  loadingScreen.style.color = "white";
+  loadingScreen.style.fontSize = "24px";
+
+  // Create loading spinner
+  const spinner = document.createElement("div");
+  spinner.className = "loading-spinner";
+  spinner.style.width = "50px";
+  spinner.style.height = "50px";
+  spinner.style.border = "5px solid rgba(255, 255, 255, 0.3)";
+  spinner.style.borderRadius = "50%";
+  spinner.style.borderTop = "5px solid white";
+  spinner.style.animation = "spin 1s linear infinite";
+  spinner.style.marginBottom = "20px";
+
+  // Add a style for the animation
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Create message element
+  const messageElement = document.createElement("div");
+  messageElement.textContent = message;
+
+  // Add elements to loading screen
+  loadingScreen.appendChild(spinner);
+  loadingScreen.appendChild(messageElement);
+
+  // Add loading screen to document
+  document.body.appendChild(loadingScreen);
+}
+
+// 4. Function to hide loading screen
+export function hideLoadingScreen() {
+  const loadingScreen = document.getElementById("loading-screen");
+  if (loadingScreen) {
+    // Add fade-out effect
+    loadingScreen.style.transition = "opacity 0.5s";
+    loadingScreen.style.opacity = "0";
+    
+    // Remove from DOM after transition
+    setTimeout(() => {
+      if (loadingScreen.parentNode) {
+        loadingScreen.parentNode.removeChild(loadingScreen);
+      }
+    }, 500);
+  }
 }
 
 // Modify the DOMContentLoaded listener to properly initialize multiplayer
