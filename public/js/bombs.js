@@ -3,6 +3,7 @@ import { gameState } from "./config.js";
 import { takeDamage, getInventoryCount } from "./player.js";
 import { updateVisibleBlocks } from "./updates.js";
 import { throwBombSound, explosionSound, ORIGINAL_VOLUMES, playSFX } from "./setup.js";
+import { sendBombPlaced, sendBombExploded, sendBlockMined } from "./multiplayer.js";
 
 // Place a bomb at the player's position
 export function placeBomb() {
@@ -44,8 +45,12 @@ export function placeBomb() {
     bombVelocityY += gameState.player.velocityY * 0.2;
   }
 
+  // Generate a unique ID for this bomb
+  const bombId = `bomb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
   // Add bomb to active bombs array with physics properties
-  gameState.activeBombs.push({
+  const bombData = {
+    id: bombId,
     x: playerCenterX / gameState.blockSize, // Stored as floating point for smooth movement
     y: playerCenterY / gameState.blockSize,
     element: bombElement,
@@ -55,7 +60,10 @@ export function placeBomb() {
     rotation: 0,
     gridX: bombX, // Final grid position after rolling
     gridY: bombY,
-  });
+    fromPlayer: gameState.playerId, // Track which player threw this bomb
+  };
+
+  gameState.activeBombs.push(bombData);
 
   // Decrement bomb count and update UI/message as needed
   gameState.bombs--;
@@ -65,6 +73,9 @@ export function placeBomb() {
   if (bombDisplay) {
     bombDisplay.innerHTML = `<span class="bomb-icon">💣</span> ${gameState.bombs}/${gameState.maxBombs}`;
   }
+
+  // Send bomb placed event to other players
+  sendBombPlaced(bombData);
 }
 
 /**
@@ -131,7 +142,7 @@ export function updateBombs(deltaTime) {
       const xStep = bomb.velocityX * (dtPerStep / 1000);
       if (Math.abs(xStep) > 0.001) {
         const newX = bomb.x + xStep;
-        // Check horizontal boundaries using the bomb’s bounding box
+        // Check horizontal boundaries using the bomb's bounding box
         if (newX < 0) {
           bomb.x = 0.001;
           bomb.velocityX *= -bounceRestitution;
@@ -144,7 +155,7 @@ export function updateBombs(deltaTime) {
           const endY = Math.floor(bomb.y + bomb.height);
           let collision = false;
           if (bomb.velocityX > 0) {
-            // Moving right: check the cells at the bomb’s right edge
+            // Moving right: check the cells at the bomb's right edge
             const cellX = Math.floor(newX + bomb.width);
             for (let gridY = startY; gridY <= endY; gridY++) {
               if (
@@ -163,7 +174,7 @@ export function updateBombs(deltaTime) {
               bomb.x = newX;
             }
           } else if (bomb.velocityX < 0) {
-            // Moving left: check the cells at the bomb’s left edge
+            // Moving left: check the cells at the bomb's left edge
             const cellX = Math.floor(newX);
             for (let gridY = startY; gridY <= endY; gridY++) {
               if (
@@ -200,7 +211,7 @@ export function updateBombs(deltaTime) {
           const endX = Math.floor(bomb.x + bomb.width);
           let collision = false;
           if (bomb.velocityY > 0) {
-            // Moving downward: check the cells at the bomb’s bottom edge
+            // Moving downward: check the cells at the bomb's bottom edge
             const cellY = Math.floor(newY + bomb.height);
             for (let gridX = startX; gridX <= endX; gridX++) {
               if (
@@ -234,7 +245,7 @@ export function updateBombs(deltaTime) {
               bomb.y = newY;
             }
           } else if (bomb.velocityY < 0) {
-            // Moving upward: check the cells at the bomb’s top edge
+            // Moving upward: check the cells at the bomb's top edge
             const cellY = Math.floor(newY);
             for (let gridX = startX; gridX <= endX; gridX++) {
               if (
@@ -256,7 +267,7 @@ export function updateBombs(deltaTime) {
       }
 
       // --- Friction ---
-      // Instead of checking an exact grid cell below the bomb, we check whether the bomb’s bottom is nearly aligned with a grid boundary.
+      // Instead of checking an exact grid cell below the bomb, we check whether the bomb's bottom is nearly aligned with a grid boundary.
       const bottomY = bomb.y + bomb.height;
       const gridBottomY = Math.round(bottomY); // nearest grid line
       let onSurface = false;
@@ -320,6 +331,34 @@ export function renderBombs() {
   });
 }
 
+// Create a bomb from data received via multiplayer
+export function createRemoteBomb(bombData) {
+  // Create bomb element
+  const bombElement = document.createElement("div");
+  bombElement.className = "bomb";
+  bombElement.style.left = bombData.x * gameState.blockSize + "px";
+  bombElement.style.top = bombData.y * gameState.blockSize + "px";
+  bombElement.classList.add("bomb-rolling");
+  bombElement.classList.add("remote-bomb"); // Add class to indicate it's from another player
+
+  // Add bomb to game world
+  document.getElementById("game-world").appendChild(bombElement);
+
+  // Add throw sound (at reduced volume for remote bombs)
+  playSFX(throwBombSound, ORIGINAL_VOLUMES.throwBombSound * 0.7, false);
+
+  // Add to active bombs array with the provided data
+  const bomb = {
+    ...bombData, // Copy all properties from received data
+    element: bombElement, // Add the DOM element
+    fromPlayer: bombData.fromPlayer || "remote" // Mark as remote if not specified
+  };
+  
+  gameState.activeBombs.push(bomb);
+  
+  return bomb;
+}
+
 // Explode a bomb
 function explodeBomb(bomb, index) {
   // Play explosion sound
@@ -331,6 +370,9 @@ function explodeBomb(bomb, index) {
 
   // Create explosion effect
   createExplosionEffect(bombGridX, bombGridY);
+
+  // Keep track of destroyed blocks to send to server
+  const destroyedBlocks = [];
 
   // Damage blocks within radius
   const radius = gameState.bombRadius;
@@ -352,13 +394,30 @@ function explodeBomb(bomb, index) {
 
       // Only destroy blocks within the radius
       if (distance <= radius) {
-        const block = gameState.blockMap[y][x];
-        if (block) {
+        if (gameState.blockMap[y] && gameState.blockMap[y][x]) {
+          // Add to destroyed blocks list
+          destroyedBlocks.push({ x, y });
+          
           // Remove the block from the world
           gameState.blockMap[y][x] = null;
         }
       }
     }
+  }
+
+  // Send destroyed blocks to server (only if this is our bomb)
+  if (bomb.fromPlayer === gameState.playerId) {
+    destroyedBlocks.forEach(block => {
+      sendBlockMined(block.x, block.y);
+    });
+
+    // Notify other players about the explosion
+    sendBombExploded({
+      id: bomb.id,
+      x: bombGridX,
+      y: bombGridY,
+      radius: radius
+    });
   }
 
   // Check if player is within blast radius and apply damage
@@ -390,6 +449,47 @@ function explodeBomb(bomb, index) {
   updateVisibleBlocks();
 }
 
+// Create explosion from a remote player's bomb
+export function createRemoteExplosion(explosionData) {
+  // Play explosion sound at reduced volume for remote explosions
+  playSFX(explosionSound, ORIGINAL_VOLUMES.explosionSound * 0.7, false);
+
+  // Create visual effect
+  createExplosionEffect(explosionData.x, explosionData.y);
+
+  // Check if player is within blast radius and apply damage
+  const playerX = Math.floor(
+    (gameState.player.x + gameState.player.width / 2) / gameState.blockSize
+  );
+  const playerY = Math.floor(
+    (gameState.player.y + gameState.player.height / 2) / gameState.blockSize
+  );
+  const distanceToPlayer = Math.sqrt(
+    Math.pow(playerX - explosionData.x, 2) + Math.pow(playerY - explosionData.y, 2)
+  );
+
+  // Check for player damage
+  if (distanceToPlayer <= explosionData.radius * 1.5) {
+    const damage = Math.floor(200 * (1 - distanceToPlayer / (explosionData.radius * 1.5)));
+    if (damage > 0) {
+      takeDamage(damage);
+    }
+  }
+
+  // Remove the bomb if it exists in our active bombs list
+  const bombIndex = gameState.activeBombs.findIndex(bomb => bomb.id === explosionData.id);
+  if (bombIndex !== -1) {
+    const bomb = gameState.activeBombs[bombIndex];
+    if (bomb.element) {
+      bomb.element.remove();
+    }
+    gameState.activeBombs.splice(bombIndex, 1);
+  }
+
+  // Update visible blocks (to show blocks destroyed by the explosion)
+  updateVisibleBlocks();
+}
+
 // Create explosion visual effect
 function createExplosionEffect(x, y) {
   const explosion = document.createElement("div");
@@ -402,8 +502,7 @@ function createExplosionEffect(x, y) {
   explosion.style.height = gameState.blockSize * 4 + "px";
 
   // Adjust for camera
-  explosion.style.transform = `translate(${-gameState.camera.x}px, ${-gameState
-    .camera.y}px)`;
+  explosion.style.transform = `translate(${-gameState.camera.x}px, ${-gameState.camera.y}px)`;
 
   document.getElementById("game-world").appendChild(explosion);
 

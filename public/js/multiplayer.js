@@ -7,6 +7,7 @@ import { getCurrentTool } from "./crafting.js";
 import { initializeRocket, updateRocketPosition } from "./rocket.js";
 import { showLoadingScreen, hideLoadingScreen } from "./menu.js";
 import { generateMoonWorld } from "./moonGeneration.js";
+import { createRemoteBomb, createRemoteExplosion } from "./bombs.js";
 
 // Socket.io client
 let socket;
@@ -606,6 +607,20 @@ export function initMultiplayer(isHost = false, options = {}) {
 
       // Update jetpack state
       otherPlayers[data.id].jetpackActive = false;
+    }
+  });
+
+  socket.on("otherPlayerBombPlaced", (data) => {
+    // Make sure the bomb is for our current planet
+    if (data.currentPlanet === gameState.currentPlanet) {
+      createRemoteBomb(data.bombData);
+    }
+  });
+  
+  socket.on("otherPlayerBombExploded", (data) => {
+    // Make sure the explosion is for our current planet
+    if (data.currentPlanet === gameState.currentPlanet) {
+      createRemoteExplosion(data.explosionData);
     }
   });
 
@@ -2352,5 +2367,28 @@ export function requestWorldData(forcedPlanet = null) {
         });
       }
     }, 2000);
+  }
+}
+
+// Send bomb placed event to server
+export function sendBombPlaced(bombData) {
+  if (isConnected && socket) {
+    // Strip the DOM element which can't be serialized
+    const { element, ...bombDataToSend } = bombData;
+    
+    socket.emit("bombPlaced", {
+      bombData: bombDataToSend,
+      currentPlanet: gameState.currentPlanet
+    });
+  }
+}
+
+// Send bomb exploded event to server
+export function sendBombExploded(explosionData) {
+  if (isConnected && socket) {
+    socket.emit("bombExploded", {
+      explosionData,
+      currentPlanet: gameState.currentPlanet
+    });
   }
 }

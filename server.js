@@ -236,7 +236,7 @@ io.on("connection", (socket) => {
 
   socket.on("requestWorldData", (data) => {
     const gameCode = playerGameMap[socket.id];
-  
+
     if (!gameCode) {
       console.log(
         `Player ${socket.id} requested world data but is not in a game yet`
@@ -247,7 +247,7 @@ io.on("connection", (socket) => {
       });
       return;
     }
-  
+
     if (!games[gameCode]) {
       console.log(
         `Player ${socket.id} requested world data but game ${gameCode} doesn't exist`
@@ -258,39 +258,42 @@ io.on("connection", (socket) => {
       });
       return;
     }
-  
+
     // Determine which planet's data to check
     const requestedPlanet = data.planet || "earth";
     const worldGeneratedForPlanet =
       requestedPlanet === "earth"
         ? games[gameCode].worldGeneratedEarth
         : games[gameCode].worldGeneratedMoon;
-  
+
     // Check if world data exists for the requested planet
     if (!worldGeneratedForPlanet) {
       console.log(
         `Player ${socket.id} requested ${requestedPlanet} data but it's not generated in game ${gameCode} yet`
       );
-      
+
       // Add this player to the pending requests list so they get data once it's uploaded
       if (!games[gameCode].pendingWorldDataRequests) {
         games[gameCode].pendingWorldDataRequests = [];
       }
-      
+
       // Check if they're already in the list to avoid duplicates
-      const alreadyInPending = games[gameCode].pendingWorldDataRequests.some(req => 
-        (typeof req === 'string' && req === socket.id) || 
-        (req.id === socket.id && req.planet === requestedPlanet)
+      const alreadyInPending = games[gameCode].pendingWorldDataRequests.some(
+        (req) =>
+          (typeof req === "string" && req === socket.id) ||
+          (req.id === socket.id && req.planet === requestedPlanet)
       );
-      
+
       if (!alreadyInPending) {
-        console.log(`Adding player ${socket.id} to pending requests for ${requestedPlanet}`);
+        console.log(
+          `Adding player ${socket.id} to pending requests for ${requestedPlanet}`
+        );
         games[gameCode].pendingWorldDataRequests.push({
           id: socket.id,
-          planet: requestedPlanet
+          planet: requestedPlanet,
         });
       }
-      
+
       // Always respond with the error so the client can handle appropriately
       socket.emit("worldDataResponse", {
         success: false,
@@ -300,18 +303,18 @@ io.on("connection", (socket) => {
       });
       return;
     }
-  
+
     // Get the appropriate world data
     const worldData =
       requestedPlanet === "earth"
         ? games[gameCode].worldBlocksEarth || {}
         : games[gameCode].worldBlocksMoon || {};
-  
+
     const worldSize = Object.keys(worldData).length;
     console.log(
       `Sending requested ${requestedPlanet} world data to player ${socket.id} (${worldSize} rows)`
     );
-  
+
     // Send the world data response with rocket information and planet type
     socket.emit("worldDataResponse", {
       success: true,
@@ -707,27 +710,30 @@ io.on("connection", (socket) => {
   // Handle block mining
   socket.on("blockMined", (data) => {
     const gameCode = playerGameMap[socket.id];
-  
+
     if (gameCode && games[gameCode]) {
       // Get the current planet of the player
-      const currentPlanet = games[gameCode].players[socket.id]?.currentPlanet || 'earth';
-      
+      const currentPlanet =
+        games[gameCode].players[socket.id]?.currentPlanet || "earth";
+
       // Determine which blockmap to update
-      const blockMap = currentPlanet === 'earth' ? 'worldBlocksEarth' : 'worldBlocksMoon';
-      
+      const blockMap =
+        currentPlanet === "earth" ? "worldBlocksEarth" : "worldBlocksMoon";
+
       // Update the correct planet's blockmap
       if (!games[gameCode][blockMap][data.y]) {
         games[gameCode][blockMap][data.y] = {};
       }
       games[gameCode][blockMap][data.y][data.x] = null; // Remove the block
-  
+
       // Get a list of players on the same planet
       const playersOnSamePlanet = Object.keys(games[gameCode].players).filter(
-        playerId => games[gameCode].players[playerId].currentPlanet === currentPlanet
+        (playerId) =>
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
       );
-      
+
       // Broadcast block change to all players on the same planet
-      playersOnSamePlanet.forEach(playerId => {
+      playersOnSamePlanet.forEach((playerId) => {
         io.to(playerId).emit("worldUpdated", {
           x: data.x,
           y: data.y,
@@ -756,6 +762,72 @@ io.on("connection", (socket) => {
           io.to(playerId).emit("playerToolChanged", {
             id: socket.id,
             tool: data.tool,
+          });
+        }
+      });
+    }
+  });
+
+  // Handle bomb placement
+  socket.on("bombPlaced", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode]) {
+      // Get the current planet
+      const currentPlanet =
+        data.currentPlanet ||
+        (games[gameCode].players[socket.id]
+          ? games[gameCode].players[socket.id].currentPlanet
+          : "earth");
+
+      // Add player ID to the bomb data
+      const bombData = {
+        ...data.bombData,
+        fromPlayer: socket.id,
+      };
+
+      // Send bomb event to all other players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("otherPlayerBombPlaced", {
+            bombData,
+            currentPlanet,
+          });
+        }
+      });
+    }
+  });
+
+  // Handle bomb explosion
+  socket.on("bombExploded", (data) => {
+    const gameCode = playerGameMap[socket.id];
+
+    if (gameCode && games[gameCode]) {
+      // Get the current planet
+      const currentPlanet =
+        data.currentPlanet ||
+        (games[gameCode].players[socket.id]
+          ? games[gameCode].players[socket.id].currentPlanet
+          : "earth");
+
+      // Add player ID to the explosion data
+      const explosionData = {
+        ...data.explosionData,
+        fromPlayer: socket.id,
+      };
+
+      // Send explosion event to all other players on the same planet
+      Object.keys(games[gameCode].players).forEach((playerId) => {
+        if (
+          playerId !== socket.id &&
+          games[gameCode].players[playerId].currentPlanet === currentPlanet
+        ) {
+          io.to(playerId).emit("otherPlayerBombExploded", {
+            explosionData,
+            currentPlanet,
           });
         }
       });
