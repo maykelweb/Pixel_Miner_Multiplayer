@@ -1,4 +1,4 @@
-// shop.js
+// shop.js - Fixed jetpack refill and added health restore
 import { gameState } from "./config.js";
 import { createMoneyAnimation } from "./animations.js";
 import { updateUI } from "./updates.js";
@@ -81,6 +81,10 @@ export function initializeShop() {
       detailText = `Current Speed: ${gameState.player.speed.toFixed(1)} → ${(
         gameState.player.speed + 0.5
       ).toFixed(1)}`;
+    } else if (item.id === "health-restore") {
+      detailText = `Current Health: ${gameState.player.health} → ${gameState.player.maxHealth}`;
+    } else if (item.id === "refill-jetpack") {
+      detailText = `Fuel: ${Math.floor(gameState.jetpackFuel)} → ${gameState.maxJetpackFuel}`;
     }
 
     itemElement.innerHTML = `
@@ -180,6 +184,17 @@ function handleShopItemClick(item) {
     ) {
       gameState.money -= price;
       gameState.jetpackFuel = gameState.maxJetpackFuel;
+      showMessage("Jetpack refilled!", 2000);
+    }
+  } else if (item.id === "health-restore") {
+    price = item.getPrice();
+    if (
+      gameState.money >= price &&
+      gameState.player.health < gameState.player.maxHealth
+    ) {
+      gameState.money -= price;
+      gameState.player.health = gameState.player.maxHealth;
+      showMessage("Health restored!", 2000);
     }
   } else if (item.id === "bomb") {
     price = item.getPrice();

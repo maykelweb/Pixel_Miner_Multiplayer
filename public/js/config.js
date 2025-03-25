@@ -70,7 +70,9 @@ export const gameState = {
   playerId: null, // Will be set when connected to server
   forceNewWorld: false, // Flag to force new world generation for hosting
   isWaitingForWorldData: false, // Flag when waiting to load world when joining
+  // EARTH ORES
   ores: [
+    // Basic surface materials
     {
       name: "grass",
       value: 1,
@@ -101,157 +103,198 @@ export const gameState = {
       maxDepth: Infinity,
       chance: 0.7,
     },
+
+    // Tier 1 - Early Game Resources
     {
       name: "coal",
       value: 5,
       color: "coal",
-      minVein: 3,
-      maxVein: 12,
+      minVein: 4,
+      maxVein: 14,
       minDepth: 1,
-      maxDepth: 100,
-      chance: 20,
+      maxDepth: 120,
+      chance: 25, // Slightly increased for early game
       depthModifiers: [
-        { depth: 25, multiplier: 0.5 },
-        { depth: 50, multiplier: 0.2 },
+        { depth: 30, multiplier: 0.8 },
+        { depth: 60, multiplier: 0.5 },
+        { depth: 90, multiplier: 0.2 },
       ],
     },
     {
       name: "iron",
-      value: 10,
+      value: 12, // Slightly increased value
       color: "iron",
-      minVein: 4,
-      maxVein: 12,
-      minDepth: 10,
-      maxDepth: 100,
-      chance: 8,
-      depthModifiers: [{ depth: 75, multiplier: 0.5 }],
+      minVein: 3,
+      maxVein: 10,
+      minDepth: 5, // Easier to find early
+      maxDepth: 150,
+      chance: 12, // Increased for better early progression
+      depthModifiers: [
+        { depth: 40, multiplier: 1.2 }, // More common in mid-depths
+        { depth: 100, multiplier: 0.5 },
+      ],
     },
+
+    // Tier 2 - Mid Game Resources
     {
       name: "gold",
-      value: 25,
+      value: 30, // Increased value
       color: "gold",
-      minVein: 3,
-      maxVein: 12,
-      minDepth: 50,
-      maxDepth: 150,
-      chance: 5,
+      minVein: 2,
+      maxVein: 8,
+      minDepth: 35, // Earlier to find
+      maxDepth: 180,
+      chance: 7,
+      depthModifiers: [
+        { depth: 70, multiplier: 1.3 }, // Sweet spot
+        { depth: 120, multiplier: 0.7 },
+      ],
     },
     {
       name: "emerald",
-      value: 50,
+      value: 55,
       color: "emerald",
-      minVein: 3,
-      maxVein: 12,
-      minDepth: 100,
-      maxDepth: 200,
-      chance: 5,
+      minVein: 2,
+      maxVein: 7,
+      minDepth: 70,
+      maxDepth: 220,
+      chance: 5.5,
+      depthModifiers: [{ depth: 120, multiplier: 1.2 }],
     },
+
+    // Tier 3 - End Game Earth Resources
     {
       name: "ruby",
-      value: 75,
+      value: 85, // Increased value
       color: "ruby",
-      minVein: 3,
-      maxVein: 12,
+      minVein: 1,
+      maxVein: 6,
       minDepth: 100,
-      maxDepth: 250,
-      chance: 5,
+      maxDepth: 260,
+      chance: 4,
+      depthModifiers: [
+        { depth: 160, multiplier: 1.5 }, // More common in deeper areas
+      ],
     },
     {
       name: "diamond",
-      value: 100,
+      value: 120, // Increased value
       color: "diamond",
-      minVein: 3,
-      maxVein: 12,
-      minDepth: 200,
+      minVein: 1,
+      maxVein: 5,
+      minDepth: 180, // Slightly easier to find
       maxDepth: 300,
-      chance: 3,
+      chance: 2.5, // Slightly increased chance
+      depthModifiers: [
+        { depth: 250, multiplier: 1.7 }, // Sweet spot at very deep levels
+      ],
     },
-    /*{ // Could be used later for harder moon rock
-      name: "basalt",
-      value: 0,
-      color: "basalt", // Dark gray
-      hardness: 2,
-      minVein: 0,
-      maxVein: 0,
-      minDepth: 2,
-      maxDepth: Infinity,
-      chance: 0.7,
-      moonOnly: true,
-    },*/
+
+    // MOON ORES
+
+    // Tier 1 - Basic Moon Resources
     {
       name: "silicon",
-      value: 15,
+      value: 25, // Increased value
       color: "silicon", // Silver-gray
       hardness: 2,
       minVein: 4,
       maxVein: 12,
       minDepth: 1,
       maxDepth: 80,
-      chance: 15,
-      depthModifiers: [{ depth: 40, multiplier: 0.5 }],
+      chance: 22, // Common on moon surface
+      depthModifiers: [{ depth: 40, multiplier: 0.7 }],
       moonOnly: true,
     },
-    /*{
+    {
       name: "aluminum",
-      value: 20,
+      value: 35,
       color: "aluminum", // Silver-white
       hardness: 2,
       minVein: 3,
       maxVein: 10,
-      minDepth: 5,
-      maxDepth: 90,
-      chance: 12,
-      depthModifiers: [
-        { depth: 50, multiplier: 0.5 },
-      ],
+      minDepth: 10,
+      maxDepth: 100,
+      chance: 18,
+      depthModifiers: [{ depth: 50, multiplier: 0.8 }],
       moonOnly: true,
-    }, */
+    },
+
+    // Tier 2 - Intermediate Moon Resources
     {
       name: "magnesium",
-      value: 40,
+      value: 60,
       color: "magnesium", // Bright white
       hardness: 3,
-      minVein: 3,
+      minVein: 2,
       maxVein: 8,
       minDepth: 30,
-      maxDepth: 120,
-      chance: 8,
+      maxDepth: 150,
+      chance: 12,
+      depthModifiers: [
+        { depth: 60, multiplier: 1.2 },
+        { depth: 100, multiplier: 0.8 },
+      ],
       moonOnly: true,
     },
     {
       name: "titanium",
-      value: 75,
+      value: 100,
       color: "titanium", // Metallic gray
       hardness: 4,
       minVein: 2,
-      maxVein: 7,
-      minDepth: 50,
-      maxDepth: 150,
-      chance: 6,
+      maxVein: 6,
+      minDepth: 60,
+      maxDepth: 200,
+      chance: 8,
+      depthModifiers: [{ depth: 100, multiplier: 1.5 }],
       moonOnly: true,
     },
+
+    // Tier 3 - Advanced Moon Resources
     {
       name: "platinum",
-      value: 150,
+      value: 180,
       color: "platinum", // Bright silver
       hardness: 5,
       minVein: 1,
-      maxVein: 5,
-      minDepth: 100,
-      maxDepth: 200,
-      chance: 4,
+      maxVein: 4,
+      minDepth: 120,
+      maxDepth: 250,
+      chance: 5,
+      depthModifiers: [{ depth: 180, multiplier: 1.4 }],
       moonOnly: true,
     },
     {
       name: "lunarite",
-      value: 300,
+      value: 350, // Significantly valuable
       color: "lunarite", // Bright blue
       hardness: 6,
       minVein: 1,
       maxVein: 3,
-      minDepth: 160,
-      maxDepth: 250,
-      chance: 2,
+      minDepth: 180,
+      maxDepth: 300,
+      chance: 2.5,
+      depthModifiers: [
+        { depth: 240, multiplier: 1.8 }, // Sweet spot at deepest levels
+      ],
+      moonOnly: true,
+    },
+
+    // Tier 4 - Ultimate Moon Resource (New Addition)
+    {
+      name: "celestium",
+      value: 650, // Extremely valuable
+      color: "celestium", // Glowing cyan
+      hardness: 7,
+      minVein: 1,
+      maxVein: 2,
+      minDepth: 250,
+      maxDepth: 350, // Deeper than other ores
+      chance: 1,
+      depthModifiers: [
+        { depth: 300, multiplier: 1.5 }, // Still rare but slightly more common at max depth
+      ],
       moonOnly: true,
     },
   ],
@@ -304,42 +347,49 @@ export const gameState = {
   },
   shopItems: [
     {
-      id: "pickaxe-upgrade",
-      name: "Better Pickaxe",
-      basePrice: 50,
-      description: "Mine faster",
-      getPrice: (level) => 50 * level,
-    },
-    {
       id: "bag-upgrade",
       name: "Bigger Bag",
       basePrice: 100,
       description: "+5 capacity",
-      getPrice: (level) => 100 * (level / 2),
+      getPrice: (level) => 500 * (level / 2),
     },
     {
       id: "jetpack",
       name: "Jetpack",
       description:
         "Allows you to fly temporarily. Hold SPACE to activate while in the air.",
-      getPrice: () => 10, // Set price for jetpack
+      getPrice: () => 100, // Set price for jetpack
       available: () => !gameState.hasJetpack, // Only available if the player doesn't have it
+    },
+    {
+      id: "health-restore",
+      name: "Health Kit",
+      description:
+        "Restore your health to maximum. Price based on health needed.",
+      getPrice: () => {
+        // Calculate percentage of health missing (0 to 1)
+        const healthPercentMissing =
+          1 - gameState.player.health / gameState.player.maxHealth;
+        // Calculate price based on missing health
+        return Math.ceil(50 * healthPercentMissing);
+      },
+      available: () => gameState.player.health < gameState.player.maxHealth,
     },
     {
       id: "refill-jetpack",
       name: "Refill Jetpack",
-      description: "Fill your jetpack tank with fuel.",
-      getPrice: () => gameState.jetpackRefillCost,
+      description:
+        "Fill your jetpack tank with fuel. Price based on fuel needed.",
+      getPrice: () => {
+        // Calculate percentage of fuel missing (0 to 1)
+        const fuelPercentMissing =
+          1 - gameState.jetpackFuel / gameState.maxJetpackFuel;
+        // Calculate price based on missing fuel
+        return Math.ceil(gameState.jetpackRefillCost * fuelPercentMissing);
+      },
       available: () =>
         gameState.hasJetpack &&
         gameState.jetpackFuel < gameState.maxJetpackFuel,
-    },
-    {
-      id: "speed-upgrade",
-      name: "Movement Speed",
-      basePrice: 75,
-      description: "Move faster",
-      getPrice: (level) => 75 * level,
     },
     {
       id: "bomb",

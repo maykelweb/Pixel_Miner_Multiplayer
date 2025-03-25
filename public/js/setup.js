@@ -1,6 +1,7 @@
 // setup.js
 import { gameState } from "./config.js";
 import { placeBomb } from "./bombs.js";
+import { initializeShop } from "./shop.js";
 import {
   activateLaser,
   deactivateLaser,
@@ -625,6 +626,12 @@ export function toggleShop() {
   if (isPlayerNearShop()) {
     gameState.shopOpen = !gameState.shopOpen;
     shop.style.display = gameState.shopOpen ? "flex" : "none";
+
+    // Initialize the shop when opening it to ensure contents are updated
+    if (gameState.shopOpen) {
+      initializeShop();
+      console.log("here");
+    }
   }
 }
 
