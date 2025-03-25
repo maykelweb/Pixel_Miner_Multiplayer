@@ -1563,7 +1563,7 @@ export function checkBagCapacity() {
     stopAllMiningAnimations();
 
     // Check if we already showed the message or if the animation is still running
-    if (!gameState.fullInventoryMessageShown) {
+    if (gameState.mouseHeld && !gameState.fullInventoryMessageShown) {
       // Flash the bag capacity indicator
       const bagElement = document.getElementById("bag-capacity");
       bagElement.classList.add("bag-flash");
