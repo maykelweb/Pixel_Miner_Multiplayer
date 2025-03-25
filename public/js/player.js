@@ -45,6 +45,7 @@ import {
   sendInitialToolInfo
 } from "./multiplayer.js";
 
+
 // Get DOM elements
 export const gameWorld = document.getElementById("game-world");
 
@@ -681,7 +682,6 @@ function hasPlayerMoved() {
 }
 
 // Check vertical collisions
-// Check vertical collisions
 export function checkVerticalCollisions() {
   const playerLeft = gameState.player.x;
   const playerRight = gameState.player.x + gameState.player.width;
@@ -689,6 +689,63 @@ export function checkVerticalCollisions() {
   const playerBottom = gameState.player.y + gameState.player.height;
   const startX = Math.floor(playerLeft / gameState.blockSize);
   const endX = Math.floor((playerRight - 1) / gameState.blockSize);
+
+  // Add shop sign platform collision detection
+  if (gameState.player.velocityY >= 0) {
+    // Get the shop sign position directly from gameState
+    const shopSignPos = gameState.shopSign;
+    
+    if (shopSignPos) {
+      // Define the invisible platform dimensions
+      const platformWidth = shopSignPos.width; // Make platform a bit wider than the sign
+      const platformHeight = 10; // Small invisible platform height
+      const platformX = shopSignPos.x; // Center platform under sign
+      const platformY = shopSignPos.y + shopSignPos.height; // Position right below the sign
+      
+      // More precise collision check for the platform
+      if (playerBottom <= platformY + 2 && // Allow a small overlap for better detection
+          playerBottom + gameState.player.velocityY >= platformY - 2 && // Check if we're about to cross the platform
+          playerRight > platformX && 
+          playerLeft < platformX + platformWidth) {
+        
+        // Stop player on the platform
+        gameState.player.y = platformY - gameState.player.height;
+        gameState.player.velocityY = 0;
+        gameState.player.onGround = true;
+        gameState.player.isJumping = false;
+        
+        // Return early to prevent regular block collisions from overriding our platform
+        return;
+      }
+    }
+    
+    // Add crafting station platform collision detection
+    const craftingStationPos = gameState.crafting.craftingStation;
+    
+    if (craftingStationPos) {
+      // Define the invisible platform dimensions for crafting station
+      const platformWidth = craftingStationPos.width - 20;
+      const platformHeight = 10; // Small invisible platform height
+      const platformX = craftingStationPos.x;
+      const platformY = craftingStationPos.y + 160;
+      
+      // More precise collision check for the crafting station platform
+      if (playerBottom <= platformY + 2 && // Allow a small overlap for better detection
+          playerBottom + gameState.player.velocityY >= platformY - 2 && // Check if we're about to cross the platform
+          playerRight > platformX && 
+          playerLeft < platformX + platformWidth) {
+        
+        // Stop player on the platform
+        gameState.player.y = platformY - gameState.player.height;
+        gameState.player.velocityY = 0;
+        gameState.player.onGround = true;
+        gameState.player.isJumping = false;
+        
+        // Return early to prevent regular block collisions from overriding our platform
+        return;
+      }
+    }
+  }
 
   if (gameState.player.velocityY >= 0) {
     const blockY = Math.floor(playerBottom / gameState.blockSize);
