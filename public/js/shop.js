@@ -1,4 +1,4 @@
-// shop.js - Fixed jetpack refill and added health restore
+// shop.js - Fixed jetpack upgrade price display
 import { gameState } from "./config.js";
 import { createMoneyAnimation } from "./animations.js";
 import { updateUI } from "./updates.js";
@@ -59,6 +59,7 @@ export function initializeShop() {
     if (item.id === "pickaxe-upgrade") level = gameState.pickaxeLevel;
     else if (item.id === "bag-upgrade") level = gameState.bagSize / 10;
     else if (item.id === "speed-upgrade") level = gameState.player.speed / 4;
+    else if (item.id === "jetpack-upgrade") level = gameState.jetpackLevel; // Fix: Get current jetpack level
 
     const price = item.getPrice(level);
     const canAfford = gameState.money >= price;
@@ -69,22 +70,19 @@ export function initializeShop() {
 
     // Extra details based on item type
     let detailText = "";
-    if (item.id === "pickaxe-upgrade") {
-      detailText = `Level ${level} → ${level + 1} (Mining speed +${(
-        0.5 * 100
-      ).toFixed(0)}%)`;
-    } else if (item.id === "bag-upgrade") {
+    if (item.id === "bag-upgrade") {
       detailText = `Capacity ${gameState.bagSize} → ${
         gameState.bagSize + 5
       } ores`;
-    } else if (item.id === "speed-upgrade") {
-      detailText = `Current Speed: ${gameState.player.speed.toFixed(1)} → ${(
-        gameState.player.speed + 0.5
-      ).toFixed(1)}`;
     } else if (item.id === "health-restore") {
       detailText = `Current Health: ${gameState.player.health} → ${gameState.player.maxHealth}`;
     } else if (item.id === "refill-jetpack") {
-      detailText = `Fuel: ${Math.floor(gameState.jetpackFuel)} → ${gameState.maxJetpackFuel}`;
+      detailText = `Fuel: ${Math.floor(gameState.jetpackFuel)} → ${
+        gameState.maxJetpackFuel
+      }`;
+    } else if (item.id === "jetpack-upgrade") {
+      // Add details for jetpack upgrade
+      detailText = `Current Level: ${gameState.jetpackLevel} → ${gameState.jetpackLevel + 1}`;
     }
 
     itemElement.innerHTML = `
@@ -142,32 +140,24 @@ export function initializeShop() {
 
 function handleShopItemClick(item) {
   let level, price;
-  if (item.id === "pickaxe-upgrade") {
-    level = gameState.pickaxeLevel;
-    price = item.getPrice(level);
-    if (gameState.money >= price) {
-      gameState.money -= price;
-      gameState.pickaxeLevel++;
-      // Increase mining speed (tweak the value as needed)
-      gameState.pickaxeSpeed += 0.5;
-    }
-  } else if (item.id === "bag-upgrade") {
+  if (item.id === "bag-upgrade") {
     // Here we use bag level as bagSize/10 (initially 10 gives level 1)
     level = gameState.bagSize / 10;
     price = item.getPrice(level);
     if (gameState.money >= price) {
       gameState.money -= price;
-      // Increase bag capacity by 5
-      gameState.bagSize += 5;
-    }
-  } else if (item.id === "speed-upgrade") {
-    // Use player speed divided by 4 (initial speed 4 gives level 1)
-    level = gameState.player.speed / 4;
-    price = item.getPrice(level);
-    if (gameState.money >= price) {
-      gameState.money -= price;
-      // Increase player speed by 0.5 (adjust as desired)
-      gameState.player.speed += 0.5;
+      // Increase bag capacity by 5, but don't exceed maxBagSize
+      const newBagSize = Math.min(gameState.bagSize + 5, gameState.maxBagSize);
+
+      // If already at max, show message
+      if (newBagSize === gameState.bagSize) {
+        showMessage(
+          `Maximum bag capacity (${gameState.maxBagSize}) reached!`,
+          2000
+        );
+      } else {
+        gameState.bagSize = newBagSize;
+      }
     }
   } else if (item.id === "jetpack") {
     price = item.getPrice();
@@ -175,6 +165,40 @@ function handleShopItemClick(item) {
       gameState.money -= price;
       gameState.hasJetpack = true;
       gameState.jetpackFuel = gameState.maxJetpackFuel; // Start with a full tank
+    }
+  } else if (item.id === "jetpack-upgrade") {
+    // Pass the CURRENT jetpack level to getPrice
+    price = item.getPrice(gameState.jetpackLevel);
+    if (gameState.money >= price) {
+      gameState.money -= price;
+
+      // Update jetpack properties based on level
+      gameState.jetpackLevel++;
+
+      // Apply more balanced upgrade effects for each level
+      switch (gameState.jetpackLevel) {
+        case 2:
+          // First upgrade: moderate improvements
+          gameState.jetpackUsage = 0.08; // 20% fuel efficiency improvement
+          gameState.jetpackMaxSpeed = 6.5; // 30% max speed improvement
+          gameState.jetpackSpeed = 0.9; // 30% acceleration improvement
+          showMessage(
+            `Jetpack upgraded to Level ${gameState.jetpackLevel}! Fuel efficiency +20%, Max speed +30%, Acceleration +30%`,
+            3000
+          );
+          break;
+
+        case 3:
+          // Second upgrade: significant improvements
+          gameState.jetpackUsage = 0.05; // 50% fuel efficiency from base
+          gameState.jetpackMaxSpeed = 10; // Double max speed from base
+          gameState.jetpackSpeed = 1.4; // Double acceleration from base
+          showMessage(
+            `Jetpack upgraded to Level ${gameState.jetpackLevel}! Fuel efficiency +50%, Max speed +100%, Acceleration +100%`,
+            3000
+          );
+          break;
+      }
     }
   } else if (item.id === "refill-jetpack") {
     price = item.getPrice();
@@ -200,8 +224,16 @@ function handleShopItemClick(item) {
     price = item.getPrice();
     if (gameState.money >= price && gameState.bombs < gameState.maxBombs) {
       gameState.money -= price;
-      gameState.bombs++;
+      // Only increment if not at max
+      if (gameState.bombs < gameState.maxBombs) {
+        gameState.bombs++;
+      }
+      // If at max after purchase, show message (already implemented)
+      if (gameState.bombs >= gameState.maxBombs) {
+        showMessage(`Maximum bombs reached (${gameState.maxBombs})`, 2000);
+      }
     } else if (gameState.bombs >= gameState.maxBombs) {
+      // We already show a message if max bombs reached
       showMessage(`Maximum bombs reached (${gameState.maxBombs})`, 2000);
     }
   } else if (item.id === "rocket") {

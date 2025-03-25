@@ -42,7 +42,7 @@ const availableTools = [
     speedMultiplier: 2.0,
     range: 2.5, // Can mine blocks up to 2 blocks away
     requirements: {
-      coal: 1,
+      iron: 5,
     },
     unlocked: true, // Changed to true - available from the start
   },
@@ -54,9 +54,8 @@ const availableTools = [
     speedMultiplier: 3.0,
     range: 3.5, // Can mine blocks up to 2 blocks away
     requirements: {
-      coal: 1,
-      //gold: 10,
-      //iron: 5,
+      gold: 10,
+      iron: 5,
     },
     unlocked: true, // Changed to true - available from the start
   },
@@ -68,10 +67,9 @@ const availableTools = [
     speedMultiplier: 4.0,
     range: 4.5, // Can mine blocks up to 3 blocks away
     requirements: {
-      coal: 1,
-      //diamond: 5,
-      //gold: 3,
-      //iron: 2,
+      diamond: 5,
+      gold: 3,
+      iron: 2,
     },
     unlocked: true, // Changed to true - available from the start
   },
@@ -84,7 +82,8 @@ const availableTools = [
     speedMultiplier: 5.0,
     range: 1.5, // Can mine blocks up to 1 blocks away
     requirements: {
-      coal: 1,
+      aluminum: 10,
+      silicon: 5,
     },
     unlocked: true,
   },
@@ -96,10 +95,9 @@ const availableTools = [
     speedMultiplier: 6.0,
     range: 2.5, // Can mine blocks up to 2 blocks away
     requirements: {
-      coal: 1,
-      //iron: 12,
-      //gold: 5,
-      //coal: 8,
+      magnesium: 12,
+      titanium: 5,
+      ruby: 3,
     },
     unlocked: true,
   },
@@ -111,10 +109,9 @@ const availableTools = [
     speedMultiplier: 7.0,
     range: 3.5, // Can mine blocks up to 3 blocks away
     requirements: {
-      coal: 1,
-      //diamond: 8,
-      //gold: 4,
-      //iron: 10,
+      platinum: 8,
+      lunarite: 4,
+      diamond: 3,
     },
     unlocked: true,
   },
@@ -127,7 +124,8 @@ const availableTools = [
     speedMultiplier: 20.0,
     range: 5.5, // Can mine blocks up to 5 blocks away
     requirements: {
-      coal: 1,
+      celestium: 2,
+      lunarite: 5,
     },
     unlocked: true, // Changed to true - available from the start
   },
@@ -140,7 +138,8 @@ const availableTools = [
     speedMultiplier: 1.0, // Not relevant for boots, but kept for consistency
     range: 0, // Not relevant for boots
     requirements: {
-      coal: 1,
+      silicon: 10,
+      diamond: 5
     },
     unlocked: true, // Changed to true - available from the start
   },

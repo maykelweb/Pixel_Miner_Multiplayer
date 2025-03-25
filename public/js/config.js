@@ -11,12 +11,13 @@ export const gameState = {
     playerName: "Player",
     connectedPlayers: [],
   },
-  money: 1000,
+  money: 10000,
   depth: 0,
   mouseHeld: false,
   pickaxeLevel: 1,
   pickaxeSpeed: 1,
   bagSize: 10,
+  maxBagSize: 99,
   inventory: {},
   blockSize: 60,
   worldWidth: 50, // blocks
@@ -26,6 +27,7 @@ export const gameState = {
   gravity: 0.5,
   blockMap: [],
   hasJetpack: false,
+  jetpackLevel: 1, 
   jetpackFuel: 0,
   maxJetpackFuel: 100,
   jetpackRefillCost: 50,
@@ -351,7 +353,8 @@ export const gameState = {
       name: "Bigger Bag",
       basePrice: 100,
       description: "+5 capacity",
-      getPrice: (level) => 500 * (level / 2),
+      getPrice: (level) => Math.round(500 * (level / 2)),
+      available: () => gameState.bagSize < gameState.maxBagSize,
     },
     {
       id: "jetpack",
@@ -360,6 +363,13 @@ export const gameState = {
         "Allows you to fly temporarily. Hold SPACE to activate while in the air.",
       getPrice: () => 100, // Set price for jetpack
       available: () => !gameState.hasJetpack, // Only available if the player doesn't have it
+    },
+    {
+      id: "jetpack-upgrade",
+      name: "Jetpack Upgrade",
+      description: "Improves your jetpack by reducing fuel consumption and increasing max speed.",
+      getPrice: (level) => level === 1 ? 1000 : 5000, // Level 1->2: $1,000, Level 2->3: $5,000
+      available: () => gameState.hasJetpack && gameState.jetpackLevel < 3, // Available if player has jetpack and level is below 3
     },
     {
       id: "health-restore",
@@ -395,7 +405,7 @@ export const gameState = {
       id: "bomb",
       name: "Bomb",
       description: "Explodes to clear multiple blocks at once. Press B to use.",
-      getPrice: () => 10,
+      getPrice: () => 100,
       available: () => gameState.bombs < gameState.maxBombs,
     },
     {
@@ -410,7 +420,7 @@ export const gameState = {
       name: "Space Rocket",
       description:
         "A powerful rocket that allows you to travel to the moon! Explore new territory and mine rare lunar ores.",
-      getPrice: () => 20,
+      getPrice: () => 5000,
       available: () => !gameState.hasRocket,
     },
   ],
@@ -506,6 +516,10 @@ export const gameState = {
       },
       inventory: this.inventory,
       money: this.money,
+      jetpackLevel: this.jetpackLevel,
+      jetpackUsage: this.jetpackUsage,
+      jetpackSpeed: this.jetpackSpeed,
+      jetpackMaxSpeed: this.jetpackMaxSpeed,
       jetpackFuel: this.jetpackFuel,
       maxJetpackFuel: this.maxJetpackFuel,
       hasJetpack: this.hasJetpack,
@@ -581,6 +595,10 @@ export const gameState = {
       // Load inventory and resources
       this.inventory = gameData.inventory || {};
       this.money = gameData.money || 0;
+      this.jetpackLevel = gameData.jetpackLevel || 1;
+      this.jetpackSpeed = gameData.jetpackSpeed || 0.7;
+      this.jetpackMaxSpeed = gameData.jetpackMaxSpeed || 0.5;
+      this.jetpackUsage = gameData.jetpackUsage || 0.1;
       this.jetpackFuel = gameData.jetpackFuel || 0;
       this.maxJetpackFuel = gameData.maxJetpackFuel || 100;
       this.hasJetpack = gameData.hasJetpack || false;

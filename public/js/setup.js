@@ -694,7 +694,7 @@ export function checkShopInteraction() {
     }
     // Also close the sell modal if it's open
     if (sellModal.style.display === "flex") {
-      closeSellModal();
+      sellModal.style.display = "none";
     }
   }
 
