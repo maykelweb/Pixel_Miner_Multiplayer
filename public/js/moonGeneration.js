@@ -236,7 +236,7 @@ function getMoonBlockForPosition(x, y, moonStone, moonSkyRows) {
   return null;
 }
 
-// Add ore veins throughout the moon
+// Add ore veins throughout the moon - FIXED FUNCTION
 function addMoonOreVeins() {
   // Add regular ores but with different probabilities
   const oresCache = getOres();
@@ -252,35 +252,74 @@ function addMoonOreVeins() {
       return;
     }
 
-    // Skip Earth-only ores and ores that aren't moon-specific
-    // Only allow moon-only ores or specially selected ores for the moon
-    if (
-      ore.earthOnly ||
-      (!ore.moonOnly &&
-        !["diamond", "titanium", "lunarite", "silicon", "magnesium"].includes(
-          ore.name.toLowerCase()
-        ))
-    ) {
+    // Skip Earth-only ores
+    if (ore.earthOnly) {
       return;
     }
 
-    // Adjust ore chance for moon
-    let moonChanceMultiplier = 1.0;
-    if (ore.moonOnly) {
-      moonChanceMultiplier = 3.0; // Moon-exclusive ores are more common
-    } else if (ore.name.toLowerCase() === "diamond") {
-      moonChanceMultiplier = 1.5; // Only diamond is a bit more common on moon
+    // Determine if this ore should appear on the moon
+    let shouldGenerateOnMoon = ore.moonOnly;
+    if (!ore.moonOnly) {
+      // Allow these specific Earth ores on the moon
+      const allowedEarthOres = ["diamond", "titanium", "silicon", "magnesium"];
+      shouldGenerateOnMoon = allowedEarthOres.includes(ore.name.toLowerCase());
     }
 
-    // Clone ore config with moon adjustments
+    // Skip if this ore shouldn't be on the moon
+    if (!shouldGenerateOnMoon) {
+      return;
+    }
+
+    // Adjust ore chance for moon - more consistent approach
+    let moonChanceMultiplier = 1.0;
+    
+    if (ore.moonOnly) {
+      // Moon-exclusive ores are more common
+      moonChanceMultiplier = 3.0;
+    } else {
+      // Non-moon-exclusive ores that can appear on the moon
+      switch(ore.name.toLowerCase()) {
+        case "diamond":
+          moonChanceMultiplier = 1.5;
+          break;
+        case "titanium":
+        case "silicon":
+        case "magnesium":
+          moonChanceMultiplier = 2.0;
+          break;
+        default:
+          // Other Earth ores are rarer on moon
+          moonChanceMultiplier = 0.5;
+      }
+    }
+
+    // Create a clone of the ore with moon-adjusted chance
     const moonOreConfig = { ...ore, chance: ore.chance * moonChanceMultiplier };
 
-    // Calculate total veins
+    // Improved vein count calculation
     const worldArea = gameState.worldWidth * gameState.worldHeight;
-    let totalVeins = Math.ceil(worldArea * moonOreConfig.chance * 0.0001);
+    
+    // Base calculation - scale based on ore chance category
+    let baseFactor;
+    if (moonOreConfig.chance >= 20) {
+      // Common ores
+      baseFactor = 0.0002;
+    } else if (moonOreConfig.chance >= 10) {
+      // Uncommon ores
+      baseFactor = 0.0001;
+    } else if (moonOreConfig.chance >= 5) {
+      // Rare ores
+      baseFactor = 0.00005;
+    } else {
+      // Very rare ores
+      baseFactor = 0.00002;
+    }
+    
+    // Calculate total veins with better scaling
+    let totalVeins = Math.ceil(worldArea * baseFactor * (moonOreConfig.chance / 10));
 
-    // Ensure reasonable minimum
-    totalVeins = Math.max(totalVeins, 5);
+    // Ensure reasonable minimum and maximum
+    totalVeins = Math.max(Math.min(totalVeins, 30), 3);
 
     // Create the veins
     for (let i = 0; i < totalVeins; i++) {
@@ -291,13 +330,18 @@ function addMoonOreVeins() {
   });
 }
 
-// Create a vein of a specific ore type within a specified depth range
+// Create a vein of a specific ore type within a specified depth range - FIXED FUNCTION
 function createOreVein(ore, minDepth = null, maxDepth = null) {
   const ores = getOres();
 
   // Use ore's min/max depth if not specified
   minDepth = minDepth !== null ? minDepth : ore.minDepth;
   maxDepth = maxDepth !== null ? maxDepth : ore.maxDepth;
+  
+  // Handle Infinity maxDepth more gracefully
+  if (maxDepth === Infinity) {
+    maxDepth = gameState.worldHeight - gameState.skyRows - 1;
+  }
 
   // Calculate actual depth positions factoring in sky rows
   const minY = gameState.skyRows + minDepth;
@@ -391,8 +435,21 @@ function createOreVein(ore, minDepth = null, maxDepth = null) {
         continue;
       }
 
-      // Use probability weighted by the ore's chance value (already adjusted) and direction
-      const placementChance = dir.prob * Math.min(1, adjustedChance * 10);
+      // Fix the placement chance calculation to scale properly with ore rarity
+      let chanceFactor;
+      if (ore.chance >= 20) {
+        chanceFactor = 0.7; // Common ores
+      } else if (ore.chance >= 10) {
+        chanceFactor = 0.5; // Uncommon ores
+      } else if (ore.chance >= 5) {
+        chanceFactor = 0.3; // Rare ores
+      } else {
+        chanceFactor = 0.2; // Very rare ores
+      }
+      
+      // Calculate placement probability with better scaling
+      // Use the adjusted chance from depth modifiers
+      const placementChance = dir.prob * chanceFactor * (adjustedChance / ore.chance);
 
       if (Math.random() < placementChance) {
         gameState.blockMap[ny][nx] = ore;
@@ -410,24 +467,29 @@ function createOreVein(ore, minDepth = null, maxDepth = null) {
   }
 }
 
-// Calculate adjusted ore chance based on depth
+// Calculate adjusted ore chance based on depth - FIXED FUNCTION
 function getAdjustedOreChance(ore, depthFromSurface) {
   // Use the base chance if no depth modifiers exist
   if (!ore.depthModifiers || !ore.depthModifiers.length) {
     return ore.chance;
   }
 
-  // Sort modifiers by depth to ensure correct application
+  // Sort modifiers by depth in ascending order to ensure correct application
   const sortedModifiers = [...ore.depthModifiers].sort(
-    (a, b) => b.depth - a.depth
+    (a, b) => a.depth - b.depth
   );
 
-  // Find applicable depth modifier
-  // Start with the deepest modifier that applies to current depth
+  // Find the appropriate modifier for current depth
   let modifier = 1.0;
-  for (const depthMod of sortedModifiers) {
-    if (depthFromSurface >= depthMod.depth) {
-      modifier = depthMod.multiplier;
+  
+  for (let i = 0; i < sortedModifiers.length; i++) {
+    const currentMod = sortedModifiers[i];
+    
+    // If we're at or beyond this modifier's depth
+    if (depthFromSurface >= currentMod.depth) {
+      modifier = currentMod.multiplier;
+    } else {
+      // We haven't reached this depth yet, so use the previous modifier
       break;
     }
   }
@@ -435,7 +497,7 @@ function getAdjustedOreChance(ore, depthFromSurface) {
   // Apply the modifier and return the adjusted chance
   const adjustedChance = ore.chance * modifier;
 
-  // Debug logging to verify modifiers are applied
+  // Debug logging
   console.log(
     `Ore: ${ore.name}, Depth: ${depthFromSurface}, Base chance: ${ore.chance}, Modifier: ${modifier}, Adjusted: ${adjustedChance}`
   );

@@ -682,6 +682,7 @@ function hasPlayerMoved() {
 }
 
 // Check vertical collisions
+// Check vertical collisions
 export function checkVerticalCollisions() {
   const playerLeft = gameState.player.x;
   const playerRight = gameState.player.x + gameState.player.width;
@@ -690,8 +691,8 @@ export function checkVerticalCollisions() {
   const startX = Math.floor(playerLeft / gameState.blockSize);
   const endX = Math.floor((playerRight - 1) / gameState.blockSize);
 
-  // Add shop sign platform collision detection
-  if (gameState.player.velocityY >= 0) {
+  // Only check for shop sign and crafting station platforms if NOT on the moon planet
+  if (gameState.player.velocityY >= 0 && gameState.currentPlanet !== "moon") {
     // Get the shop sign position directly from gameState
     const shopSignPos = gameState.shopSign;
     
