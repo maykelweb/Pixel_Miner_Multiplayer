@@ -16,12 +16,12 @@ export const gameState = {
   mouseHeld: false,
   pickaxeLevel: 1,
   pickaxeSpeed: 1,
-  bagSize: 10,
-  maxBagSize: 99,
+  bagSize: 1000,
+  maxBagSize: 990,
   inventory: {},
   blockSize: 60,
   worldWidth: 50, // blocks
-  worldHeight: 1000, // blocks
+  worldHeight: 500, // blocks
   skyRows: 10, // Height of sky in blocks
   visibleBlocks: [],
   gravity: 0.5,
@@ -114,42 +114,47 @@ export const gameState = {
       minVein: 4,
       maxVein: 14,
       minDepth: 1,
-      maxDepth: 120,
-      chance: 25, // Slightly increased for early game
+      maxDepth: 220, // Extended range
+      chance: 25, 
       depthModifiers: [
         { depth: 30, multiplier: 0.8 },
-        { depth: 60, multiplier: 0.5 },
-        { depth: 90, multiplier: 0.2 },
+        { depth: 100, multiplier: 0.5 },
+        { depth: 170, multiplier: 0.3 },
+        { depth: 200, multiplier: 0.1 }, // Rare but still present at deeper levels
       ],
     },
     {
       name: "iron",
-      value: 12, // Slightly increased value
+      value: 12,
       color: "iron",
       minVein: 3,
       maxVein: 10,
-      minDepth: 5, // Easier to find early
-      maxDepth: 150,
-      chance: 12, // Increased for better early progression
+      minDepth: 5,
+      maxDepth: 280, // Extended range
+      chance: 12,
       depthModifiers: [
-        { depth: 40, multiplier: 1.2 }, // More common in mid-depths
-        { depth: 100, multiplier: 0.5 },
+        { depth: 40, multiplier: 1.2 },
+        { depth: 120, multiplier: 0.8 },
+        { depth: 200, multiplier: 0.5 },
+        { depth: 240, multiplier: 0.2 },
       ],
     },
 
     // Tier 2 - Mid Game Resources
     {
       name: "gold",
-      value: 30, // Increased value
+      value: 30,
       color: "gold",
       minVein: 2,
       maxVein: 8,
-      minDepth: 35, // Earlier to find
-      maxDepth: 180,
+      minDepth: 35,
+      maxDepth: 320, // Extended range
       chance: 7,
       depthModifiers: [
-        { depth: 70, multiplier: 1.3 }, // Sweet spot
-        { depth: 120, multiplier: 0.7 },
+        { depth: 70, multiplier: 1.3 },
+        { depth: 150, multiplier: 2.0 },
+        { depth: 220, multiplier: 1.6 },
+        { depth: 280, multiplier: 0.6 },
       ],
     },
     {
@@ -159,36 +164,46 @@ export const gameState = {
       minVein: 2,
       maxVein: 7,
       minDepth: 70,
-      maxDepth: 220,
-      chance: 5.5,
-      depthModifiers: [{ depth: 120, multiplier: 1.2 }],
+      maxDepth: 370, // Extended range
+      chance: 10.5,
+      depthModifiers: [
+        { depth: 120, multiplier: 1.2 },
+        { depth: 200, multiplier: 1.4 },
+        { depth: 280, multiplier: 0.9 },
+        { depth: 330, multiplier: 0.5 },
+      ],
     },
 
     // Tier 3 - End Game Earth Resources
     {
       name: "ruby",
-      value: 85, // Increased value
+      value: 85,
       color: "ruby",
       minVein: 1,
       maxVein: 6,
       minDepth: 100,
-      maxDepth: 260,
-      chance: 4,
+      maxDepth: 420, // Extended range
+      chance: 8,
       depthModifiers: [
-        { depth: 160, multiplier: 1.5 }, // More common in deeper areas
+        { depth: 160, multiplier: 1.5 },
+        { depth: 250, multiplier: 1.8 },
+        { depth: 350, multiplier: 1.2 },
+        { depth: 400, multiplier: 0.7 },
       ],
     },
     {
       name: "diamond",
-      value: 120, // Increased value
+      value: 120,
       color: "diamond",
       minVein: 1,
       maxVein: 5,
-      minDepth: 180, // Slightly easier to find
-      maxDepth: 300,
-      chance: 2.5, // Slightly increased chance
+      minDepth: 180,
+      maxDepth: 500, // Extended to max depth
+      chance: 4.5,
       depthModifiers: [
-        { depth: 250, multiplier: 1.7 }, // Sweet spot at very deep levels
+        { depth: 250, multiplier: 3.0 },
+        { depth: 350, multiplier: 4.0 }, // Peak chance in deep areas
+        { depth: 450, multiplier: 5.0 }, // More common at the deepest levels
       ],
     },
 
@@ -197,28 +212,36 @@ export const gameState = {
     // Tier 1 - Basic Moon Resources
     {
       name: "silicon",
-      value: 25, // Increased value
-      color: "silicon", // Silver-gray
+      value: 25,
+      color: "silicon",
       hardness: 2,
       minVein: 4,
       maxVein: 12,
       minDepth: 1,
-      maxDepth: 80,
-      chance: 22, // Common on moon surface
-      depthModifiers: [{ depth: 40, multiplier: 0.7 }],
+      maxDepth: 200, // Extended range
+      chance: 402,
+      depthModifiers: [
+        { depth: 100, multiplier: 0.1 },
+        { depth: 100, multiplier: 0.05 },
+        { depth: 160, multiplier: 0.01 },
+      ],
       moonOnly: true,
     },
     {
       name: "aluminum",
       value: 35,
-      color: "aluminum", // Silver-white
+      color: "aluminum",
       hardness: 2,
       minVein: 3,
       maxVein: 10,
       minDepth: 10,
-      maxDepth: 100,
-      chance: 18,
-      depthModifiers: [{ depth: 50, multiplier: 0.8 }],
+      maxDepth: 230, // Extended range
+      chance: 100,
+      depthModifiers: [
+        { depth: 50, multiplier: 0.1 },
+        { depth: 120, multiplier: 0.05 },
+        { depth: 180, multiplier: 0.01 },
+      ],
       moonOnly: true,
     },
 
@@ -226,30 +249,37 @@ export const gameState = {
     {
       name: "magnesium",
       value: 60,
-      color: "magnesium", // Bright white
+      color: "magnesium",
       hardness: 3,
       minVein: 2,
       maxVein: 8,
-      minDepth: 30,
-      maxDepth: 150,
-      chance: 12,
+      minDepth: 70,
+      maxDepth: 280, // Extended range
+      chance: 40,
       depthModifiers: [
         { depth: 60, multiplier: 1.2 },
-        { depth: 100, multiplier: 0.8 },
+        { depth: 140, multiplier: 0.9 },
+        { depth: 200, multiplier: 0.6 },
+        { depth: 250, multiplier: 0.4 },
       ],
       moonOnly: true,
     },
     {
       name: "titanium",
       value: 100,
-      color: "titanium", // Metallic gray
+      color: "titanium",
       hardness: 4,
       minVein: 2,
       maxVein: 6,
       minDepth: 60,
-      maxDepth: 200,
-      chance: 8,
-      depthModifiers: [{ depth: 100, multiplier: 1.5 }],
+      maxDepth: 320, // Extended range
+      chance: 20,
+      depthModifiers: [
+        { depth: 100, multiplier: 1.5 },
+        { depth: 180, multiplier: 1.2 },
+        { depth: 240, multiplier: 0.8 },
+        { depth: 290, multiplier: 0.5 },
+      ],
       moonOnly: true,
     },
 
@@ -257,45 +287,56 @@ export const gameState = {
     {
       name: "platinum",
       value: 180,
-      color: "platinum", // Bright silver
+      color: "platinum",
       hardness: 5,
       minVein: 2,
       maxVein: 6,
       minDepth: 120,
-      maxDepth: 250,
+      maxDepth: 380, // Extended range
       chance: 5,
-      depthModifiers: [{ depth: 180, multiplier: 1.4 }],
+      depthModifiers: [
+        { depth: 180, multiplier: 1.4 },
+        { depth: 250, multiplier: 1.6 },
+        { depth: 300, multiplier: 1.2 },
+        { depth: 350, multiplier: 0.7 },
+      ],
       moonOnly: true,
     },
     {
       name: "lunarite",
-      value: 350, // Significantly valuable
-      color: "lunarite", // Bright blue
+      value: 350,
+      color: "lunarite",
       hardness: 6,
       minVein: 1,
       maxVein: 3,
       minDepth: 180,
-      maxDepth: 300,
+      maxDepth: 440, // Extended range
       chance: 2.5,
       depthModifiers: [
-        { depth: 240, multiplier: 1.8 }, // Sweet spot at deepest levels
+        { depth: 240, multiplier: 1.8 },
+        { depth: 320, multiplier: 2.0 },
+        { depth: 380, multiplier: 1.5 },
+        { depth: 420, multiplier: 1.0 },
       ],
       moonOnly: true,
     },
 
-    // Tier 4 - Ultimate Moon Resource (New Addition)
+    // Tier 4 - Ultimate Moon Resource
     {
       name: "celestium",
-      value: 650, // Extremely valuable
-      color: "celestium", // Glowing cyan
+      value: 650,
+      color: "celestium",
       hardness: 7,
       minVein: 1,
       maxVein: 2,
       minDepth: 250,
-      maxDepth: 350, // Deeper than other ores
+      maxDepth: 500, // Extended to max depth
       chance: 1,
       depthModifiers: [
-        { depth: 300, multiplier: 1.5 }, // Still rare but slightly more common at max depth
+        { depth: 300, multiplier: 1.5 },
+        { depth: 370, multiplier: 2.0 },
+        { depth: 430, multiplier: 2.5 }, // Significantly more common at the deepest levels
+        { depth: 480, multiplier: 3.0 }, // Greatest chance at near-maximum depth
       ],
       moonOnly: true,
     },

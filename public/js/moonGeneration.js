@@ -10,16 +10,15 @@ let cachedOres = null;
 function getOres() {
   if (cachedOres === null) {
     cachedOres = {
+      // Keep grass/dirt/stone for potential future use, though not used on moon surface gen now
       grass: gameState.ores.find((ore) => ore.name === "grass"),
       dirt: gameState.ores.find((ore) => ore.name === "dirt"),
       stone: gameState.ores.find((ore) => ore.name === "stone"),
     };
 
-    // Add all other ores to the cache for quick access
+    // Add all other ores to the cache for quick access by name
     gameState.ores.forEach((ore) => {
-      if (!["grass", "dirt", "stone"].includes(ore.name)) {
-        cachedOres[ore.name.toLowerCase()] = ore;
-      }
+      cachedOres[ore.name.toLowerCase()] = ore;
     });
   }
   return cachedOres;
@@ -42,193 +41,175 @@ export function generateMoonWorld() {
   // Check if the moon world is already generated or received from server
   if (gameState.moonBlockMap && gameState.moonBlockMap.length > 0) {
     console.log("Using existing moon map");
-
     // Use deep copy to avoid reference issues
     gameState.blockMap = JSON.parse(JSON.stringify(gameState.moonBlockMap));
-
-    // Update visible blocks for the player's current position
     updateVisibleBlocks();
-
-    // Position the rocket on the moon
-    const moonSkyRows = gameState.skyRows;
+    const moonSkyRows = gameState.skyRows; // Use consistent skyrows
     placeMoonRocket(moonSkyRows);
 
-    // If we're in multiplayer mode and we're the host, upload the existing Moon world
+    // Multiplayer: Host uploads existing map if needed
     if (gameState.isMultiplayer && gameState.isHost) {
-      console.log("Host uploading existing Moon map to server");
-
-      // Force upload of moon data regardless of previous uploads
-      gameState.needToUploadWorld = true;
-      uploadWorldToServer("moon");
-
-      // Always do a few retries to ensure moon data is properly uploaded
-      scheduleRetryUploads("moon");
+      console.log("Host checking if existing Moon map needs upload");
+      // Optionally force upload or check if it was previously uploaded successfully
+      // Using the retry mechanism should cover cases where it didn't upload before
+      scheduleRetryUploads("moon"); // Schedule uploads just in case
     }
 
-    // Clear generation flag
     gameState.generatingMoon = false;
     return;
   }
 
-  // In multiplayer mode, if we don't have moon data yet, check with the server first
-  // Skip server requests completely in singleplayer mode
-  if (gameState.isMultiplayer && !gameState.hasRequestedMoonData) {
-    console.log("Requesting moon blockmap from server first");
-
-    // Set flag so we don't retry indefinitely
+  // Multiplayer: Client requests map from server first
+  if (gameState.isMultiplayer && !gameState.isHost && !gameState.hasRequestedMoonData) {
+    console.log("Client requesting moon blockmap from server");
     gameState.hasRequestedMoonData = true;
-
-    // Request moon data
     requestWorldData("moon");
 
-    // Add a timeout to proceed with generation if the server doesn't respond
     setTimeout(() => {
-      if (!gameState.moonBlockMap) {
-        console.log(
-          "No moon data received from server, proceeding with generation"
-        );
-        // Continue with generation but reset flag first
-        gameState.hasRequestedMoonData = false; // Reset flag to prevent issues in future calls
-        generateMoonWorld();
+      if (!gameState.moonBlockMap || gameState.moonBlockMap.length === 0) {
+        console.log("No moon data received from server after timeout, proceeding with generation (client)");
+        // Reset flag allows generation if server fails or host is gone
+        gameState.hasRequestedMoonData = false;
+        generateMoonWorld(); // Retry generation
+      } else {
+         console.log("Moon data received from server.");
+         // Data should have been processed by the multiplayer handler, just need to ensure state is correct
+         gameState.generatingMoon = false; // Ensure flag is cleared
+         updateVisibleBlocks(); // Update view with received map
+         const moonSkyRows = gameState.skyRows;
+         placeMoonRocket(moonSkyRows); // Place rocket on received map
       }
-    }, 3000); // Wait 3 seconds for server response
+    }, 5000); // Increased timeout for server response
 
-    return; // Exit early, will resume after getting response or timeout
+    return; // Exit, wait for response or timeout
   }
 
-  // If we reach here, we need to generate a new moon world
+  // --- Generate New Moon World ---
 
-  // Save the Earth block map if we're coming from Earth
-  if (
-    gameState.blockMap &&
-    gameState.blockMap.length > 0 &&
-    !gameState.moonBlockMap
-  ) {
-    console.log("Saving Earth map before first moon generation");
-    gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
+  // Save the Earth block map if switching from Earth for the first time
+  if (gameState.currentPlanet === 'earth' && gameState.blockMap && gameState.blockMap.length > 0 && (!gameState.earthBlockMap || gameState.earthBlockMap.length === 0)) {
+      console.log("Saving Earth map before first moon generation");
+      gameState.earthBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
   }
 
-  console.log("Generating new moon world");
 
-  // Reset the ore cache to ensure we're using fresh data
+  console.log("Generating new moon world...");
+
+  // Reset the ore cache to ensure we're using fresh config data
   cachedOres = null;
+  const ores = getOres(); // Re-initialize cache
+
+  // Define moon-specific blocks using the cache
+  const moonStone = ores.stone; // Assuming 'stone' is the base for moon rock
+  if (!moonStone) {
+      console.error("CRITICAL: 'stone' ore definition not found in config!");
+      gameState.generatingMoon = false;
+      return; // Cannot generate without base stone
+  }
+
 
   // Initialize the block map for moon
   gameState.blockMap = [];
+  const moonSkyRows = gameState.skyRows; // Number of sky rows for moon
 
-  // Get ores for easier access
-  const ores = getOres();
-
-  // Define moon-specific blocks
-  const moonStone = ores.stone;
-
-  // Define how much sky we want
-  const moonSkyRows = gameState.skyRows;
-
-  // Generate the lunar terrain
+  // Generate the lunar terrain (base stone)
+  console.log("Generating moon terrain...");
   for (let y = 0; y < gameState.worldHeight; y++) {
     const row = [];
     for (let x = 0; x < gameState.worldWidth; x++) {
-      // Sky area remains null (much more sky visible on moon)
+      // Sky area
       if (y < moonSkyRows) {
         row.push(null);
-        continue;
+      } else {
+        // Generate moon surface and underground using only stone initially
+        const block = getMoonBlockForPosition(x, y, moonStone, moonSkyRows);
+        row.push(block);
       }
-
-      // Generate moon surface and underground
-      const block = getMoonBlockForPosition(x, y, moonStone, moonSkyRows);
-      row.push(block);
     }
     gameState.blockMap.push(row);
   }
+  console.log("Moon terrain generation complete.");
+
 
   // Generate moon ore veins in a second pass
-  addMoonOreVeins();
+  console.log("Adding moon ore veins...");
+  addMoonOreVeins(); // Use the fixed function
+  console.log("Moon ore vein generation complete.");
+
 
   // Position the rocket on the moon
   placeMoonRocket(moonSkyRows);
 
-  // Save the moon block map for future use (use deep copy)
+
+  // Save the newly generated moon block map (deep copy)
+  console.log("Saving generated moon map to gameState.moonBlockMap");
   gameState.moonBlockMap = JSON.parse(JSON.stringify(gameState.blockMap));
+
 
   updateVisibleBlocks();
 
-  // Only upload moon data in multiplayer mode
+
+  // Multiplayer: Upload newly generated world data
   if (gameState.isMultiplayer) {
-    // If we're the host, upload the newly generated Moon world to the server
-    if (gameState.isHost) {
-      console.log("Host is uploading newly generated Moon world to server");
-
-      // Force the upload flag to true
-      gameState.needToUploadWorld = true;
-      uploadWorldToServer("moon");
-
-      // Schedule multiple retries
-      scheduleRetryUploads("moon");
-    }
-    // Allow non-host players to upload if they generated a new moon map
-    else if (gameState.hasRequestedMoonData) {
-      console.log(
-        "Non-host player uploading newly generated Moon world to server"
-      );
-
-      // Force the upload flag to true for non-host upload
-      gameState.needToUploadWorld = true;
-      uploadWorldToServer("moon", true); // Use forceUpload=true parameter
-
-      // Schedule retry uploads for reliability
-      scheduleRetryUploads("moon");
-    }
+      if (gameState.isHost) {
+          console.log("Host uploading newly generated Moon world to server");
+          gameState.needToUploadWorld = true; // Ensure flag is set
+          uploadWorldToServer("moon");
+          scheduleRetryUploads("moon"); // Schedule retries for reliability
+      } else if (gameState.hasRequestedMoonData === false) {
+          // This case handles a client generating the world because the server/host didn't provide it
+          console.log("Client uploading newly generated Moon world (fallback)");
+          gameState.needToUploadWorld = true;
+          uploadWorldToServer("moon", true); // Force upload as client generated it
+          scheduleRetryUploads("moon");
+      }
   }
 
-  // Clear generation flag
+  // Clear generation flag and request flag
   gameState.generatingMoon = false;
-
-  // Reset the request flag after successful generation
-  gameState.hasRequestedMoonData = false;
+  gameState.hasRequestedMoonData = false; // Reset after successful generation/request cycle
+  console.log("Moon generation process finished.");
 }
 
-// New helper function to schedule multiple upload retries
+// Helper function to schedule multiple upload retries (Unchanged)
 function scheduleRetryUploads(planet) {
-  // Make multiple retry attempts to ensure world is uploaded
-  setTimeout(() => {
-    console.log(`First retry for ${planet} world upload...`);
-    gameState.needToUploadWorld = true;
-    uploadWorldToServer(planet);
-  }, 2000);
+    const retryDelays = [2000, 5000, 8000]; // Delays in ms
 
-  setTimeout(() => {
-    console.log(`Second retry for ${planet} world upload...`);
-    gameState.needToUploadWorld = true;
-    uploadWorldToServer(planet);
-  }, 5000);
+    retryDelays.forEach((delay, index) => {
+        setTimeout(() => {
+            // Only retry if still needed (e.g., not switched planets again)
+            if (gameState.needToUploadWorld && gameState.currentPlanet === 'moon' && planet === 'moon') {
+                 console.log(`Retry ${index + 1} for ${planet} world upload...`);
+                 // No need to set needToUploadWorld again, uploadWorldToServer checks it
+                 uploadWorldToServer(planet);
+            } else if (gameState.needToUploadWorld && gameState.currentPlanet === 'earth' && planet === 'earth') {
+                 console.log(`Retry ${index + 1} for ${planet} world upload...`);
+                 uploadWorldToServer(planet);
+            }
+        }, delay);
+    });
 
-  // Final attempt with even longer delay
-  setTimeout(() => {
-    console.log(`Final attempt for ${planet} world upload...`);
-    gameState.needToUploadWorld = true;
-    uploadWorldToServer(planet);
-  }, 8000);
+    // Optionally, clear the flag after the last retry is scheduled,
+    // assuming uploadWorldToServer handles its own success/failure state.
+    // Or let uploadWorldToServer clear it on successful upload acknowledgement.
+    // For now, leave it, as uploadWorldToServer likely handles it.
 }
 
-// Determine what block should be at a specific position on the moon
+
+// Determine what block should be at a specific position on the moon (Terrain Only)
+// (Unchanged - This function correctly generates the base stone terrain)
 function getMoonBlockForPosition(x, y, moonStone, moonSkyRows) {
   const depthFromSurface = y - moonSkyRows;
 
   // Create more cratered surface with varying heights
   const surfaceVariation = Math.sin(x * 0.2) * 3 + Math.sin(x * 0.05) * 5;
-  const adjustedSurface = Math.floor(surfaceVariation);
+  const adjustedSurfaceLevel = Math.floor(surfaceVariation); // The first solid block depth relative to skyRows
 
-  // Surface layer
-  if (
-    depthFromSurface === adjustedSurface ||
-    depthFromSurface === adjustedSurface + 1
-  ) {
-    // Only use stone for the surface
-    return moonStone;
-  }
-  // Below surface is all stone
-  else if (depthFromSurface > adjustedSurface) {
+  // Ensure surface starts right below skyRows minimum
+  const actualSurfaceY = moonSkyRows + Math.max(0, adjustedSurfaceLevel); // Don't allow surface above skyRows
+
+  // Place stone at and below the calculated surface level
+  if (y >= actualSurfaceY) {
     return moonStone;
   }
 
@@ -236,276 +217,304 @@ function getMoonBlockForPosition(x, y, moonStone, moonSkyRows) {
   return null;
 }
 
-// Add ore veins throughout the moon - FIXED FUNCTION
+// *** FIXED FUNCTION: Add ore veins throughout the moon ***
 function addMoonOreVeins() {
-  // Add regular ores but with different probabilities
-  const oresCache = getOres();
+  const oresCache = getOres(); // Get cached ore objects (includes .stone)
+  const moonStoneName = oresCache.stone?.name?.toLowerCase();
 
-  // Process each ore type
+  if (!moonStoneName) {
+      console.error("Cannot add veins: Base 'stone' block not defined or cached.");
+      return;
+  }
+
+  console.log("Starting vein generation for applicable ores...");
+
+  // Process each ore type defined in gameState
   gameState.ores.forEach((ore) => {
-    // Skip basic terrain blocks
-    if (
-      ore.name.toLowerCase() === "dirt" ||
-      ore.name.toLowerCase() === "stone" ||
-      ore.name.toLowerCase() === "grass"
-    ) {
+    // Skip basic terrain blocks explicitly
+    if (["grass", "dirt", "stone"].includes(ore.name.toLowerCase())) {
       return;
     }
 
-    // Skip Earth-only ores
-    if (ore.earthOnly) {
-      return;
+    // --- Filtering Logic ---
+    let shouldGenerateOnMoon = false;
+    const allowedEarthOresOnMoon = ["diamond", "titanium", "silicon", "magnesium"];
+
+    if (ore.moonOnly) {
+        shouldGenerateOnMoon = true;
+        // console.log(` -> ${ore.name}: Marked as moonOnly.`);
+    } else if (!ore.earthOnly) {
+        // If not earthOnly, check if it's one of the allowed Earth ores
+        if (allowedEarthOresOnMoon.includes(ore.name.toLowerCase())) {
+            shouldGenerateOnMoon = true;
+            // console.log(` -> ${ore.name}: Allowed Earth ore on Moon.`);
+        } else {
+            // console.log(` -> ${ore.name}: Earth ore NOT allowed on Moon.`);
+        }
+    } else {
+        // console.log(` -> ${ore.name}: Marked as earthOnly, skipping for Moon.`);
     }
 
-    // Determine if this ore should appear on the moon
-    let shouldGenerateOnMoon = ore.moonOnly;
-    if (!ore.moonOnly) {
-      // Allow these specific Earth ores on the moon
-      const allowedEarthOres = ["diamond", "titanium", "silicon", "magnesium"];
-      shouldGenerateOnMoon = allowedEarthOres.includes(ore.name.toLowerCase());
-    }
 
-    // Skip if this ore shouldn't be on the moon
+    // Skip if this ore shouldn't be on the moon based on flags/rules
     if (!shouldGenerateOnMoon) {
       return;
     }
 
-    // Adjust ore chance for moon - more consistent approach
-    let moonChanceMultiplier = 1.0;
-    
+    // --- Chance Adjustment for Moon ---
+    let moonChanceMultiplier = 1.0; // Default multiplier
+
     if (ore.moonOnly) {
-      // Moon-exclusive ores are more common
-      moonChanceMultiplier = 3.0;
+      // Moon-exclusive ores might be more or less common based on design
+      // Example: Make them generally more common than their Earth counterparts if tiered similarly
+      moonChanceMultiplier = 1.5; // Example: 50% more common overall chance
+       // Adjust specific moon ores if needed
+       if (ore.name.toLowerCase() === 'silicon') moonChanceMultiplier = 2.5; // Make silicon very common
+       if (ore.name.toLowerCase() === 'lunarite') moonChanceMultiplier = 1.2;
+       if (ore.name.toLowerCase() === 'celestium') moonChanceMultiplier = 1.0; // Keep rarest as configured
+
     } else {
-      // Non-moon-exclusive ores that can appear on the moon
-      switch(ore.name.toLowerCase()) {
+      // Adjust chance for allowed Earth ores on the moon
+      switch (ore.name.toLowerCase()) {
         case "diamond":
-          moonChanceMultiplier = 1.5;
+          moonChanceMultiplier = 0.8; // Slightly rarer than peak on Earth
           break;
         case "titanium":
-        case "silicon":
-        case "magnesium":
-          moonChanceMultiplier = 2.0;
+          moonChanceMultiplier = 1.0; // Similar rarity as on Earth (if it existed there)
           break;
+        case "silicon": // Should be moonOnly based on config, but handle if misconfigured
+        case "magnesium": // Should be moonOnly based on config
+           moonChanceMultiplier = 1.0; // Use base chance if somehow not marked moonOnly
+           break;
         default:
-          // Other Earth ores are rarer on moon
-          moonChanceMultiplier = 0.5;
+          moonChanceMultiplier = 0.5; // Other potential Earth ores are much rarer (safety net)
       }
     }
 
-    // Create a clone of the ore with moon-adjusted chance
-    const moonOreConfig = { ...ore, chance: ore.chance * moonChanceMultiplier };
+    // Create a temporary config object for this ore with moon-adjusted chance
+    // Use base chance if multiplier is 1 to avoid floating point issues
+    const adjustedBaseChance = moonChanceMultiplier === 1.0 ? ore.chance : ore.chance * moonChanceMultiplier;
+    const moonOreConfig = { ...ore, chance: Math.max(0.1, adjustedBaseChance) }; // Ensure chance is at least slightly positive
 
-    // Improved vein count calculation
-    const worldArea = gameState.worldWidth * gameState.worldHeight;
-    
-    // Base calculation - scale based on ore chance category
-    let baseFactor;
-    if (moonOreConfig.chance >= 20) {
-      // Common ores
-      baseFactor = 0.0002;
-    } else if (moonOreConfig.chance >= 10) {
-      // Uncommon ores
-      baseFactor = 0.0001;
-    } else if (moonOreConfig.chance >= 5) {
-      // Rare ores
-      baseFactor = 0.00005;
-    } else {
-      // Very rare ores
-      baseFactor = 0.00002;
-    }
-    
-    // Calculate total veins with better scaling
-    let totalVeins = Math.ceil(worldArea * baseFactor * (moonOreConfig.chance / 10));
 
-    // Ensure reasonable minimum and maximum
-    totalVeins = Math.max(Math.min(totalVeins, 30), 3);
+    // --- Vein Count Calculation ---
+    const worldArea = gameState.worldWidth * (gameState.worldHeight - gameState.skyRows); // Area below sky
+    let baseFactor; // Determines vein density based on rarity
 
-    // Create the veins
+    // Tier the baseFactor based on the adjusted chance
+    if (moonOreConfig.chance >= 30) baseFactor = 0.00025; // Very Common (e.g., Silicon)
+    else if (moonOreConfig.chance >= 15) baseFactor = 0.00018; // Common (e.g., Aluminum, Magnesium)
+    else if (moonOreConfig.chance >= 8) baseFactor = 0.00012; // Uncommon (e.g., Titanium)
+    else if (moonOreConfig.chance >= 3) baseFactor = 0.00008; // Rare (e.g., Platinum, Diamond on moon)
+    else baseFactor = 0.00005; // Very Rare (e.g., Lunarite, Celestium)
+
+
+    // Calculate total veins: Area * DensityFactor * (Chance / NormalizationFactor)
+    // Normalizing by 10 seems reasonable for percentage chances
+    let totalVeins = worldArea * baseFactor * (moonOreConfig.chance / 10);
+
+    // Add some randomness and ensure a minimum/maximum number of veins
+    totalVeins = Math.ceil(totalVeins * (0.8 + Math.random() * 0.4)); // +/- 20% randomness
+    totalVeins = Math.max(10, Math.min(totalVeins, 100)); // Clamp between 10 and 100 veins
+
+
+    console.log(`Generating ${totalVeins} veins for Moon ${ore.name} (Adjusted Chance: ${moonOreConfig.chance.toFixed(2)})`);
+
+
+    // Create the calculated number of veins
     for (let i = 0; i < totalVeins; i++) {
-      createOreVein(moonOreConfig);
+      // Pass the temporary moonOreConfig and the name of the base block to replace
+      createOreVein(moonOreConfig, moonStoneName);
     }
-
-    console.log(`Moon ${ore.name}: Created total of ${totalVeins} veins`);
   });
+  console.log("Finished adding all moon ore veins.");
 }
 
-// Create a vein of a specific ore type within a specified depth range - FIXED FUNCTION
-function createOreVein(ore, minDepth = null, maxDepth = null) {
-  const ores = getOres();
 
-  // Use ore's min/max depth if not specified
-  minDepth = minDepth !== null ? minDepth : ore.minDepth;
-  maxDepth = maxDepth !== null ? maxDepth : ore.maxDepth;
-  
-  // Handle Infinity maxDepth more gracefully
-  if (maxDepth === Infinity) {
+// *** FIXED FUNCTION: Create a vein of a specific ore type ***
+function createOreVein(oreConfig, baseBlockName = "stone") {
+
+  // Use ore's min/max depth from the passed config
+  const minDepth = oreConfig.minDepth;
+  let maxDepth = oreConfig.maxDepth;
+
+  // Handle Infinity maxDepth gracefully -> bottom of world below sky
+  if (maxDepth === Infinity || maxDepth > (gameState.worldHeight - gameState.skyRows - 1)) {
     maxDepth = gameState.worldHeight - gameState.skyRows - 1;
   }
 
-  // Calculate actual depth positions factoring in sky rows
+  // Calculate actual Y coordinates factoring in sky rows
   const minY = gameState.skyRows + minDepth;
   const maxY = Math.min(
-    gameState.worldHeight - 1,
+    gameState.worldHeight - 1, // Ensure within world bounds
     gameState.skyRows + maxDepth
   );
 
-  // Don't continue if there's no valid depth range
-  if (minY >= maxY) {
-    console.log(`${ore.name} has invalid depth range: ${minY} to ${maxY}`);
+  // Validate depth range
+  if (minY > maxY) {
+    // console.warn(`Skipping ${oreConfig.name} vein: Invalid depth range after sky adjustment (${minY} > ${maxY}). MinDepth: ${minDepth}, MaxDepth: ${maxDepth}`);
     return;
   }
+  if (minY < gameState.skyRows || minY >= gameState.worldHeight || maxY < gameState.skyRows || maxY >= gameState.worldHeight){
+      // console.warn(`Skipping ${oreConfig.name} vein: Calculated Y range [${minY}-${maxY}] is out of world bounds [${gameState.skyRows}-${gameState.worldHeight-1}].`);
+      return;
+  }
 
-  // Pick a random starting point for the vein within the valid depth range
+  // Pick a random starting point within the *valid Y range*
   const startY = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
   const startX = Math.floor(Math.random() * gameState.worldWidth);
 
-  // Calculate depth from surface for chance modification
-  const depthFromSurface = startY - gameState.skyRows;
-
-  // Only place ores in stone blocks
-  if (
-    !gameState.blockMap[startY] ||
-    !gameState.blockMap[startY][startX] ||
-    gameState.blockMap[startY][startX]?.name.toLowerCase() !== "stone"
-  ) {
+  // --- Ensure starting point is valid ---
+  // Check bounds first
+   if (!gameState.blockMap[startY] || startX < 0 || startX >= gameState.worldWidth) {
+    // console.warn(`Skipping ${oreConfig.name} vein: Start point (${startX}, ${startY}) out of map bounds.`);
     return;
+   }
+  // Check if the block at the start point is the replaceable base block (e.g., stone)
+  const currentBlock = gameState.blockMap[startY][startX];
+  if (!currentBlock || currentBlock.name.toLowerCase() !== baseBlockName.toLowerCase()) {
+    // console.log(`Skipping ${oreConfig.name} vein: Start block at (${startX}, ${startY}) is not ${baseBlockName} (found ${currentBlock?.name}).`);
+    return; // Cannot start vein here
   }
 
-  // Determine vein size using the ore's configuration
-  const minSize = ore.minVein || 3;
-  const maxSize = ore.maxVein || 5;
-  const veinSize =
-    Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+  // Calculate depth from surface for chance modification (relative to skyRows)
+  const depthFromSurface = startY - gameState.skyRows;
 
-  // Points to check in the vein expansion
-  const queue = [{ x: startX, y: startY, depth: 0 }];
-  const placed = new Set();
+  // Determine vein size using the ore's configuration
+  const minSize = oreConfig.minVein || 2; // Ensure min size is at least 1-2
+  const maxSize = oreConfig.maxVein || Math.max(minSize, 5); // Ensure max >= min
+  const targetVeinSize = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+
+  // --- Vein Expansion ---
+  const queue = [{ x: startX, y: startY, depth: 0 }]; // BFS-like queue
+  const placed = new Set(); // Track placed blocks to avoid duplicates and cycles
   const key = (x, y) => `${x},${y}`;
 
   // Place the first ore block
-  gameState.blockMap[startY][startX] = ore;
+  gameState.blockMap[startY][startX] = oreConfig; // Place the actual ore object
   placed.add(key(startX, startY));
+  let placedCount = 1;
 
-  // Get adjusted ore chance based on depth
-  const adjustedChance = getAdjustedOreChance(ore, depthFromSurface);
+  // Get the ore's chance adjusted for the *starting depth*
+  const adjustedChanceAtStart = getAdjustedOreChance(oreConfig, depthFromSurface);
+  const normalizedBaseChance = Math.max(0.01, adjustedChanceAtStart / 100); // Normalize to 0-1, ensure > 0
 
-  // Expand the vein using a branch-and-bound approach
-  while (queue.length > 0 && placed.size < veinSize) {
-    // Sort queue by depth to create more natural-looking veins
-    // that expand outward rather than in a single direction
-    queue.sort((a, b) => a.depth - b.depth);
+  // Define base probability factor based on ore rarity (using adjusted chance)
+  let rarityFactor;
+  if (oreConfig.chance >= 30) rarityFactor = 0.85;  // Very Common -> High clumping
+  else if (oreConfig.chance >= 15) rarityFactor = 0.75; // Common
+  else if (oreConfig.chance >= 8) rarityFactor = 0.65; // Uncommon
+  else if (oreConfig.chance >= 3) rarityFactor = 0.50; // Rare
+  else rarityFactor = 0.40; // Very Rare -> Less clumping
 
-    const pos = queue.shift();
 
-    // Define possible directions with weights
+  // Expand the vein
+  while (queue.length > 0 && placedCount < targetVeinSize) {
+    const currentPos = queue.shift(); // Get next position to expand from
+
+    // Define potential neighbors (cardinal directions more likely)
     const directions = [
-      // Cardinal directions (higher probability)
-      { dx: -1, dy: 0, prob: 0.5 },
-      { dx: 1, dy: 0, prob: 0.5 },
-      { dx: 0, dy: -1, prob: 0.5 },
-      { dx: 0, dy: 1, prob: 0.5 },
-      // Diagonal directions (lower probability)
-      { dx: -1, dy: -1, prob: 0.25 },
-      { dx: -1, dy: 1, prob: 0.25 },
-      { dx: 1, dy: -1, prob: 0.25 },
-      { dx: 1, dy: 1, prob: 0.25 },
+      { dx: -1, dy: 0, weight: 1.0 }, { dx: 1, dy: 0, weight: 1.0 }, // Horizontal
+      { dx: 0, dy: -1, weight: 0.8 }, { dx: 0, dy: 1, weight: 0.8 }, // Vertical (slightly less likely to spread purely vertical)
+      { dx: -1, dy: -1, weight: 0.4 }, { dx: -1, dy: 1, weight: 0.4 }, // Diagonal (less likely)
+      { dx: 1, dy: -1, weight: 0.4 }, { dx: 1, dy: 1, weight: 0.4 }
     ];
 
-    // Shuffle directions for natural patterns
-    shuffleArray(directions);
+    shuffleArray(directions); // Randomize direction order
 
-    // Try each direction
     for (const dir of directions) {
-      const nx = pos.x + dir.dx;
-      const ny = pos.y + dir.dy;
+      const nextX = currentPos.x + dir.dx;
+      const nextY = currentPos.y + dir.dy;
 
-      // Skip if out of bounds
-      if (nx < 0 || nx >= gameState.worldWidth || ny < minY || ny > maxY) {
+      // --- Check neighbor validity ---
+      // 1. Bounds check (world and depth range)
+      if (nextX < 0 || nextX >= gameState.worldWidth || nextY < minY || nextY > maxY) {
+        continue;
+      }
+      // 2. Already placed check
+      if (placed.has(key(nextX, nextY))) {
+        continue;
+      }
+      // 3. Is replaceable block check
+      const neighborBlock = gameState.blockMap[nextY]?.[nextX]; // Safely access block
+      if (!neighborBlock || neighborBlock.name.toLowerCase() !== baseBlockName.toLowerCase()) {
         continue;
       }
 
-      // Skip if already placed or not stone
-      if (
-        placed.has(key(nx, ny)) ||
-        !gameState.blockMap[ny] ||
-        !gameState.blockMap[ny][nx] ||
-        gameState.blockMap[ny][nx]?.name.toLowerCase() !== "stone"
-      ) {
-        continue;
-      }
+      // --- Calculate Placement Probability ---
+      // Base probability: direction weight * rarity factor * normalized chance at vein start
+      const basePlacementChance = dir.weight * rarityFactor * normalizedBaseChance;
 
-      // Fix the placement chance calculation to scale properly with ore rarity
-      let chanceFactor;
-      if (ore.chance >= 20) {
-        chanceFactor = 0.7; // Common ores
-      } else if (ore.chance >= 10) {
-        chanceFactor = 0.5; // Uncommon ores
-      } else if (ore.chance >= 5) {
-        chanceFactor = 0.3; // Rare ores
-      } else {
-        chanceFactor = 0.2; // Very rare ores
-      }
-      
-      // Calculate placement probability with better scaling
-      // Use the adjusted chance from depth modifiers
-      const placementChance = dir.prob * chanceFactor * (adjustedChance / ore.chance);
+      // Introduce slight decay based on distance from start (optional, makes veins less uniform)
+      const depthDecay = Math.max(0.5, 1.0 - (currentPos.depth * 0.05)); // Reduces chance slightly further out
+      let placementChance = basePlacementChance * depthDecay;
 
+      // Ensure a minimum chance to allow veins to form, especially for rare ores
+      const minPlacementChance = 0.10; // 10% minimum chance if checks pass
+      placementChance = Math.max(placementChance, minPlacementChance);
+
+
+      // --- Place the block ---
       if (Math.random() < placementChance) {
-        gameState.blockMap[ny][nx] = ore;
-        placed.add(key(nx, ny));
+        gameState.blockMap[nextY][nextX] = oreConfig; // Place the ore
+        placed.add(key(nextX, nextY));
+        placedCount++;
 
-        // Add to queue with increased depth for branch tracking
-        queue.push({ x: nx, y: ny, depth: pos.depth + 1 });
+        // Add the new block to the queue for further expansion
+        queue.push({ x: nextX, y: nextY, depth: currentPos.depth + 1 });
 
-        // Break if we reached the target size
-        if (placed.size >= veinSize) {
-          break;
+        // Stop if target vein size is reached
+        if (placedCount >= targetVeinSize) {
+          break; // Exit direction loop
         }
       }
     }
+      if (placedCount >= targetVeinSize) {
+          break; // Exit while loop
+      }
   }
+   // console.log(` -> Created ${oreConfig.name} vein at (${startX}, ${startY}) with ${placedCount} blocks (target: ${targetVeinSize})`);
 }
 
-// Calculate adjusted ore chance based on depth - FIXED FUNCTION
-function getAdjustedOreChance(ore, depthFromSurface) {
-  // Use the base chance if no depth modifiers exist
-  if (!ore.depthModifiers || !ore.depthModifiers.length) {
-    return ore.chance;
-  }
 
-  // Sort modifiers by depth in ascending order to ensure correct application
-  const sortedModifiers = [...ore.depthModifiers].sort(
-    (a, b) => a.depth - b.depth
-  );
+// *** FIXED FUNCTION: Get adjusted ore chance based on depth ***
+function getAdjustedOreChance(oreConfig, depthFromSurface) {
+  // Start with the ore's base chance (potentially already adjusted for Moon)
+  let currentChance = oreConfig.chance;
 
-  // Find the appropriate modifier for current depth
-  let modifier = 1.0;
-  
-  for (let i = 0; i < sortedModifiers.length; i++) {
-    const currentMod = sortedModifiers[i];
-    
-    // If we're at or beyond this modifier's depth
-    if (depthFromSurface >= currentMod.depth) {
-      modifier = currentMod.multiplier;
-    } else {
-      // We haven't reached this depth yet, so use the previous modifier
-      break;
+  if (oreConfig.depthModifiers && oreConfig.depthModifiers.length > 0) {
+    // Sort modifiers by depth ascending to apply correctly
+    const sortedModifiers = [...oreConfig.depthModifiers].sort((a, b) => a.depth - b.depth);
+
+    let appliedMultiplier = 1.0; // Default if below first modifier depth
+
+    // Find the highest depth modifier that is shallower than or equal to the current depth
+    for (const mod of sortedModifiers) {
+      if (depthFromSurface >= mod.depth) {
+        appliedMultiplier = mod.multiplier;
+      } else {
+        // Since modifiers are sorted, we've passed the relevant depth
+        break;
+      }
     }
+
+    // Apply the multiplier
+    currentChance = oreConfig.chance * appliedMultiplier;
+
+    // Optional Debug Log:
+    // console.log(`Adjusted ${oreConfig.name} chance: Base=${oreConfig.chance}, Depth=${depthFromSurface}, Multiplier=${appliedMultiplier.toFixed(2)}, Final=${currentChance.toFixed(2)}`);
+
+  } else {
+    // No modifiers, use the base chance
+    // console.log(`Adjusted ${oreConfig.name} chance: Base=${oreConfig.chance} (no modifiers)`);
   }
 
-  // Apply the modifier and return the adjusted chance
-  const adjustedChance = ore.chance * modifier;
-
-  // Debug logging
-  console.log(
-    `Ore: ${ore.name}, Depth: ${depthFromSurface}, Base chance: ${ore.chance}, Modifier: ${modifier}, Adjusted: ${adjustedChance}`
-  );
-
-  return adjustedChance;
+  // Ensure chance doesn't go below a very small positive number (e.g., 0.01)
+  return Math.max(0.01, currentChance);
 }
 
-// Helper function to shuffle an array
+
+// Helper function to shuffle an array (Fisher-Yates) (Unchanged)
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -514,224 +523,189 @@ function shuffleArray(array) {
   return array;
 }
 
+// --- Other Moon Setup Functions (Unchanged) ---
+
 // Place rocket on the moon surface
 function placeMoonRocket(moonSkyRows) {
-  // Position the rocket on a flat part of the moon's surface
   const startX = Math.floor(gameState.worldWidth / 2);
-
-  // Find the flattest area within a reasonable range
   const flatSpotX = findFlatSpotOnSurface(startX, moonSkyRows);
 
-  // Find the lunar surface at the flat spot
   let surfaceY = moonSkyRows;
   while (
-    surfaceY < gameState.worldHeight &&
-    !gameState.blockMap[surfaceY][flatSpotX]
+    surfaceY < gameState.worldHeight -1 && // Prevent infinite loop if world bottom is sky somehow
+    (!gameState.blockMap[surfaceY] || !gameState.blockMap[surfaceY][flatSpotX])
   ) {
     surfaceY++;
   }
+   // Go one block up if we landed inside the ground
+  if(gameState.blockMap[surfaceY]?.[flatSpotX]) {
+      surfaceY--;
+  }
+  // Position rocket slightly above the surface block
+  const rocketBaseBlockY = surfaceY + 1; // The Y index of the block the rocket sits ON
+  const rocketHeightInBlocks = 5; // How many blocks tall the rocket visually is (adjust as needed)
+  const rocketBlockY = rocketBaseBlockY - rocketHeightInBlocks; // Top-left block Y
 
-  // Make sure the rocket object exists
+
   if (!gameState.rocket) {
-    gameState.rocket = {
-      width: 64, // Default width
-      height: 128, // Default height
-    };
+    gameState.rocket = { width: 64, height: 128 }; // Default size if needed
   }
 
-  // Set both block and pixel coordinates
-  gameState.rocketX = flatSpotX;
-  gameState.rocketY = surfaceY - 5;
+  // Set block coordinates (use center block X for consistency)
+  gameState.rocketX = flatSpotX; // Block X where the rocket is centered
+  gameState.rocketY = rocketBlockY; // Block Y for the top-left of the rocket
 
   // Convert block coordinates to pixel coordinates for rendering
-  gameState.rocket.x = flatSpotX * gameState.blockSize;
-  gameState.rocket.y = (surfaceY - 5) * gameState.blockSize;
+  // Adjust pixel X to center the rocket image over the block X
+  const rocketPixelX = (flatSpotX * gameState.blockSize) + (gameState.blockSize / 2) - (gameState.rocket.width / 2);
+  const rocketPixelY = rocketBlockY * gameState.blockSize;
 
-  // Make sure rocket is enabled and placed
+  gameState.rocket.x = rocketPixelX;
+  gameState.rocket.y = rocketPixelY;
+
   gameState.hasRocket = true;
   gameState.rocketPlaced = true;
 
-  console.log(
-    "Rocket placed on Moon at pixels:",
-    gameState.rocket.x,
-    gameState.rocket.y,
-    "blocks:",
-    gameState.rocketX,
-    gameState.rocketY
-  );
+  console.log(`Rocket placed on Moon at pixels: (${Math.round(gameState.rocket.x)}, ${Math.round(gameState.rocket.y)}), blocks: (${gameState.rocketX}, ${gameState.rocketY}), surfaceY: ${surfaceY}`);
 }
 
-// Helper function to find a flat spot on the surface
+// Helper function to find a flat spot on the surface (Unchanged, but added safety)
 function findFlatSpotOnSurface(startX, skyRows) {
-  const minFlatLength = 6; // Number of flat blocks needed for rocket
-
+  const minFlatLength = 6;
   let bestFlatSpotX = startX;
   let bestFlatLength = 0;
 
-  // Search in both directions from the center
   for (let direction of [1, -1]) {
-    let x = startX;
-    let consecutiveFlat = 0;
-    let prevSurfaceY = -1;
+    let currentFlatLength = 0;
+    let lastSurfaceY = -1;
 
-    // Search up to half the world width
-    for (let step = 0; step < gameState.worldWidth / 4; step++) {
-      x += direction;
+    for (let offset = 0; offset < gameState.worldWidth / 3; offset++) {
+      const currentX = startX + offset * direction;
 
-      // Stay within bounds
-      if (x < 2 || x >= gameState.worldWidth - 2) break;
+      if (currentX < 1 || currentX >= gameState.worldWidth - 1) break; // Stay within bounds
 
-      // Find surface Y at this position
-      let surfaceY = skyRows;
-      while (
-        surfaceY < gameState.worldHeight &&
-        !gameState.blockMap[surfaceY][x]
-      ) {
-        surfaceY++;
+      let currentSurfaceY = skyRows;
+      while (currentSurfaceY < gameState.worldHeight - 1 && (!gameState.blockMap[currentSurfaceY] || !gameState.blockMap[currentSurfaceY][currentX])) {
+        currentSurfaceY++;
+      }
+      // If we hit the bottom and found no block, treat it as surfaceY (unlikely)
+       if(currentSurfaceY === gameState.worldHeight -1 && !gameState.blockMap[currentSurfaceY]?.[currentX]) {
+           // Cannot place here, maybe return startX or log error
+           console.warn(`Could not find solid ground at x=${currentX} for flat spot calculation.`);
+           continue; // Try next spot
+       }
+
+      if (lastSurfaceY === -1) { // First block checked in this direction
+        lastSurfaceY = currentSurfaceY;
+        currentFlatLength = 1;
+      } else if (currentSurfaceY === lastSurfaceY) { // Still flat
+        currentFlatLength++;
+      } else { // Height changed, reset
+        lastSurfaceY = currentSurfaceY;
+        currentFlatLength = 1;
       }
 
-      // Check if we're on a flat surface
-      if (prevSurfaceY === -1) {
-        // First block
-        prevSurfaceY = surfaceY;
-        consecutiveFlat = 1;
-      } else if (prevSurfaceY === surfaceY) {
-        // Still flat
-        consecutiveFlat++;
-      } else {
-        // Surface changed, reset counter
-        consecutiveFlat = 1;
-        prevSurfaceY = surfaceY;
-      }
+      if (currentFlatLength > bestFlatLength) {
+        bestFlatLength = currentFlatLength;
+        // Aim for the center of the discovered flat area
+        bestFlatSpotX = currentX - direction * Math.floor(currentFlatLength / 2);
 
-      // If this is the best flat area so far, remember it
-      if (consecutiveFlat > bestFlatLength) {
-        bestFlatLength = consecutiveFlat;
-        // Place rocket in middle of flat area
-        bestFlatSpotX = x - direction * Math.floor(consecutiveFlat / 2);
-
-        // If good enough, stop searching
         if (bestFlatLength >= minFlatLength) {
-          return bestFlatSpotX;
+          // Ensure the chosen center isn't out of bounds
+          return Math.max(1, Math.min(gameState.worldWidth - 2, bestFlatSpotX));
         }
       }
     }
   }
-
-  return bestFlatSpotX;
+    // Ensure the final fallback isn't out of bounds
+  return Math.max(1, Math.min(gameState.worldWidth - 2, bestFlatSpotX));
 }
 
-// Setup moon background with CSS stars
+// Setup moon background with CSS stars (Unchanged)
 function setupMoonBackground() {
   const background = document.getElementById("fixed-background");
+  if (!background) return;
 
-  // Set the background dimensions to match your world size
   background.style.width = gameState.worldWidth * gameState.blockSize + "px";
   background.style.height = gameState.worldHeight * gameState.blockSize + "px";
 
-  // Define how much sky we want
-  const moonSkyRows = gameState.skyRows + 8;
-  const skyHeight = moonSkyRows * gameState.blockSize;
+  const skyHeightPixels = gameState.skyRows * gameState.blockSize;
 
-  // Moon has gray and darker stone
+  // Simplified gradient for moon
   background.style.background = `
     linear-gradient(
       to bottom,
-      #000000 0px,
-      #111122 ${skyHeight * 0.3}px,
-      #111133 ${skyHeight}px,
-      #A0A0A0 ${skyHeight + 15}px, /* Moon surface */
-      #909090 ${skyHeight + gameState.blockSize * 5}px,
-      #808080 ${skyHeight + gameState.blockSize * 10}px,
-      #707070 ${skyHeight + gameState.blockSize * 20}px,
-      #606060 ${skyHeight + gameState.blockSize * 40}px
+      #000000 0%,         /* Deep space */
+      #0a0a1a 30%,        /* Dark blue/black near space */
+      #1a1a2a ${skyHeightPixels}px,  /* Darker near surface */
+      #888888 ${skyHeightPixels + gameState.blockSize}px, /* Grey surface */
+      #707070 ${skyHeightPixels + gameState.blockSize * 10}px, /* Darker grey below */
+      #606060 ${skyHeightPixels + gameState.blockSize * 30}px  /* Even darker */
     )
   `;
 
-  // Add CSS stars to the background
   addCSSStarsToBackground();
-
-  // Add Earth in the sky
   addEarthToSky();
 }
 
-// Add stars to the moon background using CSS only
+// Add stars to the moon background using CSS only (Unchanged)
 function addCSSStarsToBackground() {
-  // Remove any existing star container
-  const existingStars = document.getElementById("moon-stars");
-  if (existingStars) {
-    existingStars.remove();
-  }
+    const gameWorld = document.getElementById("game-world");
+    if(!gameWorld) return;
 
-  // Create the star container
-  const starsContainer = document.createElement("div");
-  starsContainer.id = "moon-stars";
-  starsContainer.style.height = `${gameState.skyRows * gameState.blockSize}px`;
+    const existingStars = document.getElementById("moon-stars");
+    if (existingStars) existingStars.remove();
+    const existingBrightStars = document.getElementById("bright-stars");
+    if (existingBrightStars) existingBrightStars.remove();
 
-  // Add stars directly to the DOM but with a more efficient approach
-  const starCount = 150;
 
-  // Create stars with a documentFragment for better performance
-  const fragment = document.createDocumentFragment();
+    const starsContainer = document.createElement("div");
+    starsContainer.id = "moon-stars";
+    starsContainer.style.height = `${gameState.skyRows * gameState.blockSize}px`; // Limit stars to sky
 
-  for (let i = 0; i < starCount; i++) {
-    const star = document.createElement("div");
+    const fragment = document.createDocumentFragment();
+    const starCount = 150;
+    for (let i = 0; i < starCount; i++) {
+        const star = document.createElement("div");
+        const starType = Math.floor(Math.random() * 3) + 1;
+        star.className = `star type-${starType}`;
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 95}%`; // Keep slightly away from horizon
+        star.style.animationDelay = `${Math.random() * 6}s`;
+        fragment.appendChild(star);
+    }
+    starsContainer.appendChild(fragment);
+    gameWorld.appendChild(starsContainer);
 
-    // Assign different classes for variety with less code
-    const starType = Math.floor(Math.random() * 3) + 1;
-    star.className = `star type-${starType}`;
+    const brightStarsContainer = document.createElement("div");
+    brightStarsContainer.id = "bright-stars";
+    brightStarsContainer.style.height = `${gameState.skyRows * gameState.blockSize}px`;
 
-    // Random position
-    const x = Math.random() * 100;
-    const y = Math.random() * 100;
-
-    star.style.left = `${x}%`;
-    star.style.top = `${y}%`;
-
-    // Add some animation delay variation
-    star.style.animationDelay = `${Math.random() * 5}s`;
-
-    fragment.appendChild(star);
-  }
-
-  starsContainer.appendChild(fragment);
-  document.getElementById("game-world").appendChild(starsContainer);
-
-  // Add a few bright stars with CSS box-shadow for extra effect
-  const brightStars = document.createElement("div");
-  brightStars.id = "bright-stars";
-  brightStars.style.height = `${gameState.skyRows * gameState.blockSize}px`;
-
-  // Add 5 brighter stars
-  for (let i = 0; i < 5; i++) {
-    const brightStar = document.createElement("div");
-    brightStar.className = "bright-star";
-
-    // Random position for bright stars
-    brightStar.style.left = `${Math.random() * 100}%`;
-    brightStar.style.top = `${Math.random() * 100}%`;
-
-    // Subtle pulse animation
-    brightStar.style.animation = "twinkle-2 4s infinite";
-    brightStar.style.animationDelay = `${Math.random() * 5}s`;
-
-    brightStars.appendChild(brightStar);
-  }
-
-  document.getElementById("game-world").appendChild(brightStars);
+    const brightFragment = document.createDocumentFragment();
+    const brightStarCount = 7;
+     for (let i = 0; i < brightStarCount; i++) {
+        const brightStar = document.createElement("div");
+        brightStar.className = 'bright-star'; // Assuming CSS defines .bright-star
+        brightStar.style.left = `${Math.random() * 100}%`;
+        brightStar.style.top = `${Math.random() * 90}%`; // Keep away from horizon
+        brightStar.style.animation = `twinkle-2 ${4 + Math.random() * 4}s infinite linear`;
+        brightStar.style.animationDelay = `${Math.random() * 5}s`;
+        brightFragment.appendChild(brightStar);
+    }
+    brightStarsContainer.appendChild(brightFragment);
+    gameWorld.appendChild(brightStarsContainer);
 }
 
-// Add Earth in the moon sky
+
+// Add Earth in the moon sky (Unchanged)
 function addEarthToSky() {
-  // Remove existing Earth if present
-  const existingEarth = document.getElementById("earth-in-sky");
-  if (existingEarth) {
-    existingEarth.remove();
-  }
+    const gameWorld = document.getElementById("game-world");
+    if(!gameWorld) return;
 
-  // Create Earth element
-  const earth = document.createElement("div");
-  earth.id = "earth-in-sky";
+    const existingEarth = document.getElementById("earth-in-sky");
+    if (existingEarth) existingEarth.remove();
 
-  document.getElementById("game-world").appendChild(earth);
+    const earth = document.createElement("div");
+    earth.id = "earth-in-sky"; // Assuming CSS defines #earth-in-sky position and appearance
+    gameWorld.appendChild(earth);
 }

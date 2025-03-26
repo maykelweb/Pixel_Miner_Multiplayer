@@ -341,11 +341,13 @@ export function updateInventoryDisplay() {
               ruby: "#E0115F", // Ruby red
               diamond: "#B9F2FF", // Light blue
               grass: "#7CFC00", // Lawn green
-              silicon: "#D3D3D3", // Light gray
-              magnesium: "#FFFFFF", // White
-              titanium: "#A9A9A9", // Dark gray
-              platinum: "#E5E4E2", // Platinum
-              lunarite: "#00BFFF", // Deep sky blue
+              silicon: "#4a6b8a", 
+              aluminum: "#d4d7db", 
+              magnesium: "#b8a99e", 
+              titanium: "#1a6050",
+              platinum: "#787878", 
+              lunarite: "#65c8e6", 
+              celestium: "#ac269d",
             };
 
             color =

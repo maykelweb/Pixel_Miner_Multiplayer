@@ -79,29 +79,32 @@
 .basalt {
   background-color: #505050;
 }
-
 .silicon {
-  background-color: #c0c9d0;
+  background-color: #4a6b8a; /* Blue-gray like silicon wafers */
 }
 
 .aluminum {
-  background-color: #d9d9d9;
+  background-color: #d4d7db; /* Bright silvery-white with blue tint */
 }
 
 .magnesium {
-  background-color: #bbbed2;
+  background-color: #b8a99e; /* Light tan-silver */
 }
 
 .titanium {
-  background-color: #8c9aa6;
+  background-color: #1a6050; /* Dark gunmetal gray */
 }
 
 .platinum {
-  background-color: #e0e0e0; /* Off-white with subtle warm tone */
+  background-color: #787878; /* Bright silver-white */
 }
 
 .lunarite {
   background-color: #65c8e6;
+}
+
+.celestium {
+  background-color: #ac269d;
 }
 
 /* Visible when mining block */
