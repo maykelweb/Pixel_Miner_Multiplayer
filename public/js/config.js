@@ -220,13 +220,10 @@ export const gameState = {
       maxVein: 12,
       minDepth: 1,
       maxDepth: 200, // Extended range
-      chance: 22,
-      chance: 25, 
+      chance: 10,
       depthModifiers: [
-        { depth: 30, multiplier: 0.8 },
+        { depth: 30, multiplier: 2 },
         { depth: 100, multiplier: 0.1 },
-        { depth: 170, multiplier: 0.01 },
-        { depth: 200, multiplier: 0.001 }, // Rare but still present at deeper levels
       ],
       moonOnly: true,
     },
@@ -259,7 +256,7 @@ export const gameState = {
       maxVein: 8,
       minDepth: 70,
       maxDepth: 280, // Extended range
-      chance: 7,
+      chance: 14,
       depthModifiers: [
         { depth: 70, multiplier: 1.3 },
         { depth: 150, multiplier: 2.0 },
@@ -279,10 +276,13 @@ export const gameState = {
       maxDepth: 320, // Extended range
       chance: 10.5,
       depthModifiers: [
-        { depth: 120, multiplier: 1.2 },
-        { depth: 200, multiplier: 1.4 },
-        { depth: 280, multiplier: 0.9 },
-        { depth: 330, multiplier: 0.5 },
+        { depth: 120, multiplier: 2 },
+        { depth: 200, multiplier: 3 },
+        { depth: 220, multiplier: 3 },
+        { depth: 240, multiplier: 3 },
+        { depth: 260, multiplier: 3 },
+        { depth: 280, multiplier: 2 },
+        { depth: 330, multiplier: 1 },
       ],
       moonOnly: true,
     },
@@ -295,14 +295,14 @@ export const gameState = {
       hardness: 5,
       minVein: 2,
       maxVein: 6,
-      minDepth: 120,
-      maxDepth: 380, // Extended range
-      chance: 8,
+      minDepth: 100,
+      maxDepth: 420, // Extended range
+      chance: 20,
       depthModifiers: [
-        { depth: 160, multiplier: 1.5 },
-        { depth: 250, multiplier: 1.8 },
-        { depth: 350, multiplier: 1.2 },
-        { depth: 400, multiplier: 0.7 },
+        { depth: 100, multiplier: 0.1 },
+        { depth: 160, multiplier: 10.5 },
+        { depth: 250, multiplier: 28.8 },
+        { depth: 350, multiplier: 5.2 },
       ],
       moonOnly: true,
     },

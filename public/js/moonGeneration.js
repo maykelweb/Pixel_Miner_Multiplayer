@@ -361,7 +361,7 @@ function addMoonOreVeins() {
       );
 
       // Ensure reasonable minimum - same as Earth
-      rangeVeins = Math.max(rangeVeins, Math.ceil(5 * rangeFraction));
+      rangeVeins = Math.max(rangeVeins, Math.ceil(10 * rangeFraction));
 
       console.log(
         `Moon ${moonOreConfig.name}: Creating ${rangeVeins} veins for depth range ${range.start}-${range.end} (multiplier: ${range.multiplier})`
