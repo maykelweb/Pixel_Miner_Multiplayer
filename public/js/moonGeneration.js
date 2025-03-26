@@ -217,17 +217,19 @@ function getMoonBlockForPosition(x, y, moonStone, moonSkyRows) {
   return null;
 }
 
-// *** FIXED FUNCTION: Add ore veins throughout the moon ***
+// FIXED Moon Ore Generation Functions
+
+// Add ore veins throughout the moon - aligned with Earth generation approach
 function addMoonOreVeins() {
-  const oresCache = getOres(); // Get cached ore objects (includes .stone)
+  const oresCache = getOres(); // Get cached ore objects
   const moonStoneName = oresCache.stone?.name?.toLowerCase();
 
   if (!moonStoneName) {
-      console.error("Cannot add veins: Base 'stone' block not defined or cached.");
-      return;
+    console.error("Cannot add veins: Base 'stone' block not defined or cached.");
+    return;
   }
 
-  console.log("Starting vein generation for applicable ores...");
+  console.log("Starting moon vein generation for applicable ores...");
 
   // Process each ore type defined in gameState
   gameState.ores.forEach((ore) => {
@@ -236,109 +238,156 @@ function addMoonOreVeins() {
       return;
     }
 
-    // --- Filtering Logic ---
+    // --- Filtering Logic (Keep this Moon-specific logic) ---
     let shouldGenerateOnMoon = false;
     const allowedEarthOresOnMoon = ["diamond", "titanium", "silicon", "magnesium"];
 
     if (ore.moonOnly) {
-        shouldGenerateOnMoon = true;
-        // console.log(` -> ${ore.name}: Marked as moonOnly.`);
+      shouldGenerateOnMoon = true;
     } else if (!ore.earthOnly) {
-        // If not earthOnly, check if it's one of the allowed Earth ores
-        if (allowedEarthOresOnMoon.includes(ore.name.toLowerCase())) {
-            shouldGenerateOnMoon = true;
-            // console.log(` -> ${ore.name}: Allowed Earth ore on Moon.`);
-        } else {
-            // console.log(` -> ${ore.name}: Earth ore NOT allowed on Moon.`);
-        }
-    } else {
-        // console.log(` -> ${ore.name}: Marked as earthOnly, skipping for Moon.`);
+      // If not earthOnly, check if it's one of the allowed Earth ores
+      if (allowedEarthOresOnMoon.includes(ore.name.toLowerCase())) {
+        shouldGenerateOnMoon = true;
+      }
     }
-
 
     // Skip if this ore shouldn't be on the moon based on flags/rules
     if (!shouldGenerateOnMoon) {
       return;
     }
 
-    // --- Chance Adjustment for Moon ---
+    // --- Calculate total veins using Earth's approach with Moon adjustments ---
+    // Calculate total veins by depth ranges to account for modifiers
+    let totalVeins = 0;
+    const depthRanges = [];
+
+    // Define depth sections for more accurate vein distribution
+    const minDepth = ore.minDepth;
+    const maxDepth = ore.maxDepth === Infinity ? 
+                     gameState.worldHeight - gameState.skyRows - 1 : 
+                     Math.min(ore.maxDepth, gameState.worldHeight - gameState.skyRows - 1);
+    
+    const worldArea = gameState.worldWidth * (gameState.worldHeight - gameState.skyRows); // Area below sky
+
+    // Moon-specific chance adjustment
     let moonChanceMultiplier = 1.0; // Default multiplier
 
     if (ore.moonOnly) {
-      // Moon-exclusive ores might be more or less common based on design
-      // Example: Make them generally more common than their Earth counterparts if tiered similarly
+      // Moon-exclusive ores might be more common
       moonChanceMultiplier = 1.5; // Example: 50% more common overall chance
-       // Adjust specific moon ores if needed
-       if (ore.name.toLowerCase() === 'silicon') moonChanceMultiplier = 2.5; // Make silicon very common
-       if (ore.name.toLowerCase() === 'lunarite') moonChanceMultiplier = 1.2;
-       if (ore.name.toLowerCase() === 'celestium') moonChanceMultiplier = 1.0; // Keep rarest as configured
-
+      
+      // Adjust specific moon ores if needed
+      if (ore.name.toLowerCase() === 'silicon') moonChanceMultiplier = 2.5;
+      if (ore.name.toLowerCase() === 'lunarite') moonChanceMultiplier = 1.2;
+      if (ore.name.toLowerCase() === 'celestium') moonChanceMultiplier = 1.0;
     } else {
       // Adjust chance for allowed Earth ores on the moon
       switch (ore.name.toLowerCase()) {
-        case "diamond":
-          moonChanceMultiplier = 0.8; // Slightly rarer than peak on Earth
-          break;
-        case "titanium":
-          moonChanceMultiplier = 1.0; // Similar rarity as on Earth (if it existed there)
-          break;
-        case "silicon": // Should be moonOnly based on config, but handle if misconfigured
-        case "magnesium": // Should be moonOnly based on config
-           moonChanceMultiplier = 1.0; // Use base chance if somehow not marked moonOnly
-           break;
-        default:
-          moonChanceMultiplier = 0.5; // Other potential Earth ores are much rarer (safety net)
+        case "diamond": moonChanceMultiplier = 0.8; break;
+        case "titanium": moonChanceMultiplier = 1.0; break;
+        case "silicon":
+        case "magnesium": moonChanceMultiplier = 1.0; break;
+        default: moonChanceMultiplier = 0.5; break;
       }
     }
 
-    // Create a temporary config object for this ore with moon-adjusted chance
-    // Use base chance if multiplier is 1 to avoid floating point issues
-    const adjustedBaseChance = moonChanceMultiplier === 1.0 ? ore.chance : ore.chance * moonChanceMultiplier;
-    const moonOreConfig = { ...ore, chance: Math.max(0.1, adjustedBaseChance) }; // Ensure chance is at least slightly positive
+    // Apply moon multiplier to base chance
+    const adjustedBaseChance = ore.chance * moonChanceMultiplier;
+    
+    // Create temporary config with moon-adjusted chance
+    const moonOreConfig = { 
+      ...ore, 
+      chance: Math.max(0.1, adjustedBaseChance) 
+    };
 
+    // If there are depth modifiers, create ranges for each - matching Earth approach
+    if (moonOreConfig.depthModifiers && moonOreConfig.depthModifiers.length > 0) {
+      // Sort modifiers by depth
+      const sortedModifiers = [...moonOreConfig.depthModifiers].sort(
+        (a, b) => a.depth - b.depth
+      );
 
-    // --- Vein Count Calculation ---
-    const worldArea = gameState.worldWidth * (gameState.worldHeight - gameState.skyRows); // Area below sky
-    let baseFactor; // Determines vein density based on rarity
+      let lastDepth = minDepth;
 
-    // Tier the baseFactor based on the adjusted chance
-    if (moonOreConfig.chance >= 30) baseFactor = 0.00025; // Very Common (e.g., Silicon)
-    else if (moonOreConfig.chance >= 15) baseFactor = 0.00018; // Common (e.g., Aluminum, Magnesium)
-    else if (moonOreConfig.chance >= 8) baseFactor = 0.00012; // Uncommon (e.g., Titanium)
-    else if (moonOreConfig.chance >= 3) baseFactor = 0.00008; // Rare (e.g., Platinum, Diamond on moon)
-    else baseFactor = 0.00005; // Very Rare (e.g., Lunarite, Celestium)
+      // Create ranges between each modifier
+      for (const mod of sortedModifiers) {
+        if (mod.depth > lastDepth && mod.depth <= maxDepth) {
+          // Add range from last depth to this modifier
+          const range = {
+            start: lastDepth,
+            end: mod.depth - 1,
+            multiplier: 1.0 // Default multiplier before hitting this threshold
+          };
 
+          depthRanges.push(range);
+          lastDepth = mod.depth;
+        }
+      }
 
-    // Calculate total veins: Area * DensityFactor * (Chance / NormalizationFactor)
-    // Normalizing by 10 seems reasonable for percentage chances
-    let totalVeins = worldArea * baseFactor * (moonOreConfig.chance / 10);
+      // Add final range from last modifier to max depth
+      if (lastDepth < maxDepth) {
+        // Find the applicable multiplier for this final range
+        let finalMult = sortedModifiers[sortedModifiers.length - 1].multiplier;
+        for (const mod of sortedModifiers) {
+          if (mod.depth <= lastDepth) {
+            finalMult = mod.multiplier;
+          }
+        }
 
-    // Add some randomness and ensure a minimum/maximum number of veins
-    totalVeins = Math.ceil(totalVeins * (0.8 + Math.random() * 0.4)); // +/- 20% randomness
-    totalVeins = Math.max(10, Math.min(totalVeins, 100)); // Clamp between 10 and 100 veins
-
-
-    console.log(`Generating ${totalVeins} veins for Moon ${ore.name} (Adjusted Chance: ${moonOreConfig.chance.toFixed(2)})`);
-
-
-    // Create the calculated number of veins
-    for (let i = 0; i < totalVeins; i++) {
-      // Pass the temporary moonOreConfig and the name of the base block to replace
-      createOreVein(moonOreConfig, moonStoneName);
+        depthRanges.push({
+          start: lastDepth,
+          end: maxDepth,
+          multiplier: finalMult
+        });
+      }
     }
+    // If no modifiers, use the entire range
+    else {
+      depthRanges.push({
+        start: minDepth,
+        end: maxDepth,
+        multiplier: 1.0
+      });
+    }
+
+    // Calculate and create veins for each range - using Earth's approach
+    for (const range of depthRanges) {
+      const rangeSize = range.end - range.start + 1;
+      const rangeFraction = rangeSize / (maxDepth - minDepth + 1);
+
+      // Base vein count calculation - same as Earth
+      let rangeVeins = Math.ceil(
+        worldArea * moonOreConfig.chance * 0.0001 * rangeFraction * range.multiplier
+      );
+
+      // Ensure reasonable minimum - same as Earth
+      rangeVeins = Math.max(rangeVeins, Math.ceil(5 * rangeFraction));
+
+      console.log(
+        `Moon ${moonOreConfig.name}: Creating ${rangeVeins} veins for depth range ${range.start}-${range.end} (multiplier: ${range.multiplier})`
+      );
+
+      // Create the veins for this range using the updated createMoonOreVein function
+      for (let i = 0; i < rangeVeins; i++) {
+        createMoonOreVein(moonOreConfig, moonStoneName, range.start, range.end);
+      }
+
+      totalVeins += rangeVeins;
+    }
+
+    console.log(`Moon ${moonOreConfig.name}: Created total of ${totalVeins} veins`);
   });
+  
   console.log("Finished adding all moon ore veins.");
 }
 
+// Create a vein of a specific ore type on the moon - aligned with Earth's approach
+function createMoonOreVein(ore, baseBlockName = "stone", minDepth = null, maxDepth = null) {
+  // Use ore's min/max depth if not specified
+  minDepth = minDepth !== null ? minDepth : ore.minDepth;
+  maxDepth = maxDepth !== null ? maxDepth : ore.maxDepth;
 
-// *** FIXED FUNCTION: Create a vein of a specific ore type ***
-function createOreVein(oreConfig, baseBlockName = "stone") {
-
-  // Use ore's min/max depth from the passed config
-  const minDepth = oreConfig.minDepth;
-  let maxDepth = oreConfig.maxDepth;
-
-  // Handle Infinity maxDepth gracefully -> bottom of world below sky
+  // Handle Infinity maxDepth gracefully
   if (maxDepth === Infinity || maxDepth > (gameState.worldHeight - gameState.skyRows - 1)) {
     maxDepth = gameState.worldHeight - gameState.skyRows - 1;
   }
@@ -352,28 +401,21 @@ function createOreVein(oreConfig, baseBlockName = "stone") {
 
   // Validate depth range
   if (minY > maxY) {
-    // console.warn(`Skipping ${oreConfig.name} vein: Invalid depth range after sky adjustment (${minY} > ${maxY}). MinDepth: ${minDepth}, MaxDepth: ${maxDepth}`);
     return;
   }
-  if (minY < gameState.skyRows || minY >= gameState.worldHeight || maxY < gameState.skyRows || maxY >= gameState.worldHeight){
-      // console.warn(`Skipping ${oreConfig.name} vein: Calculated Y range [${minY}-${maxY}] is out of world bounds [${gameState.skyRows}-${gameState.worldHeight-1}].`);
-      return;
-  }
 
-  // Pick a random starting point within the *valid Y range*
+  // Pick a random starting point within the valid Y range
   const startY = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
   const startX = Math.floor(Math.random() * gameState.worldWidth);
 
-  // --- Ensure starting point is valid ---
-  // Check bounds first
-   if (!gameState.blockMap[startY] || startX < 0 || startX >= gameState.worldWidth) {
-    // console.warn(`Skipping ${oreConfig.name} vein: Start point (${startX}, ${startY}) out of map bounds.`);
+  // Ensure starting point is valid
+  if (!gameState.blockMap[startY] || startX < 0 || startX >= gameState.worldWidth) {
     return;
-   }
+  }
+  
   // Check if the block at the start point is the replaceable base block (e.g., stone)
   const currentBlock = gameState.blockMap[startY][startX];
   if (!currentBlock || currentBlock.name.toLowerCase() !== baseBlockName.toLowerCase()) {
-    // console.log(`Skipping ${oreConfig.name} vein: Start block at (${startX}, ${startY}) is not ${baseBlockName} (found ${currentBlock?.name}).`);
     return; // Cannot start vein here
   }
 
@@ -381,136 +423,116 @@ function createOreVein(oreConfig, baseBlockName = "stone") {
   const depthFromSurface = startY - gameState.skyRows;
 
   // Determine vein size using the ore's configuration
-  const minSize = oreConfig.minVein || 2; // Ensure min size is at least 1-2
-  const maxSize = oreConfig.maxVein || Math.max(minSize, 5); // Ensure max >= min
-  const targetVeinSize = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+  const minSize = ore.minVein || 3;
+  const maxSize = ore.maxVein || 5;
+  const veinSize = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
 
-  // --- Vein Expansion ---
-  const queue = [{ x: startX, y: startY, depth: 0 }]; // BFS-like queue
-  const placed = new Set(); // Track placed blocks to avoid duplicates and cycles
+  // Points to check in the vein expansion
+  const queue = [{ x: startX, y: startY, depth: 0 }];
+  const placed = new Set();
   const key = (x, y) => `${x},${y}`;
 
   // Place the first ore block
-  gameState.blockMap[startY][startX] = oreConfig; // Place the actual ore object
+  gameState.blockMap[startY][startX] = ore;
   placed.add(key(startX, startY));
-  let placedCount = 1;
 
-  // Get the ore's chance adjusted for the *starting depth*
-  const adjustedChanceAtStart = getAdjustedOreChance(oreConfig, depthFromSurface);
-  const normalizedBaseChance = Math.max(0.01, adjustedChanceAtStart / 100); // Normalize to 0-1, ensure > 0
+  // Get adjusted ore chance based on depth
+  const adjustedChance = getAdjustedOreChance(ore, depthFromSurface);
 
-  // Define base probability factor based on ore rarity (using adjusted chance)
-  let rarityFactor;
-  if (oreConfig.chance >= 30) rarityFactor = 0.85;  // Very Common -> High clumping
-  else if (oreConfig.chance >= 15) rarityFactor = 0.75; // Common
-  else if (oreConfig.chance >= 8) rarityFactor = 0.65; // Uncommon
-  else if (oreConfig.chance >= 3) rarityFactor = 0.50; // Rare
-  else rarityFactor = 0.40; // Very Rare -> Less clumping
+  // Expand the vein using a branch-and-bound approach (Earth's approach)
+  while (queue.length > 0 && placed.size < veinSize) {
+    // Sort queue by depth to create more natural-looking veins - key improvement from Earth
+    queue.sort((a, b) => a.depth - b.depth);
 
+    const pos = queue.shift();
 
-  // Expand the vein
-  while (queue.length > 0 && placedCount < targetVeinSize) {
-    const currentPos = queue.shift(); // Get next position to expand from
-
-    // Define potential neighbors (cardinal directions more likely)
+    // Define possible directions with weights (same as Earth)
     const directions = [
-      { dx: -1, dy: 0, weight: 1.0 }, { dx: 1, dy: 0, weight: 1.0 }, // Horizontal
-      { dx: 0, dy: -1, weight: 0.8 }, { dx: 0, dy: 1, weight: 0.8 }, // Vertical (slightly less likely to spread purely vertical)
-      { dx: -1, dy: -1, weight: 0.4 }, { dx: -1, dy: 1, weight: 0.4 }, // Diagonal (less likely)
-      { dx: 1, dy: -1, weight: 0.4 }, { dx: 1, dy: 1, weight: 0.4 }
+      // Cardinal directions (higher probability)
+      { dx: -1, dy: 0, prob: 0.5 },
+      { dx: 1, dy: 0, prob: 0.5 },
+      { dx: 0, dy: -1, prob: 0.5 },
+      { dx: 0, dy: 1, prob: 0.5 },
+      // Diagonal directions (lower probability)
+      { dx: -1, dy: -1, prob: 0.25 },
+      { dx: -1, dy: 1, prob: 0.25 },
+      { dx: 1, dy: -1, prob: 0.25 },
+      { dx: 1, dy: 1, prob: 0.25 },
     ];
 
-    shuffleArray(directions); // Randomize direction order
+    // Shuffle directions for natural patterns (same as Earth)
+    shuffleArray(directions);
 
+    // Try each direction
     for (const dir of directions) {
-      const nextX = currentPos.x + dir.dx;
-      const nextY = currentPos.y + dir.dy;
+      const nx = pos.x + dir.dx;
+      const ny = pos.y + dir.dy;
 
-      // --- Check neighbor validity ---
-      // 1. Bounds check (world and depth range)
-      if (nextX < 0 || nextX >= gameState.worldWidth || nextY < minY || nextY > maxY) {
-        continue;
-      }
-      // 2. Already placed check
-      if (placed.has(key(nextX, nextY))) {
-        continue;
-      }
-      // 3. Is replaceable block check
-      const neighborBlock = gameState.blockMap[nextY]?.[nextX]; // Safely access block
-      if (!neighborBlock || neighborBlock.name.toLowerCase() !== baseBlockName.toLowerCase()) {
+      // Skip if out of bounds
+      if (nx < 0 || nx >= gameState.worldWidth || ny < minY || ny > maxY) {
         continue;
       }
 
-      // --- Calculate Placement Probability ---
-      // Base probability: direction weight * rarity factor * normalized chance at vein start
-      const basePlacementChance = dir.weight * rarityFactor * normalizedBaseChance;
+      // Skip if already placed or not the base block type (stone)
+      if (
+        placed.has(key(nx, ny)) ||
+        !gameState.blockMap[ny] ||
+        !gameState.blockMap[ny][nx] ||
+        gameState.blockMap[ny][nx]?.name.toLowerCase() !== baseBlockName.toLowerCase()
+      ) {
+        continue;
+      }
 
-      // Introduce slight decay based on distance from start (optional, makes veins less uniform)
-      const depthDecay = Math.max(0.5, 1.0 - (currentPos.depth * 0.05)); // Reduces chance slightly further out
-      let placementChance = basePlacementChance * depthDecay;
+      // Use probability weighted by the ore's chance value and direction - same as Earth
+      const placementChance = dir.prob * Math.min(1, adjustedChance * 10);
 
-      // Ensure a minimum chance to allow veins to form, especially for rare ores
-      const minPlacementChance = 0.10; // 10% minimum chance if checks pass
-      placementChance = Math.max(placementChance, minPlacementChance);
-
-
-      // --- Place the block ---
       if (Math.random() < placementChance) {
-        gameState.blockMap[nextY][nextX] = oreConfig; // Place the ore
-        placed.add(key(nextX, nextY));
-        placedCount++;
+        gameState.blockMap[ny][nx] = ore;
+        placed.add(key(nx, ny));
 
-        // Add the new block to the queue for further expansion
-        queue.push({ x: nextX, y: nextY, depth: currentPos.depth + 1 });
+        // Add to queue with increased depth for branch tracking
+        queue.push({ x: nx, y: ny, depth: pos.depth + 1 });
 
-        // Stop if target vein size is reached
-        if (placedCount >= targetVeinSize) {
-          break; // Exit direction loop
+        // Break if we reached the target size
+        if (placed.size >= veinSize) {
+          break;
         }
       }
     }
-      if (placedCount >= targetVeinSize) {
-          break; // Exit while loop
-      }
   }
-   // console.log(` -> Created ${oreConfig.name} vein at (${startX}, ${startY}) with ${placedCount} blocks (target: ${targetVeinSize})`);
 }
 
-
 // *** FIXED FUNCTION: Get adjusted ore chance based on depth ***
-function getAdjustedOreChance(oreConfig, depthFromSurface) {
-  // Start with the ore's base chance (potentially already adjusted for Moon)
-  let currentChance = oreConfig.chance;
-
-  if (oreConfig.depthModifiers && oreConfig.depthModifiers.length > 0) {
-    // Sort modifiers by depth ascending to apply correctly
-    const sortedModifiers = [...oreConfig.depthModifiers].sort((a, b) => a.depth - b.depth);
-
-    let appliedMultiplier = 1.0; // Default if below first modifier depth
-
-    // Find the highest depth modifier that is shallower than or equal to the current depth
-    for (const mod of sortedModifiers) {
-      if (depthFromSurface >= mod.depth) {
-        appliedMultiplier = mod.multiplier;
-      } else {
-        // Since modifiers are sorted, we've passed the relevant depth
-        break;
-      }
-    }
-
-    // Apply the multiplier
-    currentChance = oreConfig.chance * appliedMultiplier;
-
-    // Optional Debug Log:
-    // console.log(`Adjusted ${oreConfig.name} chance: Base=${oreConfig.chance}, Depth=${depthFromSurface}, Multiplier=${appliedMultiplier.toFixed(2)}, Final=${currentChance.toFixed(2)}`);
-
-  } else {
-    // No modifiers, use the base chance
-    // console.log(`Adjusted ${oreConfig.name} chance: Base=${oreConfig.chance} (no modifiers)`);
+function getAdjustedOreChance(ore, depthFromSurface) {
+  // Use the base chance if no depth modifiers exist
+  if (!ore.depthModifiers || !ore.depthModifiers.length) {
+    return ore.chance;
   }
 
-  // Ensure chance doesn't go below a very small positive number (e.g., 0.01)
-  return Math.max(0.01, currentChance);
+  // Sort modifiers by depth to ensure correct application
+  const sortedModifiers = [...ore.depthModifiers].sort(
+    (a, b) => b.depth - a.depth
+  );
+
+  // Find applicable depth modifier
+  // Start with the deepest modifier that applies to current depth
+  let modifier = 1.0;
+  for (const depthMod of sortedModifiers) {
+    if (depthFromSurface >= depthMod.depth) {
+      modifier = depthMod.multiplier;
+      break;
+    }
+  }
+
+  // Apply the modifier and return the adjusted chance
+  const adjustedChance = ore.chance * modifier;
+
+  /* Debug logging to verify modifiers are applied
+  console.log(
+    `Ore: ${ore.name}, Depth: ${depthFromSurface}, Base chance: ${ore.chance}, Modifier: ${modifier}, Adjusted: ${adjustedChance}`
+  ); */
+
+  return adjustedChance;
 }
 
 

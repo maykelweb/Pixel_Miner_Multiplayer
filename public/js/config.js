@@ -165,12 +165,12 @@ export const gameState = {
       maxVein: 7,
       minDepth: 70,
       maxDepth: 370, // Extended range
-      chance: 10.5,
+      chance: 20.5,
       depthModifiers: [
-        { depth: 120, multiplier: 1.2 },
-        { depth: 200, multiplier: 1.4 },
-        { depth: 280, multiplier: 0.9 },
-        { depth: 330, multiplier: 0.5 },
+        { depth: 160, multiplier: 10.5 },
+        { depth: 250, multiplier: 28.8 },
+        { depth: 350, multiplier: 5.2 },
+        { depth: 450, multiplier: 12.7 },
       ],
     },
 
@@ -183,12 +183,13 @@ export const gameState = {
       maxVein: 6,
       minDepth: 100,
       maxDepth: 420, // Extended range
-      chance: 8,
+      chance: 20,
       depthModifiers: [
-        { depth: 160, multiplier: 1.5 },
-        { depth: 250, multiplier: 1.8 },
-        { depth: 350, multiplier: 1.2 },
-        { depth: 400, multiplier: 0.7 },
+        { depth: 100, multiplier: 0.1 },
+        { depth: 160, multiplier: 10.5 },
+        { depth: 250, multiplier: 28.8 },
+        { depth: 350, multiplier: 5.2 },
+        { depth: 450, multiplier: 12.7 },
       ],
     },
     {
@@ -199,11 +200,11 @@ export const gameState = {
       maxVein: 5,
       minDepth: 180,
       maxDepth: 500, // Extended to max depth
-      chance: 4.5,
+      chance: 8.5,
       depthModifiers: [
         { depth: 250, multiplier: 3.0 },
-        { depth: 350, multiplier: 4.0 }, // Peak chance in deep areas
-        { depth: 450, multiplier: 5.0 }, // More common at the deepest levels
+        { depth: 350, multiplier: 5.0 }, // Peak chance in deep areas
+        { depth: 450, multiplier: 7.0 }, // More common at the deepest levels
       ],
     },
 
@@ -219,11 +220,13 @@ export const gameState = {
       maxVein: 12,
       minDepth: 1,
       maxDepth: 200, // Extended range
-      chance: 402,
+      chance: 22,
+      chance: 25, 
       depthModifiers: [
+        { depth: 30, multiplier: 0.8 },
         { depth: 100, multiplier: 0.1 },
-        { depth: 100, multiplier: 0.05 },
-        { depth: 160, multiplier: 0.01 },
+        { depth: 170, multiplier: 0.01 },
+        { depth: 200, multiplier: 0.001 }, // Rare but still present at deeper levels
       ],
       moonOnly: true,
     },
@@ -236,11 +239,12 @@ export const gameState = {
       maxVein: 10,
       minDepth: 10,
       maxDepth: 230, // Extended range
-      chance: 100,
+      chance: 12,
       depthModifiers: [
-        { depth: 50, multiplier: 0.1 },
-        { depth: 120, multiplier: 0.05 },
-        { depth: 180, multiplier: 0.01 },
+        { depth: 40, multiplier: 1.2 },
+        { depth: 120, multiplier: 0.8 },
+        { depth: 200, multiplier: 0.5 },
+        { depth: 240, multiplier: 0.2 },
       ],
       moonOnly: true,
     },
@@ -255,12 +259,12 @@ export const gameState = {
       maxVein: 8,
       minDepth: 70,
       maxDepth: 280, // Extended range
-      chance: 40,
+      chance: 7,
       depthModifiers: [
-        { depth: 60, multiplier: 1.2 },
-        { depth: 140, multiplier: 0.9 },
-        { depth: 200, multiplier: 0.6 },
-        { depth: 250, multiplier: 0.4 },
+        { depth: 70, multiplier: 1.3 },
+        { depth: 150, multiplier: 2.0 },
+        { depth: 220, multiplier: 1.6 },
+        { depth: 280, multiplier: 0.6 },
       ],
       moonOnly: true,
     },
@@ -273,12 +277,12 @@ export const gameState = {
       maxVein: 6,
       minDepth: 60,
       maxDepth: 320, // Extended range
-      chance: 20,
+      chance: 10.5,
       depthModifiers: [
-        { depth: 100, multiplier: 1.5 },
-        { depth: 180, multiplier: 1.2 },
-        { depth: 240, multiplier: 0.8 },
-        { depth: 290, multiplier: 0.5 },
+        { depth: 120, multiplier: 1.2 },
+        { depth: 200, multiplier: 1.4 },
+        { depth: 280, multiplier: 0.9 },
+        { depth: 330, multiplier: 0.5 },
       ],
       moonOnly: true,
     },
@@ -293,12 +297,12 @@ export const gameState = {
       maxVein: 6,
       minDepth: 120,
       maxDepth: 380, // Extended range
-      chance: 5,
+      chance: 8,
       depthModifiers: [
-        { depth: 180, multiplier: 1.4 },
-        { depth: 250, multiplier: 1.6 },
-        { depth: 300, multiplier: 1.2 },
-        { depth: 350, multiplier: 0.7 },
+        { depth: 160, multiplier: 1.5 },
+        { depth: 250, multiplier: 1.8 },
+        { depth: 350, multiplier: 1.2 },
+        { depth: 400, multiplier: 0.7 },
       ],
       moonOnly: true,
     },
@@ -308,15 +312,14 @@ export const gameState = {
       color: "lunarite",
       hardness: 6,
       minVein: 1,
-      maxVein: 3,
+      maxVein: 4,
       minDepth: 180,
       maxDepth: 440, // Extended range
-      chance: 2.5,
+      chance: 4.5,
       depthModifiers: [
-        { depth: 240, multiplier: 1.8 },
-        { depth: 320, multiplier: 2.0 },
-        { depth: 380, multiplier: 1.5 },
-        { depth: 420, multiplier: 1.0 },
+        { depth: 250, multiplier: 3.0 },
+        { depth: 350, multiplier: 4.0 }, // Peak chance in deep areas
+        { depth: 450, multiplier: 5.0 }, // More common at the deepest levels
       ],
       moonOnly: true,
     },

@@ -453,11 +453,11 @@ function addOreVeins() {
       );
 
       // Ensure reasonable minimum
-      rangeVeins = Math.max(rangeVeins, Math.ceil(5 * rangeFraction));
+      rangeVeins = Math.max(rangeVeins, Math.ceil(10 * rangeFraction));
 
-      /*console.log(
+      console.log(
         `${ore.name}: Creating ${rangeVeins} veins for depth range ${range.start}-${range.end} (multiplier: ${range.multiplier})`
-      );*/
+      );
 
       // Create the veins for this range
       for (let i = 0; i < rangeVeins; i++) {

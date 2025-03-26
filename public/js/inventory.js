@@ -345,7 +345,7 @@ export function updateInventoryDisplay() {
               aluminum: "#d4d7db", 
               magnesium: "#b8a99e", 
               titanium: "#1a6050",
-              platinum: "#787878", 
+              platinum: "#a7a7a7", 
               lunarite: "#65c8e6", 
               celestium: "#ac269d",
             };

@@ -125,7 +125,6 @@ const availableTools = [
     speedMultiplier: 20.0,
     range: 5.5, // Can mine blocks up to 5 blocks away
     requirements: {
-      coal: 1,
       //celestium: 2,
       //lunarite: 5,
     },
@@ -140,7 +139,6 @@ const availableTools = [
     speedMultiplier: 1.0, // Not relevant for boots, but kept for consistency
     range: 0, // Not relevant for boots
     requirements: {
-      coal: 1,
       //silicon: 10,
       //aluminum: 5
     },
