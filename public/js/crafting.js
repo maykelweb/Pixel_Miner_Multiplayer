@@ -555,7 +555,7 @@ function craftTool(tool) {
 
   // Show success message with tool name highlight
   showMessage(
-    `<span style="color: #ffd700">Crafted ${tool.name}!</span>`,
+    `Crafted ${tool.name}!`,
     2000
   );
 
@@ -637,9 +637,6 @@ function equipTool(tool) {
       }
     });
   }
-
-  // Show equip message with highlighted text
-  showMessage(`<span style="color: #acf">Equipped ${tool.name}!</span>`, 2000);
 
   // Add visual feedback when equipping
   const allToolItems = document.querySelectorAll(".crafting-item");
