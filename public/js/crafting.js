@@ -84,6 +84,7 @@ const availableTools = [
     requirements: {
       aluminum: 10,
       silicon: 5,
+      diamond: 1,
     },
     unlocked: true,
   },
@@ -139,7 +140,7 @@ const availableTools = [
     range: 0, // Not relevant for boots
     requirements: {
       silicon: 10,
-      diamond: 5
+      aluminum: 5
     },
     unlocked: true, // Changed to true - available from the start
   },

@@ -1,0 +1,6 @@
+TO FINISH:
+
+Make deeper blocks harder to mine unless have the correct tool. 
+Fix moon ore colours
+Improve moon ore spawn rates
+Add ores all way to bottom

@@ -101,7 +101,7 @@ export const ORIGINAL_VOLUMES = {
   jumpingSound: 0.1,
   jetpackSound: 0.1,
   miningSound: 0.3,
-  drillSound: 0.1,
+  drillSound: 0.05,
   laserSound: 0.2,
   blockBreak: 0.1,
   craftingSound: 0.2,

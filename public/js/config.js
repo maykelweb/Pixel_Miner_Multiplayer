@@ -259,8 +259,8 @@ export const gameState = {
       value: 180,
       color: "platinum", // Bright silver
       hardness: 5,
-      minVein: 1,
-      maxVein: 4,
+      minVein: 2,
+      maxVein: 6,
       minDepth: 120,
       maxDepth: 250,
       chance: 5,
