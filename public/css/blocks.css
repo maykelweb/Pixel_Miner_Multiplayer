@@ -47,6 +47,30 @@
 .stone4 {
   background-image: url(../imgs/stone4.png);
 }
+.coal1 {
+  background-image: url(../imgs/coal1.png);
+}
+.coal2 {
+  background-image: url(../imgs/coal2.png);
+}
+.coal3 {
+  background-image: url(../imgs/coal3.png);
+}
+.coal4 {
+  background-image: url(../imgs/coal4.png);
+}
+.iron1 {
+  background-image: url(../imgs/iron1.png);
+}
+.iron2 {
+  background-image: url(../imgs/iron2.png);
+}
+.iron3 {
+  background-image: url(../imgs/iron3.png);
+}
+.iron4 {
+  background-image: url(../imgs/iron4.png);
+}
 
 .grass {
   background-image: url(../imgs/grass1.png);
@@ -58,14 +82,13 @@
   background-image: url(../imgs/stone2.png);
 }
 .coal {
-  background-color: #333;
-  border: 1px solid #555;
+  background-image: url(../imgs/coal1.png);
 }
 .iron {
-  background-color: #8a7e71;
+  background-image: url(../imgs/iron1.png);
 }
 .gold {
-  background-color: #ffd700;
+  background-image: url(../imgs/gold1.png);
 }
 .diamond {
   background-color: #b9f2ff;
