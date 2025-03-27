@@ -658,6 +658,7 @@ export function closeMenu() {
 }
 
 // Returns true if the player's bounding box overlaps the shop sign area
+// Returns true if the player's bounding box overlaps the shop sign area
 export function isPlayerNearShop() {
   const shopX = gameState.shopSign.x;
   const shopY = gameState.shopSign.y;
@@ -670,12 +671,28 @@ export function isPlayerNearShop() {
   const playerW = gameState.player.width;
   const playerH = gameState.player.height;
 
-  return !(
-    playerX > shopX + shopW ||
-    playerX + playerW < shopX ||
-    playerY > shopY + shopH ||
-    playerY + playerH < shopY
-  );
+  // Calculate centers for both player and shop
+  const playerCenterX = playerX + playerW / 2;
+  const playerCenterY = playerY + playerH / 2;
+  
+  // Add a horizontal offset to move the interaction zone more to the right
+  // This shifts the effective center of the shop sign to better match visual expectations
+  const offsetX = 80; // Positive value shifts right, negative shifts left
+  const shopCenterX = shopX + shopW / 2 + offsetX;
+  const shopCenterY = shopY + shopH / 2;
+
+  // Use an elliptical interaction zone with larger horizontal radius
+  // This allows for a wider interaction area horizontally
+  const horizontalRadius = shopW * 1.2; // Wider horizontal interaction
+  const verticalRadius = shopH * 0.8;
+  
+  // Calculate normalized elliptical distance 
+  const normalizedX = (playerCenterX - shopCenterX) / horizontalRadius;
+  const normalizedY = (playerCenterY - shopCenterY) / verticalRadius;
+  const ellipticalDistance = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+  
+  // Player is near shop if inside the elliptical boundary (distance < 1)
+  return ellipticalDistance < 1;
 }
 
 // Check shop sign appearance and auto-close shop if player moves away

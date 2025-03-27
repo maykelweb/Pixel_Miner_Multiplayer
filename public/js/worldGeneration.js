@@ -309,13 +309,27 @@ function getBlockForPosition(x, y) {
   const ores = getOres();
   const depthFromSurface = y - gameState.skyRows;
 
-  // Surface layer is grass
+  // Surface layer is grass with random class variant
   if (depthFromSurface === 0) {
-    return ores.grass;
+    // Create a copy of the grass block
+    const grassBlock = { ...ores.grass };
+    
+    // Add a random class from grass1 to grass4
+    const grassVariant = Math.floor(Math.random() * 4) + 1;
+    grassBlock.className = `grass${grassVariant}`;
+    
+    return grassBlock;
   }
-  // Dirt layer
+  // Dirt layer with random class variant
   else if (depthFromSurface <= SURFACE_LAYER_DEPTH) {
-    return ores.dirt;
+    // Create a copy of the dirt block
+    const dirtBlock = { ...ores.dirt };
+    
+    // Add a random class from dirt1 to dirt4
+    const dirtVariant = Math.floor(Math.random() * 4) + 1;
+    dirtBlock.className = `dirt${dirtVariant}`;
+    
+    return dirtBlock;
   }
   // Below dirt layer is primarily stone with a transition zone
   else {
@@ -323,7 +337,26 @@ function getBlockForPosition(x, y) {
       0.9,
       0.3 + (depthFromSurface - SURFACE_LAYER_DEPTH) * 0.1
     );
-    return Math.random() < stoneChance ? ores.stone : ores.dirt;
+    
+    if (Math.random() < stoneChance) {
+      // Create a copy of the stone block
+      const stoneBlock = { ...ores.stone };
+      
+      // Add a random class from stone1 to stone4
+      const stoneVariant = Math.floor(Math.random() * 4) + 1;
+      stoneBlock.className = `stone${stoneVariant}`;
+      
+      return stoneBlock;
+    } else {
+      // Create a copy of the dirt block for transition zone
+      const dirtBlock = { ...ores.dirt };
+      
+      // Add a random class from dirt1 to dirt4
+      const dirtVariant = Math.floor(Math.random() * 4) + 1;
+      dirtBlock.className = `dirt${dirtVariant}`;
+      
+      return dirtBlock;
+    }
   }
 }
 

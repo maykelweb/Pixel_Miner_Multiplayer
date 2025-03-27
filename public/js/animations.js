@@ -109,9 +109,15 @@ export function showCrackingAnimation(blockX, blockY, block, progress) {
 
   // Determine crack stage (1-4) based on progress
   const crackStage = Math.ceil(progress * 4);
+  
+  // Remove any existing break classes
+  crackElement.classList.remove("break1", "break2", "break3", "break4");
+  
+  // Add the appropriate break class based on the crack stage
+  crackElement.classList.add(`break${crackStage}`);
 
   // Update the appearance based on the crack stage
-  //crackElement.style.backgroundImage = `url('img/crack_${crackStage}.png')`; // USE WHEN HAVE BACKGROUND IMAGE
+  crackElement.style.backgroundImage = `url('imgs/break${crackStage}.png')`;
   crackElement.dataset.crack = crackStage;
 
   // Remove the element if we're done mining

@@ -152,7 +152,7 @@ export function initializeCrafting() {
   // Default crafting station settings
   const defaultCraftingStation = {
     x: 200,
-    y: 440,
+    y: 423,
     width: 240,
     height: 200,
   };
@@ -761,16 +761,26 @@ export function isPlayerNearCraftingTable() {
 
   const { x, y, width, height } = gameState.crafting.craftingStation;
 
-  // Calculate player's position in absolute game world coordinates
-  const playerX = gameState.player.x;
-  const playerY = gameState.player.y;
-  const playerW = gameState.player.width;
-  const playerH = gameState.player.height;
+  // Calculate screen position of crafting station
+  const craftingScreenX = x - gameState.camera.x;
+  const craftingScreenY = y - gameState.camera.y;
 
-  return !(
-    playerX > x + width ||
-    playerX + playerW < x ||
-    playerY > y + height ||
-    playerY + playerH < y
-  );
+  // Calculate screen position of player
+  const playerScreenX = gameState.player.x - gameState.camera.x;
+  const playerScreenY = gameState.player.y - gameState.camera.y;
+
+  // Calculate centers
+  const playerCenterX = playerScreenX + gameState.player.width / 2;
+  const playerCenterY = playerScreenY + gameState.player.height / 2;
+  const craftingCenterX = craftingScreenX + width / 2;
+  const craftingCenterY = craftingScreenY + height / 2;
+
+  // Calculate distance
+  const dx = playerCenterX - craftingCenterX;
+  const dy = playerCenterY - craftingCenterY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  // Check if player is within interaction range
+  const interactionRange = 100;
+  return distance < interactionRange;
 }

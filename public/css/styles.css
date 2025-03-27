@@ -90,7 +90,7 @@ h1 {
   position: absolute;
   z-index: 100;
   transition: transform 0.1s;
-  background-image: url(../imgs/character.svg);
+  background-image: url(../imgs/character.png);
   background-size: cover;
   background-position: center;
 }

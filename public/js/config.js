@@ -387,9 +387,9 @@ export const gameState = {
   mineTimer: 0,
   shopSign: {
     x: 950,
-    y: 450,
-    width: 150,
-    height: 150,
+    y: 410,
+    width: 100,
+    height: 190,
   },
   shopItems: [
     {

@@ -699,7 +699,8 @@ export function checkVerticalCollisions() {
       // Define the invisible platform dimensions
       const platformWidth = shopSignPos.width; // Make platform a bit wider than the sign
       const platformHeight = 10; // Small invisible platform height
-      const platformX = shopSignPos.x; // Center platform under sign
+      const offsetX = 80; // Offset for correct position
+      const platformX = shopSignPos.x + offsetX; // Center platform under sign
       const platformY = shopSignPos.y + shopSignPos.height; // Position right below the sign
       
       // More precise collision check for the platform
@@ -724,10 +725,11 @@ export function checkVerticalCollisions() {
     
     if (craftingStationPos) {
       // Define the invisible platform dimensions for crafting station
-      const platformWidth = craftingStationPos.width - 20;
+      const offsetX = 60; // Offset for correct position
+      const platformWidth = craftingStationPos.width - offsetX;
       const platformHeight = 10; // Small invisible platform height
-      const platformX = craftingStationPos.x;
-      const platformY = craftingStationPos.y + 160;
+      const platformX = craftingStationPos.x + offsetX / 2;
+      const platformY = craftingStationPos.y + 175;
       
       // More precise collision check for the crafting station platform
       if (playerBottom <= platformY + 2 && // Allow a small overlap for better detection
