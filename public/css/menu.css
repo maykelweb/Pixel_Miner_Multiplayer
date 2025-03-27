@@ -1136,7 +1136,7 @@
   margin-bottom: 20px;
 }
 
-#host-game-dialog .form-group label {
+.form-group label {
   display: block;
   color: var(--light-text);
   font-size: 16px;

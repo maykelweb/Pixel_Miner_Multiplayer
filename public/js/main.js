@@ -339,17 +339,12 @@ export function hostMultiplayerGame() {
   // Get player count
   const maxPlayers =
     parseInt(document.getElementById("max-players").value) || 4;
-  const useExistingSave = document.getElementById("world-existing").checked;
-
+    
   // Close all UI elements - both main menu IDs to be safe
-  const mainMenu = document.getElementById("main-menu");
-  if (mainMenu) {
-    mainMenu.style.display = "none";
-  }
-
-  const mainMenuOverlay = document.getElementById("main-menu-overlay");
-  if (mainMenuOverlay) {
-    mainMenuOverlay.style.display = "none";
+  const menu = document.getElementById("game-menu");
+  if (menu) {
+    menu.style.display = "none";
+    gameState.menuOpen = false;
   }
 
   // Close any open dialogs
@@ -378,15 +373,8 @@ export function hostMultiplayerGame() {
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
 
-  // FIXED: Don't remove save data, just set flags appropriately
-  if (!useExistingSave) {
-    console.log("Creating new world - but keeping save data intact");
-    // Set flag to generate a new world
-    gameState.forceNewWorld = true;
-  } else {
-    console.log("Using existing world from save");
-    gameState.forceNewWorld = false;
-  }
+  console.log("Using existing world from save");
+  gameState.forceNewWorld = false;
 
   // Set upload world to server flag - IMPORTANT: Must be set before initGame
   gameState.needToUploadWorld = true;
@@ -551,8 +539,6 @@ export function setupMultiplayer() {
   window.multiplayerInitialized = true;
 }
 
-
-
 // Set up event listeners for dialog buttons
 function setupDialogButtonListeners() {
   // Set up join game dialog buttons
@@ -619,7 +605,6 @@ function setupDialogButtonListeners() {
     });
   }
 }
-
 
 // Function to show a temporary message to the user
 function showMessage(message, duration = 2000) {
