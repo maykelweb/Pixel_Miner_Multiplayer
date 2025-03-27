@@ -103,7 +103,7 @@ function gameLoop(timestamp) {
     if (!gameState.isWaitingForWorldData) {
       updatePlayer();
     }
-    
+
     updateCamera();
     updateInventory();
     updateVisibleBlocks();
@@ -199,7 +199,6 @@ export function startNewGame() {
   }
 }
 
-
 /**
  * Loads an existing game from localStorage
  */
@@ -216,13 +215,13 @@ export function loadExistingGame() {
 
     // Set flag to ensure we're not joining multiplayer
     gameState.isJoiningMultiplayer = false;
-    
+
     // IMPORTANT: Explicitly set flag to ensure we're NOT in a new game state
     gameState.newGame = false;
-    
+
     // Transition from menu music to game music
     crossFadeAudio(menuMusic, gameMusic, 1000, true);
-    
+
     // Check and load save before initializing game
     try {
       const saveExists = localStorage.getItem("pixelMinerSave") !== null;
@@ -290,7 +289,7 @@ export function initGame() {
     // that will be filled with the host's data
     gameState.blockMap = [];
     // Since we're not generating a world, setup the background here
-    setupBackground()
+    setupBackground();
     initializeClouds();
   }
 
@@ -305,14 +304,14 @@ export function initGame() {
 
   // Add player to world but only make it visible if not waiting for world data
   gameWorld.appendChild(playerElement);
-  
+
   // NEW: Hide player element initially if joining multiplayer
   if (gameState.isJoiningMultiplayer && gameState.isWaitingForWorldData) {
     playerElement.style.visibility = "hidden";
   } else {
     playerElement.style.visibility = "visible";
   }
-  
+
   loadEquippedTool();
 
   gameState.shopOpen = false;
@@ -320,11 +319,23 @@ export function initGame() {
   updateUI();
   requestAnimationFrame(gameLoop);
 }
-
 /**
  * Handles hosting a multiplayer game
  */
 export function hostMultiplayerGame() {
+  // Get player name
+  const playerName = document.getElementById("host-player-name").value.trim();
+
+  // Validate player name
+  if (!playerName) {
+    const hostError = document.getElementById("host-error");
+    if (hostError) {
+      hostError.textContent = "Please enter your name";
+      hostError.style.display = "block";
+    }
+    return;
+  }
+
   // Get player count
   const maxPlayers =
     parseInt(document.getElementById("max-players").value) || 4;
@@ -360,6 +371,7 @@ export function hostMultiplayerGame() {
   // This ensures multiplayer is ready to sync world data
   initMultiplayer(true, {
     maxPlayers: maxPlayers,
+    playerName: playerName, // Pass player name to multiplayer init
   });
 
   // Transition from menu music to game music
@@ -382,7 +394,7 @@ export function hostMultiplayerGame() {
 
   // Send an immediate player update to ensure presence in the game
   sendPlayerUpdate();
-  
+
   // For extra reliability, schedule another world upload attempt after a short delay
   // This ensures world data is sent even if the first attempt encounters timing issues
   setTimeout(() => {
@@ -406,7 +418,22 @@ export function joinMultiplayerGame() {
   const gameCode = document.getElementById("game-code").value;
   if (!gameCode || gameCode.trim() === "") {
     console.error("No game code provided");
-    showMessage("Please enter a valid game code", 3000);
+    const joinError = document.getElementById("join-error");
+    if (joinError) {
+      joinError.textContent = "Please enter a valid game code";
+      joinError.style.display = "block";
+    }
+    return;
+  }
+
+  // Get player name
+  const playerName = document.getElementById("join-player-name").value.trim();
+  if (!playerName) {
+    const joinError = document.getElementById("join-error");
+    if (joinError) {
+      joinError.textContent = "Please enter your name";
+      joinError.style.display = "block";
+    }
     return;
   }
 
@@ -446,6 +473,7 @@ export function joinMultiplayerGame() {
   console.log("Initializing multiplayer as client with game code:", gameCode);
   initMultiplayer(false, {
     gameCode: gameCode,
+    playerName: playerName, // Pass player name to multiplayer init
   });
 
   // Flag that we're NOT the host (set to false explicitly)
@@ -469,7 +497,6 @@ export function joinMultiplayerGame() {
   crossFadeAudio(menuMusic, gameMusic, 1000, true);
   gameState.musicStarted = true;
 }
-
 
 // Called once during initialization to ensure proper setup
 export function setupMultiplayer() {
@@ -524,6 +551,8 @@ export function setupMultiplayer() {
   window.multiplayerInitialized = true;
 }
 
+
+
 // Set up event listeners for dialog buttons
 function setupDialogButtonListeners() {
   // Set up join game dialog buttons
@@ -534,10 +563,12 @@ function setupDialogButtonListeners() {
     joinSubmitBtn.parentNode.replaceChild(newJoinSubmitBtn, joinSubmitBtn);
 
     newJoinSubmitBtn.addEventListener("click", () => {
-      const joinDialog = document.getElementById("join-game-dialog");
-      if (joinDialog) {
-        joinDialog.style.display = "none";
+      // Hide any previous error messages
+      const joinError = document.getElementById("join-error");
+      if (joinError) {
+        joinError.style.display = "none";
       }
+
       joinMultiplayerGame();
     });
   }
@@ -564,10 +595,12 @@ function setupDialogButtonListeners() {
     hostSubmitBtn.parentNode.replaceChild(newHostSubmitBtn, hostSubmitBtn);
 
     newHostSubmitBtn.addEventListener("click", () => {
-      const hostDialog = document.getElementById("host-game-dialog");
-      if (hostDialog) {
-        hostDialog.style.display = "none";
+      // Hide any previous error messages
+      const hostError = document.getElementById("host-error");
+      if (hostError) {
+        hostError.style.display = "none";
       }
+
       hostMultiplayerGame();
     });
   }
@@ -586,6 +619,7 @@ function setupDialogButtonListeners() {
     });
   }
 }
+
 
 // Function to show a temporary message to the user
 function showMessage(message, duration = 2000) {

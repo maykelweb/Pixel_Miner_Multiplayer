@@ -58,6 +58,7 @@ io.on("connection", (socket) => {
       // Add the host as the first player
       games[gameCode].players[socket.id] = {
         id: socket.id,
+        playerName: options.playerName || `Player ${socket.id.substring(0, 3)}`, 
         x: 100,
         y: 100,
         direction: 1,
@@ -131,6 +132,7 @@ io.on("connection", (socket) => {
 
     // Add player to the game
     games[gameCode].players[socket.id] = {
+      playerName: data.playerName || `Player ${socket.id.substring(0, 3)}`,
       id: socket.id,
       x: 100 + Math.random() * 50,
       y: 100,

@@ -26,6 +26,14 @@ export function initMultiplayer(isHost = false, options = {}) {
   socket = io(); // Assumes Socket.IO is loaded in the HTML
   isConnected = true;
 
+  // Store player name in gameState for use throughout the game
+  if (options.playerName) {
+    gameState.playerName = options.playerName;
+  } else {
+    // Default to a placeholder if no name provided
+    gameState.playerName = `Player ${socket.id?.substring(0, 3) || "Unknown"}`;
+  }
+
   // Handle successful connection
   socket.on("connect", () => {
     console.log("Connected to server with ID:", socket.id);
@@ -34,6 +42,7 @@ export function initMultiplayer(isHost = false, options = {}) {
     if (isHost) {
       socket.emit("hostGame", {
         maxPlayers: options.maxPlayers || 4,
+        playerName: gameState.playerName, // Send player name to server
       });
       showMessage("Hosting a new game!", 3000);
     } else {
@@ -42,21 +51,13 @@ export function initMultiplayer(isHost = false, options = {}) {
       if (gameCode) {
         socket.emit("joinGame", {
           gameCode: gameCode,
+          playerName: gameState.playerName, // Send player name to server
         });
         showMessage("Joining game: " + gameCode, 3000);
       } else {
         showMessage("Joining random game...", 3000);
       }
     }
-
-    // Add player info display
-    const infoPanel = document.getElementById("info-panel");
-    const playerCountDisplay = document.createElement("div");
-    playerCountDisplay.id = "player-count";
-    playerCountDisplay.className = "status-item";
-    playerCountDisplay.innerHTML =
-      '<span class="player-icon">👥</span><span id="player-count-value">1</span>';
-    infoPanel.appendChild(playerCountDisplay);
 
     // Important: After successful connection, immediately send our tool information
     // This ensures other players can see our tool correctly from the start
@@ -1628,6 +1629,8 @@ export function sendPlayerUpdate() {
       onGround: gameState.player.onGround,
       health: gameState.player.health,
       depth: gameState.depth,
+      // Include player name in updates
+      playerName: gameState.playerName,
       // Always include current planet to ensure consistent planet tracking
       currentPlanet: gameState.currentPlanet,
       // Include tool information in regular updates
@@ -1679,10 +1682,14 @@ function addOtherPlayer(id, playerData) {
   newPlayerElement.className = "player other-player";
   newPlayerElement.dataset.playerId = id;
 
-  // Add name tag
+  // Add name tag with custom player name if available
   const nameTag = document.createElement("div");
   nameTag.className = "player-name";
-  nameTag.textContent = `Player ${id.substring(0, 3)}`;
+
+  // Use provided player name or fallback to player ID
+  const playerName = playerData.playerName || `Player ${id.substring(0, 3)}`;
+  nameTag.textContent = playerName;
+
   newPlayerElement.appendChild(nameTag);
 
   // Add jetpack flame element

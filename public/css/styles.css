@@ -1191,18 +1191,27 @@ body.moon-environment {
 }
 
 /* Player name floating above character */
-.other-player .player-name {
+.player-name {
   position: absolute;
-  top: -20px;
-  left: 0;
-  width: 100%;
-  text-align: center;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
   color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
   font-size: 12px;
-  font-weight: bold;
-  text-shadow: 0px 0px 3px #000;
   white-space: nowrap;
+  text-align: center;
   pointer-events: none;
+  z-index: 1000;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.other-player.facing-left .player-name {
+  /* Counter the parent's scaleX(-1) transform to keep the name readable */
+  transform: translateX(-50%) scaleX(-1);
 }
 
 /* Player count display */
