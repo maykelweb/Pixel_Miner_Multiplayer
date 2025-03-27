@@ -27,7 +27,7 @@ export const gameState = {
   gravity: 0.5,
   blockMap: [],
   hasJetpack: false,
-  jetpackLevel: 1, 
+  jetpackLevel: 1,
   jetpackFuel: 0,
   maxJetpackFuel: 100,
   jetpackRefillCost: 50,
@@ -115,7 +115,7 @@ export const gameState = {
       maxVein: 14,
       minDepth: 1,
       maxDepth: 220, // Extended range
-      chance: 25, 
+      chance: 25,
       depthModifiers: [
         { depth: 30, multiplier: 0.8 },
         { depth: 100, multiplier: 0.5 },
@@ -411,8 +411,9 @@ export const gameState = {
     {
       id: "jetpack-upgrade",
       name: "Jetpack Upgrade",
-      description: "Improves your jetpack by reducing fuel consumption and increasing max speed.",
-      getPrice: (level) => level === 1 ? 1000 : 5000, // Level 1->2: $1,000, Level 2->3: $5,000
+      description:
+        "Improves your jetpack by reducing fuel consumption and increasing max speed.",
+      getPrice: (level) => (level === 1 ? 1000 : 5000), // Level 1->2: $1,000, Level 2->3: $5,000
       available: () => gameState.hasJetpack && gameState.jetpackLevel < 3, // Available if player has jetpack and level is below 3
     },
     {
@@ -511,7 +512,16 @@ export const gameState = {
 
         const row = [];
         for (let x = 0; x < this.blockMap[y].length; x++) {
-          row.push(this.blockMap[y][x] ? this.blockMap[y][x].name : null);
+          const block = this.blockMap[y][x];
+          if (block) {
+            // Store both name and className in an object
+            row.push({
+              name: block.name,
+              className: block.className || `${block.name}1`, // Fallback to default className if not set
+            });
+          } else {
+            row.push(null);
+          }
         }
         compressedBlockMap.push(row);
       }
@@ -525,9 +535,16 @@ export const gameState = {
 
         const row = [];
         for (let x = 0; x < this.earthBlockMap[y].length; x++) {
-          row.push(
-            this.earthBlockMap[y][x] ? this.earthBlockMap[y][x].name : null
-          );
+          const block = this.earthBlockMap[y][x];
+          if (block) {
+            // Store both name and className in an object
+            row.push({
+              name: block.name,
+              className: block.className || `${block.name}1`, // Fallback to default className if not set
+            });
+          } else {
+            row.push(null);
+          }
         }
         compressedEarthBlockMap.push(row);
       }
@@ -541,9 +558,16 @@ export const gameState = {
 
         const row = [];
         for (let x = 0; x < this.moonBlockMap[y].length; x++) {
-          row.push(
-            this.moonBlockMap[y][x] ? this.moonBlockMap[y][x].name : null
-          );
+          const block = this.moonBlockMap[y][x];
+          if (block) {
+            // Store both name and className in an object
+            row.push({
+              name: block.name,
+              className: block.className || `${block.name}1`, // Fallback to default className if not set
+            });
+          } else {
+            row.push(null);
+          }
         }
         compressedMoonBlockMap.push(row);
       }
@@ -678,18 +702,47 @@ export const gameState = {
         if (!compressedMap || compressedMap.length === 0) {
           return [];
         }
-
+      
         const expandedMap = [];
         for (let y = 0; y < compressedMap.length; y++) {
           expandedMap[y] = [];
           for (let x = 0; x < compressedMap[y].length; x++) {
-            const oreName = compressedMap[y][x];
-            if (oreName === null) {
+            const blockData = compressedMap[y][x];
+            if (blockData === null) {
               expandedMap[y][x] = null;
             } else {
-              // Find the matching ore object by name
-              const ore = this.ores.find((ore) => ore.name === oreName);
-              expandedMap[y][x] = ore || null; // Use null as fallback if ore not found
+              // Check if we have new format (object with name and className) or old format (just name string)
+              if (typeof blockData === 'object' && blockData.name) {
+                // New format - use both name and className
+                const oreName = blockData.name;
+                const className = blockData.className;
+                
+                // Find the matching ore object by name
+                const ore = this.ores.find((ore) => ore.name === oreName);
+                
+                if (ore) {
+                  // Create a copy of the ore and add the className
+                  const newBlock = { ...ore };
+                  newBlock.className = className;
+                  expandedMap[y][x] = newBlock;
+                } else {
+                  expandedMap[y][x] = null; // Ore not found
+                }
+              } else {
+                // Old format (backward compatibility) - just ore name string
+                const oreName = blockData;
+                const ore = this.ores.find((ore) => ore.name === oreName);
+                
+                if (ore) {
+                  // Create a copy of the ore and add a random className
+                  const newBlock = { ...ore };
+                  const variant = Math.floor(Math.random() * 4) + 1;
+                  newBlock.className = `${oreName}${variant}`;
+                  expandedMap[y][x] = newBlock;
+                } else {
+                  expandedMap[y][x] = null; // Ore not found
+                }
+              }
             }
           }
         }
