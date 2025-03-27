@@ -380,20 +380,6 @@ export function hostMultiplayerGame() {
   gameState.needToUploadWorld = true;
   gameState.isHost = true;
 
-  // Initialize the game - this will load the save or create a new world
-  initGame();
-
-  // Show game UI elements
-  const infoPanel = document.getElementById("info-panel");
-  if (infoPanel) infoPanel.style.display = "block";
-
-  const depthIndicator = document.getElementById("depth-indicator");
-  if (depthIndicator) depthIndicator.style.display = "block";
-
-  // Make sure player is visible
-  const playerElement = document.getElementById("player");
-  if (playerElement) playerElement.style.display = "block";
-
   // Send an immediate player update to ensure presence in the game
   sendPlayerUpdate();
   

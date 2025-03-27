@@ -75,11 +75,19 @@ export function initMultiplayer(isHost = false, options = {}) {
     // Update game code in pause menu
     updatePauseMenuGameCode(currentGameCode);
 
+    // Hide the "Host Game" button in the pause menu
+    const hostGameButton = document.getElementById("host-game");
+    if (hostGameButton) {
+      hostGameButton.style.display = "none";
+    }
+
     // For the host, we need to wait until the world is generated before uploading it
     if (isHost) {
       // Set a flag to indicate we need to upload the world
       gameState.needToUploadWorld = true;
     }
+
+    uploadWorldToServer();
   });
 
   // Handle join response
@@ -616,7 +624,7 @@ export function initMultiplayer(isHost = false, options = {}) {
       createRemoteBomb(data.bombData);
     }
   });
-  
+
   socket.on("otherPlayerBombExploded", (data) => {
     // Make sure the explosion is for our current planet
     if (data.currentPlanet === gameState.currentPlanet) {
@@ -2375,10 +2383,10 @@ export function sendBombPlaced(bombData) {
   if (isConnected && socket) {
     // Strip the DOM element which can't be serialized
     const { element, ...bombDataToSend } = bombData;
-    
+
     socket.emit("bombPlaced", {
       bombData: bombDataToSend,
-      currentPlanet: gameState.currentPlanet
+      currentPlanet: gameState.currentPlanet,
     });
   }
 }
@@ -2388,7 +2396,7 @@ export function sendBombExploded(explosionData) {
   if (isConnected && socket) {
     socket.emit("bombExploded", {
       explosionData,
-      currentPlanet: gameState.currentPlanet
+      currentPlanet: gameState.currentPlanet,
     });
   }
 }
