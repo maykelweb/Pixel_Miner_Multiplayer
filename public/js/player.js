@@ -682,7 +682,6 @@ function hasPlayerMoved() {
 }
 
 // Check vertical collisions
-// Check vertical collisions
 export function checkVerticalCollisions() {
   const playerLeft = gameState.player.x;
   const playerRight = gameState.player.x + gameState.player.width;
@@ -746,6 +745,17 @@ export function checkVerticalCollisions() {
         return;
       }
     }
+  }
+
+  // Check for bottom world boundary collision
+  const worldBottomY = gameState.worldHeight * gameState.blockSize;
+  if (playerBottom >= worldBottomY) {
+    // Prevent falling through bottom of world
+    gameState.player.y = worldBottomY - gameState.player.height;
+    gameState.player.velocityY = 0;
+    gameState.player.onGround = true;
+    gameState.player.isJumping = false;
+    return;
   }
 
   if (gameState.player.velocityY >= 0) {
