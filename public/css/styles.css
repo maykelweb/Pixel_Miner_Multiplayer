@@ -811,7 +811,7 @@ h1 {
   border-radius: 50%;
   top: 100px;
   left: 200px;
-  background-image: url("../imgs/earth.svg");
+  background-image: url("../imgs/earth.png");
   background-size: cover;
   z-index: -10;
   pointer-events: none;

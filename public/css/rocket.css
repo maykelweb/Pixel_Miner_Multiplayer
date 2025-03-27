@@ -172,8 +172,9 @@
   }
   
   #rocket-modal .destination-icon.earth {
-    background-image: url("../imgs/earth.svg");
-    background-color: #2a4ea0; /* Fallback */
+    background-image: url("../imgs/earth.png");
+    background-color: #2a4ea0; /* Fallback */    
+    background-position: center;
   }
   
   #rocket-modal .destination-icon.moon {
