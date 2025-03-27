@@ -28,7 +28,11 @@ import {
   showCrackingAnimation,
   clearCrackingAnimations,
 } from "./animations.js";
-import { getCurrentTool, hasMoonBootsEquipped, TOOL_TYPES } from "./crafting.js";
+import {
+  getCurrentTool,
+  hasMoonBootsEquipped,
+  TOOL_TYPES,
+} from "./crafting.js";
 import { playerInRocket } from "./rocket.js";
 import {
   sendPlayerUpdate,
@@ -39,17 +43,38 @@ import {
   sendLaserActivated,
   sendLaserDeactivated,
   sendLaserUpdate,
-  sendJetpackActivated, 
-  sendJetpackDeactivated, 
+  sendJetpackActivated,
+  sendJetpackDeactivated,
   sendToolRotationUpdate,
-  sendInitialToolInfo
+  sendInitialToolInfo,
 } from "./multiplayer.js";
-
 
 // Get DOM elements
 export const gameWorld = document.getElementById("game-world");
 
-window.addEventListener("DOMContentLoaded", () => {});
+window.addEventListener("DOMContentLoaded", () => {
+  initPlayerSprite();
+});
+
+// Variables for walking animation
+let walkingAnimationFrame = 0;
+let walkingAnimationTimer = 0;
+const WALKING_ANIMATION_SPEED = 200; // ms per frame
+
+// Create player sprite elements - preload images for smoother experience
+const playerWalkingSprite1 = new Image();
+playerWalkingSprite1.src = "imgs/walking1.png";
+const playerWalkingSprite2 = new Image();
+playerWalkingSprite2.src = "imgs/walking2.png";
+const playerIdleSprite = new Image();
+playerIdleSprite.src = "imgs/idle.png"; // Use the existing character sprite for idle
+// Add these additional variables to the top of player.js with the other animation variables
+// Jumping animation sprite
+const playerJumpingSprite = new Image();
+playerJumpingSprite.src = "imgs/jumping.png";
+const playerFallingSprite = new Image();
+playerFallingSprite.src = "imgs/falling.png";
+
 
 // Update player position and state
 export function updatePlayer() {
@@ -132,11 +157,24 @@ export function updatePlayer() {
       if (walkingSound.paused) {
         playSFX(walkingSound, ORIGINAL_VOLUMES.walkingSound, true);
       }
+
+      // Update the player sprite animation
+      updatePlayerSprite();
     } else {
       stopSFX(walkingSound);
     }
   } else {
     stopSFX(walkingSound);
+
+    // Reset to idle sprite when not walking
+    const spriteImage = playerElement.querySelector(".player-image");
+    if (spriteImage) {
+      spriteImage.src = playerIdleSprite.src;
+    }
+
+    // Reset animation
+    walkingAnimationFrame = 0;
+    walkingAnimationTimer = 0;
   }
 
   // Jetpack code remains the same...
@@ -694,7 +732,7 @@ export function checkVerticalCollisions() {
   if (gameState.player.velocityY >= 0 && gameState.currentPlanet !== "moon") {
     // Get the shop sign position directly from gameState
     const shopSignPos = gameState.shopSign;
-    
+
     if (shopSignPos) {
       // Define the invisible platform dimensions
       const platformWidth = shopSignPos.width; // Make platform a bit wider than the sign
@@ -702,27 +740,28 @@ export function checkVerticalCollisions() {
       const offsetX = 80; // Offset for correct position
       const platformX = shopSignPos.x + offsetX; // Center platform under sign
       const platformY = shopSignPos.y + shopSignPos.height; // Position right below the sign
-      
+
       // More precise collision check for the platform
-      if (playerBottom <= platformY + 2 && // Allow a small overlap for better detection
-          playerBottom + gameState.player.velocityY >= platformY - 2 && // Check if we're about to cross the platform
-          playerRight > platformX && 
-          playerLeft < platformX + platformWidth) {
-        
+      if (
+        playerBottom <= platformY + 2 && // Allow a small overlap for better detection
+        playerBottom + gameState.player.velocityY >= platformY - 2 && // Check if we're about to cross the platform
+        playerRight > platformX &&
+        playerLeft < platformX + platformWidth
+      ) {
         // Stop player on the platform
         gameState.player.y = platformY - gameState.player.height;
         gameState.player.velocityY = 0;
         gameState.player.onGround = true;
         gameState.player.isJumping = false;
-        
+
         // Return early to prevent regular block collisions from overriding our platform
         return;
       }
     }
-    
+
     // Add crafting station platform collision detection
     const craftingStationPos = gameState.crafting.craftingStation;
-    
+
     if (craftingStationPos) {
       // Define the invisible platform dimensions for crafting station
       const offsetX = 60; // Offset for correct position
@@ -730,19 +769,20 @@ export function checkVerticalCollisions() {
       const platformHeight = 10; // Small invisible platform height
       const platformX = craftingStationPos.x + offsetX / 2;
       const platformY = craftingStationPos.y + 175;
-      
+
       // More precise collision check for the crafting station platform
-      if (playerBottom <= platformY + 2 && // Allow a small overlap for better detection
-          playerBottom + gameState.player.velocityY >= platformY - 2 && // Check if we're about to cross the platform
-          playerRight > platformX && 
-          playerLeft < platformX + platformWidth) {
-        
+      if (
+        playerBottom <= platformY + 2 && // Allow a small overlap for better detection
+        playerBottom + gameState.player.velocityY >= platformY - 2 && // Check if we're about to cross the platform
+        playerRight > platformX &&
+        playerLeft < platformX + platformWidth
+      ) {
         // Stop player on the platform
         gameState.player.y = platformY - gameState.player.height;
         gameState.player.velocityY = 0;
         gameState.player.onGround = true;
         gameState.player.isJumping = false;
-        
+
         // Return early to prevent regular block collisions from overriding our platform
         return;
       }
@@ -772,7 +812,7 @@ export function checkVerticalCollisions() {
         !gameState.blockMap[blockY] // Add this check to ensure row exists
       )
         continue;
-        
+
       if (gameState.blockMap[blockY][x]) {
         // Check for fall damage before stopping the fall
         if (gameState.player.velocityY > gameState.player.fallDamageThreshold) {
@@ -827,7 +867,7 @@ export function checkVerticalCollisions() {
         !gameState.blockMap[blockY] // Add this check to ensure row exists
       )
         continue;
-        
+
       if (gameState.blockMap[blockY][x]) {
         gameState.player.y = (blockY + 1) * gameState.blockSize;
         gameState.player.velocityY = 0;
@@ -1317,6 +1357,8 @@ export function loadEquippedTool() {
       }
     }
 
+    createPlayerSprite();
+
     // Default to basic pickaxe visuals if no valid tool info
     // First set the default equipped tool to pickaxe-basic to ensure correct loading
     if (gameState.crafting && gameState.crafting.equippedTools) {
@@ -1644,4 +1686,75 @@ export function syncMiningActivity() {
   else if (!gameState.pickaxeMiningActive && gameState.mouseHeld === false) {
     sendMiningStop();
   }
+}
+
+// Function to create the player sprite container and image element
+function createPlayerSprite() {
+  // Check if the sprite container already exists
+  if (playerElement.querySelector(".player-sprite-container")) {
+    return;
+  }
+
+  // Clear any existing background image
+  playerElement.style.backgroundImage = "none";
+
+  // Create the sprite container
+  const spriteContainer = document.createElement("div");
+  spriteContainer.className = "player-sprite-container";
+
+  // Create the image element
+  const spriteImage = document.createElement("img");
+  spriteImage.className = "player-image";
+  spriteImage.src = playerIdleSprite.src;
+
+  // Add the image to the container
+  spriteContainer.appendChild(spriteImage);
+
+  // Add the container to the player element (as the first child)
+  if (playerElement.firstChild) {
+    playerElement.insertBefore(spriteContainer, playerElement.firstChild);
+  } else {
+    playerElement.appendChild(spriteContainer);
+  }
+}
+
+// Function to update the player sprite based on movement state
+function updatePlayerSprite() {
+  // Get the player sprite image element
+  const spriteImage = playerElement.querySelector(".player-image");
+  if (!spriteImage) return;
+
+  // Check if player is moving horizontally
+  if (
+    (gameState.keys.left || gameState.keys.right) &&
+    gameState.player.onGround
+  ) {
+    // Increment animation timer
+    walkingAnimationTimer += gameState.deltaTime;
+
+    // Switch frames when timer exceeds the animation speed
+    if (walkingAnimationTimer >= WALKING_ANIMATION_SPEED) {
+      // Reset timer and toggle frame
+      walkingAnimationTimer = 0;
+      walkingAnimationFrame = walkingAnimationFrame === 0 ? 1 : 0;
+
+      // Set the appropriate walking sprite
+      spriteImage.src =
+        walkingAnimationFrame === 0
+          ? playerWalkingSprite1.src
+          : playerWalkingSprite2.src;
+    }
+  } else {
+    // Player is not walking, use idle sprite
+    spriteImage.src = playerIdleSprite.src;
+
+    // Reset animation variables
+    walkingAnimationFrame = 0;
+    walkingAnimationTimer = 0;
+  }
+}
+
+// Function to initialize player sprite when the game loads
+function initPlayerSprite() {
+  createPlayerSprite();
 }
