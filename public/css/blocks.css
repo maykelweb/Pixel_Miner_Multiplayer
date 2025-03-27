@@ -23,6 +23,7 @@
 }
 
 /* Earth Ores */
+/* Dirt */
 .dirt1 {
   background-image: url(../imgs/dirt1.png);
 }
@@ -35,6 +36,7 @@
 .dirt4 {
   background-image: url(../imgs/dirt4.png);
 }
+/* Stone */
 .stone1 {
   background-image: url(../imgs/stone1.png);
 }
@@ -47,6 +49,7 @@
 .stone4 {
   background-image: url(../imgs/stone4.png);
 }
+/* Coal */
 .coal1 {
   background-image: url(../imgs/coal1.png);
 }
@@ -59,6 +62,7 @@
 .coal4 {
   background-image: url(../imgs/coal4.png);
 }
+/* Iron */
 .iron1 {
   background-image: url(../imgs/iron1.png);
 }
@@ -71,7 +75,161 @@
 .iron4 {
   background-image: url(../imgs/iron4.png);
 }
+/* Gold */
+.gold1 {
+  background-image: url(../imgs/gold1.png);
+}
+.gold2 {
+  background-image: url(../imgs/gold2.png);
+}
+.gold3 {
+  background-image: url(../imgs/gold3.png);
+}
+.gold4 {
+  background-image: url(../imgs/gold4.png);
+}
+/* Emerald */
+.emerald1 {
+  background-image: url(../imgs/emerald1.png);
+}
+.emerald2 {
+  background-image: url(../imgs/emerald2.png);
+}
+.emerald3 {
+  background-image: url(../imgs/emerald3.png);
+}
+.emerald4 {
+  background-image: url(../imgs/emerald4.png);
+}
+/* Ruby */
+.ruby1 {
+  background-image: url(../imgs/ruby1.png);
+}
+.ruby2 {
+  background-image: url(../imgs/ruby2.png);
+}
+.ruby3 {
+  background-image: url(../imgs/ruby3.png);
+}
+.ruby4 {
+  background-image: url(../imgs/ruby4.png);
+}
+/* Diamond */
+.diamond1 {
+  background-image: url(../imgs/diamond1.png);
+}
+.diamond2 {
+  background-image: url(../imgs/diamond2.png);
+}
+.diamond3 {
+  background-image: url(../imgs/diamond3.png);
+}
+.diamond4 {
+  background-image: url(../imgs/diamond4.png);
+}
 
+/* MOON ORES */
+/* Silicon */
+.silicon1 {
+  background-image: url(../imgs/silicon1.png);
+}
+.silicon2 {
+  background-image: url(../imgs/silicon2.png);
+}
+.silicon3 {
+  background-image: url(../imgs/silicon3.png);
+}
+.silicon4 {
+  background-image: url(../imgs/silicon4.png);
+}
+/* Aluminum */
+.aluminum1 {
+  background-image: url(../imgs/aluminum1.png);
+}
+.aluminum2 {
+  background-image: url(../imgs/aluminum2.png);
+}
+.aluminum3 {
+  background-image: url(../imgs/aluminum3.png);
+}
+.aluminum4 {
+  background-image: url(../imgs/aluminum4.png);
+}
+/* Magnesium */
+.magnesium1 {
+  background-image: url(../imgs/magnesium1.png);
+}
+.magnesium2 {
+  background-image: url(../imgs/magnesium2.png);
+}
+.magnesium3 {
+  background-image: url(../imgs/magnesium3.png);
+}
+.magnesium4 {
+  background-image: url(../imgs/magnesium4.png);
+}
+/* Platinum */
+.platinum1 {
+  background-image: url(../imgs/platinum1.png);
+}
+.platinum2 {
+  background-image: url(../imgs/platinum2.png);
+}
+.platinum3 {
+  background-image: url(../imgs/platinum3.png);
+}
+.platinum4 {
+  background-image: url(../imgs/platinum4.png);
+}
+/* Titanium */
+.titanium1 {
+  background-image: url(../imgs/titanium1.png);
+}
+.titanium2 {
+  background-image: url(../imgs/titanium2.png);
+}
+.titanium3 {
+  background-image: url(../imgs/titanium3.png);
+}
+.titanium4 {
+  background-image: url(../imgs/titanium4.png);
+}
+/* Lunarite */
+.lunarite1 {
+  background-image: url(../imgs/lunarite1.png);
+}
+.lunarite2 {
+  background-image: url(../imgs/lunarite2.png);
+}
+.lunarite3 {
+  background-image: url(../imgs/lunarite3.png);
+}
+.lunarite4 {
+  background-image: url(../imgs/lunarite4.png);
+}
+/* Celestium */
+.celestium1 {
+  background-image: url(../imgs/celestium1.png);
+}
+.celestium2 {
+  background-image: url(../imgs/celestium2.png);
+}
+.celestium3 {
+  background-image: url(../imgs/celestium3.png);
+}
+.celestium4 {
+  background-image: url(../imgs/celestium4.png);
+}
+
+
+
+
+
+
+
+
+
+/* Fall Back */
 .grass {
   background-image: url(../imgs/grass1.png);
 }
@@ -90,19 +248,14 @@
 .gold {
   background-image: url(../imgs/gold1.png);
 }
-.diamond {
-  background-color: #b9f2ff;
-}
 .emerald {
-  background-color: #50c878;
+  background-image: url(../imgs/emerald1.png);
 }
 .ruby {
-  background-color: #e0115f;
+  background-image: url(../imgs/ruby1.png);
 }
-
-/* Moon Ores */
-.basalt {
-  background-color: #505050;
+.diamond {
+  background-image: url(../imgs/diamond1.png);
 }
 .silicon {
   background-color: #4a6b8a; /* Blue-gray like silicon wafers */

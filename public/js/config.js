@@ -198,7 +198,7 @@ export const gameState = {
       color: "diamond",
       minVein: 1,
       maxVein: 5,
-      minDepth: 180,
+      minDepth: 220,
       maxDepth: 500, // Extended to max depth
       chance: 8.5,
       depthModifiers: [

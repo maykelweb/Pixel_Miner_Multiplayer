@@ -505,7 +505,6 @@ function addOreVeins() {
 }
 
 // Create a vein of a specific ore type within a specified depth range
-// Create a vein of a specific ore type within a specified depth range
 function createOreVein(ore, minDepth = null, maxDepth = null) {
   const ores = getOres();
 
@@ -553,28 +552,15 @@ function createOreVein(ore, minDepth = null, maxDepth = null) {
   const placed = new Set();
   const key = (x, y) => `${x},${y}`;
 
-  // Place the first ore block
-  if (ore.name === "coal") {
-    // Create a copy of the coal block
-    const coalBlock = { ...ore };
-    
-    // Add a random class from coal1 to coal4
-    const coalVariant = Math.floor(Math.random() * 4) + 1;
-    coalBlock.className = `coal${coalVariant}`;
-    
-    gameState.blockMap[startY][startX] = coalBlock;
-  } else if (ore.name === "iron") {
-    // Create a copy of the iron block
-    const ironBlock = { ...ore };
-    
-    // Add a random class from iron1 to iron4
-    const ironVariant = Math.floor(Math.random() * 4) + 1;
-    ironBlock.className = `iron${ironVariant}`;
-    
-    gameState.blockMap[startY][startX] = ironBlock;
-  } else {
-    gameState.blockMap[startY][startX] = ore;
-  }
+  // Place the first ore block with random class variant
+  // Create a copy of the ore block
+  const oreBlock = { ...ore };
+  
+  // Add a random class from ore-name1 to ore-name4
+  const oreVariant = Math.floor(Math.random() * 4) + 1;
+  oreBlock.className = `${ore.name}${oreVariant}`;
+  
+  gameState.blockMap[startY][startX] = oreBlock;
   placed.add(key(startX, startY));
 
   // Get adjusted ore chance based on depth
@@ -629,27 +615,14 @@ function createOreVein(ore, minDepth = null, maxDepth = null) {
       const placementChance = dir.prob * Math.min(1, adjustedChance * 10);
 
       if (Math.random() < placementChance) {
-        if (ore.name === "coal") {
-          // Create a copy of the coal block
-          const coalBlock = { ...ore };
-          
-          // Add a random class from coal1 to coal4
-          const coalVariant = Math.floor(Math.random() * 4) + 1;
-          coalBlock.className = `coal${coalVariant}`;
-          
-          gameState.blockMap[ny][nx] = coalBlock;
-        } else if (ore.name === "iron") {
-          // Create a copy of the iron block
-          const ironBlock = { ...ore };
-          
-          // Add a random class from iron1 to iron4
-          const ironVariant = Math.floor(Math.random() * 4) + 1;
-          ironBlock.className = `iron${ironVariant}`;
-          
-          gameState.blockMap[ny][nx] = ironBlock;
-        } else {
-          gameState.blockMap[ny][nx] = ore;
-        }
+        // Create a copy of the ore block with a random class variant
+        const oreBlock = { ...ore };
+        
+        // Add a random class from ore-name1 to ore-name4
+        const oreVariant = Math.floor(Math.random() * 4) + 1;
+        oreBlock.className = `${ore.name}${oreVariant}`;
+        
+        gameState.blockMap[ny][nx] = oreBlock;
         placed.add(key(nx, ny));
 
         // Add to queue with increased depth for branch tracking
